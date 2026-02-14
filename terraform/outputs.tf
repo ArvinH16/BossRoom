@@ -1,0 +1,31 @@
+output "cloud_run_url" {
+  description = "Cloud Run service URL"
+  value       = google_cloud_run_v2_service.game_server.uri
+}
+
+output "cloud_sql_connection_name" {
+  description = "Cloud SQL instance connection name"
+  value       = google_sql_database_instance.main.connection_name
+}
+
+output "cloud_sql_connection_string" {
+  description = "Cloud SQL connection string"
+  value       = "postgresql://${google_sql_user.bossroom.name}:${var.db_password}@/${google_sql_database.bossroom.name}?host=/cloudsql/${google_sql_database_instance.main.connection_name}"
+  sensitive   = true
+}
+
+output "firebase_config" {
+  description = "Firebase web app configuration"
+  value = {
+    apiKey      = data.google_firebase_web_app_config.default.api_key
+    authDomain  = data.google_firebase_web_app_config.default.auth_domain
+    projectId   = var.project_id
+    appId       = google_firebase_web_app.default.app_id
+  }
+  sensitive = true
+}
+
+output "vercel_url" {
+  description = "Vercel project URL"
+  value       = "https://${vercel_project.frontend.name}.vercel.app"
+}

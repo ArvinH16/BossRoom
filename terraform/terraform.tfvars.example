@@ -1,0 +1,8 @@
+project_id                 = "your-gcp-project-id"
+region                     = "us-central1"
+db_password                = "your-secure-db-password"
+google_oauth_client_id     = "your-oauth-client-id.apps.googleusercontent.com"
+google_oauth_client_secret = "your-oauth-client-secret"
+vercel_api_token           = "your-vercel-api-token"
+github_repo                = "owner/bossroom"
+backend_image              = "us-docker.pkg.dev/cloudrun/container/hello"
