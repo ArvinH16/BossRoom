@@ -1,0 +1,56 @@
+{
+  "name": "@org/source",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "dev": "npx nx run-many -t serve -p game-frontend,game-server",
+    "dev:frontend": "npx nx serve game-frontend",
+    "dev:server": "npx nx serve game-server",
+    "build": "npx nx run-many -t build",
+    "lint": "npx nx run-many -t lint",
+    "db:push": "npx nx run game-server:db:push",
+    "db:generate": "npx nx run game-server:db:generate",
+    "db:migrate": "npx nx run game-server:db:migrate",
+    "db:studio": "npx nx run game-server:db:studio",
+    "generate:env": "node scripts/generate-env.mjs"
+  },
+  "private": true,
+  "devDependencies": {
+    "@nx/esbuild": "22.5.0",
+    "@nx/js": "^22.5.0",
+    "@nx/next": "^22.5.0",
+    "@nx/node": "^22.5.0",
+    "@swc-node/register": "1.11.1",
+    "@swc/cli": "~0.8.0",
+    "@swc/core": "1.15.8",
+    "@swc/helpers": "0.5.18",
+    "@types/node": "20.19.9",
+    "@types/pg": "^8.16.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/ws": "^8.18.1",
+    "drizzle-kit": "^0.31.9",
+    "esbuild": "^0.19.2",
+    "nx": "22.5.0",
+    "prettier": "^2.6.2",
+    "tslib": "^2.3.0",
+    "typescript": "~5.9.2"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "libs/*"
+  ],
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "dotenv": "^17.3.1",
+    "drizzle-orm": "^0.45.1",
+    "next": "~16.0.1",
+    "openai": "^6.22.0",
+    "pg": "^8.18.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.1.18",
+    "ws": "^8.19.0"
+  }
+}
