@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Markdown } from '@/components/ui/Markdown';
 import { Send, LogOut, Wifi, WifiOff, Bot, Wrench } from 'lucide-react';
 
 function AgentColumn({ agentId }: { agentId: string }) {
@@ -139,13 +140,17 @@ function AgentColumn({ agentId }: { agentId: string }) {
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={`max-w-[90%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
+              className={`max-w-[90%] px-3 py-2 rounded-lg text-sm ${
                 msg.role === 'user'
-                  ? 'ml-auto bg-indigo-600/60 text-white'
+                  ? 'ml-auto bg-indigo-600/60 text-white whitespace-pre-wrap'
                   : 'mr-auto bg-secondary text-foreground/80'
               }`}
             >
-              {msg.content}
+              {msg.role === 'agent' ? (
+                <Markdown content={msg.content} />
+              ) : (
+                msg.content
+              )}
             </div>
           ))}
 
@@ -181,8 +186,8 @@ function AgentColumn({ agentId }: { agentId: string }) {
 
           {/* Streaming text */}
           {currentStream && (
-            <div className="max-w-[90%] mr-auto px-3 py-2 rounded-lg text-sm bg-secondary text-foreground/80 whitespace-pre-wrap">
-              {currentStream}
+            <div className="max-w-[90%] mr-auto px-3 py-2 rounded-lg text-sm bg-secondary text-foreground/80">
+              <Markdown content={currentStream} />
               <span className="inline-block w-1.5 h-4 ml-0.5 bg-foreground/60 animate-pulse" />
             </div>
           )}

@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { statusColors, statusLabels } from '@/data/agents';
+import { Markdown } from '@/components/ui/Markdown';
 
 export function ChatPanel() {
   const [input, setInput] = useState('');
@@ -117,20 +118,24 @@ export function ChatPanel() {
             {messages.map((msg, i) => (
               <div
                 key={i}
-                className={`max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
+                className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${
                   msg.role === 'user'
-                    ? 'ml-auto bg-indigo-600/60 text-white'
+                    ? 'ml-auto bg-indigo-600/60 text-white whitespace-pre-wrap'
                     : 'mr-auto bg-white/10 text-white/80'
                 }`}
               >
-                {msg.content}
+                {msg.role === 'agent' ? (
+                  <Markdown content={msg.content} />
+                ) : (
+                  msg.content
+                )}
               </div>
             ))}
 
             {/* Streaming text */}
             {currentStream && (
-              <div className="max-w-[85%] mr-auto px-3 py-2 rounded-lg text-sm bg-white/10 text-white/80 whitespace-pre-wrap">
-                {currentStream}
+              <div className="max-w-[85%] mr-auto px-3 py-2 rounded-lg text-sm bg-white/10 text-white/80">
+                <Markdown content={currentStream} />
                 <span className="inline-block w-1.5 h-4 ml-0.5 bg-white/60 animate-pulse" />
               </div>
             )}
