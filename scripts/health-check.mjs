@@ -6,7 +6,7 @@ const results = [];
 
 function ok(name, detail) {
   results.push({ name, status: 'OK', detail });
-  console.log(`  ✓ ${name}: ${detail}`);
+  console.info(`  ✓ ${name}: ${detail}`);
 }
 
 function fail(name, detail) {
@@ -15,7 +15,7 @@ function fail(name, detail) {
 }
 
 // --- 1. Check required env vars ---
-console.log('\n[ENV VARS]');
+console.info('\n[ENV VARS]');
 const required = [
   'DATABASE_URL',
   'CF_AI_GATEWAY_ACCOUNT_ID',
@@ -30,13 +30,11 @@ const optional = [
   'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
 ];
 
-let envOk = true;
 for (const key of required) {
   if (process.env[key]) {
     ok(key, 'set');
   } else {
     fail(key, 'MISSING (required)');
-    envOk = false;
   }
 }
 
@@ -46,7 +44,7 @@ for (const key of optional) {
     ok(key, 'set');
     if (key.includes('API_KEY') && !key.includes('FIREBASE')) hasAiKey = true;
   } else {
-    console.log(`  - ${key}: not set (optional)`);
+    console.info(`  - ${key}: not set (optional)`);
   }
 }
 
@@ -55,7 +53,7 @@ if (!hasAiKey) {
 }
 
 // --- 2. Database connection ---
-console.log('\n[DATABASE]');
+console.info('\n[DATABASE]');
 if (process.env.DATABASE_URL) {
   try {
     const pool = new pg.Pool({
@@ -74,10 +72,9 @@ if (process.env.DATABASE_URL) {
 }
 
 // --- 3. Cloudflare AI Gateway ---
-console.log('\n[AI GATEWAY]');
+console.info('\n[AI GATEWAY]');
 const accountId = process.env.CF_AI_GATEWAY_ACCOUNT_ID;
 const gatewayId = process.env.CF_AI_GATEWAY_ID;
-const gatewayToken = process.env.CF_AI_GATEWAY_TOKEN;
 
 if (accountId && gatewayId) {
   // Gateway is unauthenticated (pass-through) — provider API key is sent directly
@@ -122,7 +119,7 @@ if (accountId && gatewayId) {
 }
 
 // --- 4. Firebase config ---
-console.log('\n[FIREBASE]');
+console.info('\n[FIREBASE]');
 if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
   ok('Firebase Config', `Project: ${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}`);
 } else {
@@ -131,15 +128,15 @@ if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE
 
 // --- Summary ---
 const failed = results.filter((r) => r.status === 'FAIL');
-console.log('\n' + '='.repeat(50));
+console.info('\n' + '='.repeat(50));
 if (failed.length === 0) {
-  console.log('All systems operational!');
+  console.info('All systems operational!');
 } else {
-  console.log(`${failed.length} check(s) failed:`);
+  console.info(`${failed.length} check(s) failed:`);
   for (const f of failed) {
-    console.log(`  - ${f.name}: ${f.detail}`);
+    console.info(`  - ${f.name}: ${f.detail}`);
   }
 }
-console.log('='.repeat(50) + '\n');
+console.info('='.repeat(50) + '\n');
 
 process.exit(failed.length > 0 ? 1 : 0);

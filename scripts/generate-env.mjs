@@ -27,7 +27,7 @@ try {
   ].join('\n');
 
   writeFileSync(join(root, 'apps', 'game-frontend', '.env.production'), frontendEnv);
-  console.log('Wrote apps/game-frontend/.env.production');
+  console.info('Wrote apps/game-frontend/.env.production');
 
   // Server .env.production
   const dbConnString = outputs.cloud_sql_connection_string?.value || '';
@@ -39,7 +39,7 @@ try {
   ].join('\n');
 
   writeFileSync(join(root, 'apps', 'game-server', '.env.production'), serverEnv);
-  console.log('Wrote apps/game-server/.env.production');
+  console.info('Wrote apps/game-server/.env.production');
 } catch (err) {
   console.error('Failed to generate env files. Is Terraform initialized?');
   console.error(err.message);
