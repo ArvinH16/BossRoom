@@ -3,20 +3,24 @@ import type { ToolSet } from 'ai';
 import { z } from 'zod';
 import type { SkillService } from '../skills/service.js';
 import type { ServerMessage, SkillSummary, DynamicAgent } from '@bossroom/shared-types';
+import { WORLD_SIZE } from '@bossroom/shared-utils';
 import { log } from '../../logger.js';
 import { randomUUID } from 'node:crypto';
 import type { ScratchpadService } from '../scratchpad/service.js';
 
 /**
  * Compute a unique zone position for a dynamic agent based on its global index.
- * Grid: 5 columns (x = -20..20), 5 rows (z = -6..-46), scattered so consecutive
- * agents land in distant cells instead of filling left-to-right.
+ * Grid derived from WORLD_SIZE so it stays consistent with the frontend floor.
+ * Office floor is 90% of WORLD_SIZE; zone circles have ~3-unit radius, so we
+ * keep centers at least 4 units from the floor edge.
  */
-const ZONE_COLUMNS = [-20, -10, 0, 10, 20];
-const ZONE_ROW_START_Z = -6;
-const ZONE_ROW_SPACING = -10;
-const SCATTER_CAPACITY = ZONE_COLUMNS.length * 5; // 25 scattered slots
-const SCATTER_MULT = 11; // coprime to 25 → bijective mapping
+const FLOOR_HALF = (WORLD_SIZE * 0.9) / 2;
+const COL_MAX = Math.floor(FLOOR_HALF - 4);               // 18
+const ZONE_COLUMNS = [-COL_MAX, -COL_MAX / 2, 0, COL_MAX / 2, COL_MAX];
+const ZONE_ROW_START_Z = -5;
+const ZONE_ROW_SPACING = -4;
+const SCATTER_CAPACITY = ZONE_COLUMNS.length * 5;          // 25 scattered slots
+const SCATTER_MULT = 11;                                   // coprime to 25 → bijective mapping
 
 function getZonePosition(index: number): [number, number, number] {
   // Scatter first 25 agents across the grid; overflow continues sequentially

@@ -20,11 +20,25 @@ import { useBuildSequence } from '@/hooks/useBuildSequence';
 import { toDynamicAgentData } from '@/data/agents';
 import { LIGHTING, POST_PROCESSING } from '@/data/gameConfig';
 
+/** Isolated component — only re-renders when workspace store changes, not the whole Scene. */
+function DynamicAgents() {
+  const dynamicAgents = useWorkspaceStore((s) => s.dynamicAgents);
+  const builtAgentIds = useWorkspaceStore((s) => s.builtAgentIds);
+
+  return (
+    <>
+      {dynamicAgents
+        .filter((a) => builtAgentIds.has(a.agentId))
+        .map((a) => (
+          <Agent key={a.agentId} agent={toDynamicAgentData(a)} />
+        ))}
+    </>
+  );
+}
+
 export function Scene() {
   const agents = useWorldStore((s) => s.agents);
   const remotePlayers = useWorldStore((s) => s.remotePlayers);
-  const dynamicAgents = useWorkspaceStore((s) => s.dynamicAgents);
-  const builtAgentIds = useWorkspaceStore((s) => s.builtAgentIds);
 
   // Activate the build sequence timer
   useBuildSequence();
@@ -81,12 +95,8 @@ export function Scene() {
             <Agent key={agent.id} agent={agent} />
           ))}
 
-          {/* Dynamic agents — only rendered once their zone is built */}
-          {dynamicAgents
-            .filter((a) => builtAgentIds.has(a.agentId))
-            .map((a) => (
-              <Agent key={a.agentId} agent={toDynamicAgentData(a)} />
-            ))}
+          {/* Dynamic agents — isolated to avoid re-rendering Scene */}
+          <DynamicAgents />
 
           {Object.values(remotePlayers).map((player) => (
             <RemotePlayer key={player.id} player={player} />

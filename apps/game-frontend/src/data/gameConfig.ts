@@ -1,5 +1,7 @@
 /** Game-wide constants for the 3D office world. */
 
+import { WORLD_SIZE } from '@bossroom/shared-utils';
+
 export const FURNITURE_SCALE = 2.2;
 
 export const PLAYER = {
@@ -39,7 +41,8 @@ export const SPATIAL_AUDIO = {
 } as const;
 
 export const WORLD = {
-  floorSize: 50,
+  borderSize: WORLD_SIZE,
+  floorSize: WORLD_SIZE * 0.9,
   wallHeight: 3,
   background: '#87ceeb',
 } as const;

@@ -12,27 +12,27 @@ import { Workstation } from './Workstation';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import type { DynamicAgent } from '@bossroom/shared-types';
 
-const halfFloor = WORLD.floorSize / 2;
+const halfBorder = WORLD.borderSize / 2;
 
 const walls: {
   pos: [number, number, number];
   size: [number, number, number];
 }[] = [
   {
-    pos: [0, WORLD.wallHeight / 2, -halfFloor],
-    size: [WORLD.floorSize, WORLD.wallHeight, 0.3],
+    pos: [0, WORLD.wallHeight / 2, -halfBorder],
+    size: [WORLD.borderSize, WORLD.wallHeight, 0.3],
   },
   {
-    pos: [0, WORLD.wallHeight / 2, halfFloor],
-    size: [WORLD.floorSize, WORLD.wallHeight, 0.3],
+    pos: [0, WORLD.wallHeight / 2, halfBorder],
+    size: [WORLD.borderSize, WORLD.wallHeight, 0.3],
   },
   {
-    pos: [-halfFloor, WORLD.wallHeight / 2, 0],
-    size: [0.3, WORLD.wallHeight, WORLD.floorSize],
+    pos: [-halfBorder, WORLD.wallHeight / 2, 0],
+    size: [0.3, WORLD.wallHeight, WORLD.borderSize],
   },
   {
-    pos: [halfFloor, WORLD.wallHeight / 2, 0],
-    size: [0.3, WORLD.wallHeight, WORLD.floorSize],
+    pos: [halfBorder, WORLD.wallHeight / 2, 0],
+    size: [0.3, WORLD.wallHeight, WORLD.borderSize],
   },
 ];
 
@@ -216,11 +216,25 @@ function ReceptionDecor() {
   );
 }
 
-export function Office() {
+/** Isolated component — only re-renders when workspace store changes, not the whole Office. */
+function DynamicZones() {
   const dynamicAgents = useWorkspaceStore((s) => s.dynamicAgents);
   const builtAgentIds = useWorkspaceStore((s) => s.builtAgentIds);
   const phase = useWorkspaceStore((s) => s.phase);
 
+  if (phase !== 'building' && phase !== 'ready') return null;
+
+  return (
+    <>
+      {dynamicAgents.map((agent) => {
+        if (!builtAgentIds.has(agent.agentId)) return null;
+        return <AnimatedZone key={agent.agentId} agent={agent} />;
+      })}
+    </>
+  );
+}
+
+export function Office() {
   return (
     <group>
       {/* Office floor with collision */}
@@ -285,29 +299,25 @@ export function Office() {
       {/* Reception area decor (always visible) */}
       <ReceptionDecor />
 
-      {/* Dynamic workspace zones — only rendered after build */}
-      {(phase === 'building' || phase === 'ready') &&
-        dynamicAgents.map((agent) => {
-          if (!builtAgentIds.has(agent.agentId)) return null;
-          return <AnimatedZone key={agent.agentId} agent={agent} />;
-        })}
+      {/* Dynamic workspace zones — isolated to avoid re-rendering Office */}
+      <DynamicZones />
 
       {/* ── Neon accent strips — border the floor ── */}
-      <NeonStrip position={[0, 0.03, halfFloor]} length={WORLD.floorSize} color="#6366f1" />
-      <NeonStrip position={[0, 0.03, -halfFloor]} length={WORLD.floorSize} color="#6366f1" />
+      <NeonStrip position={[0, 0.03, halfBorder]} length={WORLD.borderSize} color="#6366f1" />
+      <NeonStrip position={[0, 0.03, -halfBorder]} length={WORLD.borderSize} color="#6366f1" />
       <NeonStrip
-        position={[-halfFloor, 0.03, 0]}
-        length={WORLD.floorSize}
+        position={[-halfBorder, 0.03, 0]}
+        length={WORLD.borderSize}
         color="#6366f1"
         vertical
       />
       <NeonStrip
-        position={[halfFloor, 0.03, 0]}
-        length={WORLD.floorSize}
+        position={[halfBorder, 0.03, 0]}
+        length={WORLD.borderSize}
         color="#6366f1"
         vertical
       />
-      <NeonStrip position={[0, 0.03, -2]} length={WORLD.floorSize} color="#3730a3" />
+      <NeonStrip position={[0, 0.03, -2]} length={WORLD.borderSize} color="#3730a3" />
 
       {/* Perimeter walls */}
       {walls.map((wall, i) => (
