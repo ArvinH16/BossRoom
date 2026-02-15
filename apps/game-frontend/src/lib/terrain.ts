@@ -19,9 +19,9 @@ export const TERRAIN = {
   /** World seed for deterministic generation. */
   seed: 'bossroom-world-42',
   /** Distance from world center where terrain is flat (under office). */
-  clearingRadius: 26,
+  clearingRadius: 52,
   /** Distance where terrain reaches full natural height. */
-  transitionEnd: 40,
+  transitionEnd: 65,
 } as const;
 
 // Height → color mapping (muted natural palette)

@@ -6,12 +6,26 @@ import type { ServerMessage, SkillSummary, DynamicAgent } from '@bossroom/shared
 import { log } from '../../logger.js';
 import { randomUUID } from 'crypto';
 
-/** Zone position grid — auto-assigned based on agent index. */
-const ZONE_POSITIONS: [number, number, number][] = [
-  [-6, 0, -6],   // slot 0: left
-  [6, 0, -6],    // slot 1: right
-  [0, 0, -10],   // slot 2: back center
-];
+/**
+ * Compute a unique zone position for a dynamic agent based on its global index.
+ * Grid: 5 columns (x = -20..20), 5 rows (z = -6..-46), scattered so consecutive
+ * agents land in distant cells instead of filling left-to-right.
+ */
+const ZONE_COLUMNS = [-20, -10, 0, 10, 20];
+const ZONE_ROW_START_Z = -6;
+const ZONE_ROW_SPACING = -10;
+const SCATTER_CAPACITY = ZONE_COLUMNS.length * 5; // 25 scattered slots
+const SCATTER_MULT = 11; // coprime to 25 → bijective mapping
+
+function getZonePosition(index: number): [number, number, number] {
+  // Scatter first 25 agents across the grid; overflow continues sequentially
+  const slot = index < SCATTER_CAPACITY
+    ? (index * SCATTER_MULT + 3) % SCATTER_CAPACITY
+    : index;
+  const col = slot % ZONE_COLUMNS.length;
+  const row = Math.floor(slot / ZONE_COLUMNS.length);
+  return [ZONE_COLUMNS[col], 0, ZONE_ROW_START_Z + row * ZONE_ROW_SPACING];
+}
 
 // ----- Zod schemas (defined separately for reuse) -----
 
@@ -58,6 +72,7 @@ interface SetupWorkspaceDeps {
   playerId: string;
   broadcastFn: (msg: ServerMessage) => void;
   onWorkspaceBuilt: (agents: DynamicAgent[], taskSummary: string) => void;
+  getDynamicAgentCount: () => number;
 }
 
 interface DelegateTaskDeps {
@@ -121,7 +136,7 @@ export function createAgentSkillTools(deps: SkillToolsDeps): ToolSet {
  * Creates dynamic agents, skills, and triggers the build sequence.
  */
 export function createSetupWorkspaceTool(deps: SetupWorkspaceDeps): ToolSet {
-  const { skillService, broadcastFn, onWorkspaceBuilt } = deps;
+  const { skillService, broadcastFn, onWorkspaceBuilt, getDynamicAgentCount } = deps;
 
   const setupWorkspace = tool({
     description:
@@ -130,7 +145,8 @@ export function createSetupWorkspaceTool(deps: SetupWorkspaceDeps): ToolSet {
     execute: async (args: z.infer<typeof setupWorkspaceParams>) => {
       const agentDefs = args.agents;
 
-      // 1. Generate unique IDs and assign positions
+      // 1. Generate unique IDs and assign positions (offset by existing agents)
+      const baseIndex = getDynamicAgentCount();
       const dynamicAgents: DynamicAgent[] = agentDefs.map((def, i) => ({
         agentId: `agent-${randomUUID().slice(0, 8)}`,
         name: def.name,
@@ -139,7 +155,7 @@ export function createSetupWorkspaceTool(deps: SetupWorkspaceDeps): ToolSet {
         personality: def.personality,
         role: def.role,
         skills: [] as SkillSummary[],
-        position: ZONE_POSITIONS[i] ?? ZONE_POSITIONS[0],
+        position: getZonePosition(baseIndex + i),
         initialTask: def.initialTask,
       }));
 

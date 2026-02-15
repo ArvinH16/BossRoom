@@ -174,13 +174,13 @@ function ReceptionDecor() {
       <primitive
         object={plant.scene.clone()}
         scale={FURNITURE_SCALE}
-        position={[-10, 0, 4]}
+        position={[-20, 0, 4]}
         castShadow
       />
       <primitive
         object={plant.scene.clone()}
         scale={FURNITURE_SCALE}
-        position={[10, 0, 4]}
+        position={[20, 0, 4]}
         castShadow
       />
 
@@ -288,21 +288,21 @@ export function Office() {
         })}
 
       {/* ── Neon accent strips (glow with bloom) ── */}
-      <NeonStrip position={[0, 0.03, 6]} length={24} color="#6366f1" />
-      <NeonStrip position={[0, 0.03, -16]} length={24} color="#6366f1" />
+      <NeonStrip position={[0, 0.03, 10]} length={60} color="#6366f1" />
+      <NeonStrip position={[0, 0.03, -46]} length={60} color="#6366f1" />
       <NeonStrip
-        position={[-12, 0.03, -5]}
-        length={22}
+        position={[-30, 0.03, -18]}
+        length={56}
         color="#6366f1"
         vertical
       />
       <NeonStrip
-        position={[12, 0.03, -5]}
-        length={22}
+        position={[30, 0.03, -18]}
+        length={56}
         color="#6366f1"
         vertical
       />
-      <NeonStrip position={[0, 0.03, -2]} length={24} color="#3730a3" />
+      <NeonStrip position={[0, 0.03, -2]} length={60} color="#3730a3" />
 
       {/* Perimeter walls */}
       {walls.map((wall, i) => (

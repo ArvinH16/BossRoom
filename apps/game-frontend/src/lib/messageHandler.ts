@@ -71,6 +71,13 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
 
       case 'agent:conversationHistory': {
         const { agentId, messages: history } = msg.payload;
+
+        // After newTask/closeCurrentTask, ignore the server restoring old history
+        if (agentId === 'receptionist' && useChatStore.getState().ignoreNextHistory) {
+          useChatStore.setState({ ignoreNextHistory: false });
+          break;
+        }
+
         // Set full history, replacing any existing messages
         useChatStore.setState((state) => ({
           chatMessages: {
@@ -127,6 +134,10 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         const { agents: dynamicAgents, taskSummary } = msg.payload;
         // Start the build sequence
         useWorkspaceStore.getState().startBuild(dynamicAgents, taskSummary);
+
+        // Track which agents belong to the current task
+        const newAgentIds = dynamicAgents.map((a) => a.agentId);
+        useChatStore.getState().registerTaskAgents(newAgentIds);
 
         // Add dynamic agents to world store for status tracking
         const worldStore = useWorldStore.getState();

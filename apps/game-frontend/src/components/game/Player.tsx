@@ -78,6 +78,12 @@ export function Player() {
         useVoiceStore.getState().setRecording(true);
         startPromiseRef.current = startRecording();
       }
+
+      if (e.code === 'KeyR' && !chatPanelOpen) {
+        // Open receptionist with a fresh task (additive — keeps existing agents)
+        useChatStore.getState().newTask();
+        openChat('receptionist');
+      }
     }
 
     function handleKeyUp(e: KeyboardEvent) {

@@ -39,7 +39,22 @@ export function compileSystemPrompt(
     sections.push(
       'You coordinate the team. Break down the task into subtasks and use the delegate_task tool to assign work to your team members.',
       `Your team: ${options.teamMembers.join(', ')}`,
-      'After delegating, synthesize the results into a coherent summary.',
+      '',
+      '**Important: Communication flow**',
+      '- When you delegate a task, the worker agent responds DIRECTLY to the user — not back to you.',
+      '- You will NOT receive the worker\'s output. You cannot read, review, or synthesize their results.',
+      '- Delegate clearly: include all context the worker needs to produce a complete, user-facing response.',
+      '- After delegating, tell the user what you\'ve kicked off and who is handling what. Do NOT promise to summarize results.',
+      '- Tell the user that cards with each agent\'s name have appeared at the bottom of the screen — they can click into them to see progress and chat with each agent directly.',
+    );
+  } else if (!options?.isLead) {
+    sections.push('');
+    sections.push('## Your Role: Specialist');
+    sections.push(
+      '**Important: Your responses go directly to the user.**',
+      'You are NOT reporting back to a lead agent. The user sees everything you write.',
+      'Give complete, helpful answers. Include context — the user may not know the details of the task you were assigned.',
+      'If you use tools (e.g. calendar, email), explain what you did and what the results are.',
     );
   }
 

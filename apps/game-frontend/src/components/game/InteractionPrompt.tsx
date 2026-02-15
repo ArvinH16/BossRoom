@@ -19,18 +19,27 @@ export function InteractionPrompt() {
       className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50
         px-6 py-3 rounded-xl bg-black/70 backdrop-blur-sm border border-white/10
         text-white text-sm font-medium pointer-events-none
-        animate-[fadeIn_0.2s_ease-out]"
+        animate-[fadeIn_0.2s_ease-out] flex items-center gap-4"
     >
-      Press{' '}
-      <kbd className="px-2 py-0.5 mx-1 rounded bg-white/15 border border-white/20 text-xs font-mono">
-        E
-      </kbd>{' '}
-      to chat or hold{' '}
-      <kbd className="px-2 py-0.5 mx-1 rounded bg-white/15 border border-white/20 text-xs font-mono">
-        T
-      </kbd>{' '}
-      to talk to{' '}
-      <span style={{ color: agent.color }}>{agent.name}</span>
+      <span>
+        Press{' '}
+        <kbd className="px-2 py-0.5 mx-1 rounded bg-white/15 border border-white/20 text-xs font-mono">
+          E
+        </kbd>{' '}
+        to chat or hold{' '}
+        <kbd className="px-2 py-0.5 mx-1 rounded bg-white/15 border border-white/20 text-xs font-mono">
+          T
+        </kbd>{' '}
+        to talk to{' '}
+        <span style={{ color: agent.color }}>{agent.name}</span>
+      </span>
+      <span className="text-white/30">|</span>
+      <span>
+        <kbd className="px-2 py-0.5 mx-1 rounded bg-white/15 border border-white/20 text-xs font-mono">
+          R
+        </kbd>{' '}
+        new task
+      </span>
     </div>
   );
 }

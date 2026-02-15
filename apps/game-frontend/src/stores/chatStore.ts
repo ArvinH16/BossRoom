@@ -8,6 +8,14 @@ export type ChatMessage =
   | { role: 'agent'; content: string }
   | { role: 'tool'; toolName: string; status: 'started' | 'completed' | 'failed'; result?: string };
 
+/** Archived receptionist task (read-only snapshot). */
+export interface ArchivedTask {
+  id: string;
+  label: string;
+  messages: ChatMessage[];
+  agentIds: string[];
+}
+
 interface ChatState {
   activeAgent: string | null;
   chatPanelOpen: boolean;
@@ -16,6 +24,15 @@ interface ChatState {
   conversationIds: Record<string, string>;
   lastWalkAwayAgent: string | null;
 
+  /** Receptionist task tabs */
+  archivedTasks: ArchivedTask[];
+  activeTaskId: string | null;        // null = current live conversation
+  currentTaskId: string;              // ID of the live task
+  currentTaskAgentIds: string[];      // dynamic agent IDs spawned by this task
+  taskCounter: number;
+  /** When true, ignore the next agent:conversationHistory for receptionist */
+  ignoreNextHistory: boolean;
+
   openChat: (agentId: string) => void;
   closeChat: (reason?: 'explicit' | 'walkAway') => void;
   sendMessage: (agentId: string, content: string, inputMode?: 'voice' | 'text') => void;
@@ -23,6 +40,14 @@ interface ChatState {
   addToolExecution: (agentId: string, toolName: string, status: 'started' | 'completed' | 'failed', result?: string) => void;
   appendStream: (agentId: string, delta: string) => void;
   finalizeStream: (agentId: string) => void;
+
+  /** Task management (receptionist only) */
+  registerTaskAgents: (agentIds: string[]) => void;
+  newTask: () => void;
+  switchTask: (taskId: string | null) => void;
+  closeTask: (taskId: string) => void;
+  closeCurrentTask: () => void;
+
   reset: () => void;
 }
 
@@ -33,6 +58,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
   streamingText: {},
   conversationIds: {},
   lastWalkAwayAgent: null,
+
+  archivedTasks: [],
+  activeTaskId: null,
+  currentTaskId: 'task-1',
+  currentTaskAgentIds: [],
+  taskCounter: 1,
+  ignoreNextHistory: false,
 
   openChat: (agentId) => {
     useVoiceStore.getState().stopTTS();
@@ -143,6 +175,87 @@ export const useChatStore = create<ChatState>((set, get) => ({
       };
     }),
 
+  /** Called when workspace:build fires — associates agent IDs with the current task. */
+  registerTaskAgents: (agentIds) => {
+    set((state) => ({
+      currentTaskAgentIds: [...state.currentTaskAgentIds, ...agentIds],
+    }));
+  },
+
+  newTask: () => {
+    const state = get();
+    const currentMessages = state.chatMessages['receptionist'] ?? [];
+
+    // Archive current conversation if it has messages
+    const archived = [...state.archivedTasks];
+    if (currentMessages.length > 0) {
+      archived.push({
+        id: state.currentTaskId,
+        label: `Task ${state.taskCounter}`,
+        messages: currentMessages,
+        agentIds: state.currentTaskAgentIds,
+      });
+    }
+
+    const newCounter = state.taskCounter + 1;
+    const newTaskId = `task-${newCounter}`;
+
+    set({
+      archivedTasks: archived,
+      currentTaskId: newTaskId,
+      taskCounter: newCounter,
+      activeTaskId: null, // switch to the new live task
+      currentTaskAgentIds: [],
+      ignoreNextHistory: true, // don't let server restore old messages
+      chatMessages: {
+        ...state.chatMessages,
+        receptionist: [],
+      },
+      streamingText: { ...state.streamingText, receptionist: '' },
+      conversationIds: {
+        ...state.conversationIds,
+        receptionist: generateConversationId(),
+      },
+    });
+  },
+
+  switchTask: (taskId) => {
+    set({ activeTaskId: taskId });
+  },
+
+  closeTask: (taskId) => {
+    const state = get();
+    const task = state.archivedTasks.find((t) => t.id === taskId);
+    set({
+      archivedTasks: state.archivedTasks.filter((t) => t.id !== taskId),
+      activeTaskId: state.activeTaskId === taskId ? null : state.activeTaskId,
+    });
+    return task?.agentIds ?? [];
+  },
+
+  /** Close the current live task — clears receptionist chat and agents. */
+  closeCurrentTask: () => {
+    const state = get();
+    const newCounter = state.taskCounter + 1;
+
+    set({
+      currentTaskId: `task-${newCounter}`,
+      taskCounter: newCounter,
+      currentTaskAgentIds: [],
+      activeTaskId: null,
+      ignoreNextHistory: true,
+      chatMessages: {
+        ...state.chatMessages,
+        receptionist: [],
+      },
+      streamingText: { ...state.streamingText, receptionist: '' },
+      conversationIds: {
+        ...state.conversationIds,
+        receptionist: generateConversationId(),
+      },
+    });
+  },
+
   reset: () =>
     set({
       activeAgent: null,
@@ -151,5 +264,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       streamingText: {},
       conversationIds: {},
       lastWalkAwayAgent: null,
+      archivedTasks: [],
+      activeTaskId: null,
+      currentTaskId: 'task-1',
+      currentTaskAgentIds: [],
+      taskCounter: 1,
+      ignoreNextHistory: false,
     }),
 }));
