@@ -4,7 +4,7 @@
 'use client';
 
 import { Suspense, useRef, useEffect, useState } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import { CapsuleCollider, RigidBody } from '@react-three/rapier';
 import type { Group } from 'three';
 import { CharacterModel } from './CharacterModel';
@@ -20,11 +20,13 @@ const MOVE_SPEED = 5;
 const SPAWN: [number, number, number] = [0, 2, 6];
 const ROTATION_LERP = 0.15;
 
+/** Shared ref so CameraRig can track the player position. */
+export const playerPositionRef = { current: SPAWN as [number, number, number] };
+
 export function Player() {
   const rigidBodyRef = useRef<any>(null);
   const modelGroupRef = useRef<Group>(null);
   const facingAngle = useRef(Math.PI); // default facing camera (away from camera)
-  const { camera } = useThree();
   const keys = useRef<Record<string, boolean>>({});
   const [animation, setAnimation] = useState('idle');
 
@@ -69,13 +71,17 @@ export function Player() {
     const left = (keys.current['KeyA'] || keys.current['ArrowLeft']) ? 1 : 0;
     const right = (keys.current['KeyD'] || keys.current['ArrowRight']) ? 1 : 0;
 
-    const moveX = right - left;
-    const moveZ = backward - forward;
+    let moveX = right - left;
+    let moveZ = backward - forward;
     const isMoving = moveX !== 0 || moveZ !== 0;
 
     if (isMoving) {
-      const impulse = { x: moveX * MOVE_SPEED, y: 0, z: moveZ * MOVE_SPEED };
-      rb.setLinvel(impulse, true);
+      // Normalize diagonal movement so strafing isn't faster
+      const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
+      moveX /= len;
+      moveZ /= len;
+
+      rb.setLinvel({ x: moveX * MOVE_SPEED, y: 0, z: moveZ * MOVE_SPEED }, true);
       setAnimation('walk');
 
       // Face movement direction
@@ -95,9 +101,8 @@ export function Player() {
       modelGroupRef.current.rotation.y = facingAngle.current;
     }
 
-    // Camera follow
-    camera.position.set(pos.x, pos.y + 5, pos.z + 10);
-    camera.lookAt(pos.x, pos.y + 1, pos.z);
+    // Expose position for CameraRig
+    playerPositionRef.current = [pos.x, pos.y, pos.z];
 
     // Broadcast player position so agents can sense proximity
     setPlayerPosition([pos.x, pos.y, pos.z]);
