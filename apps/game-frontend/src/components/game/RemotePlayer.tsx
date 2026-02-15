@@ -1,12 +1,12 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { Suspense, useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Billboard, Text } from '@react-three/drei';
 import { Vector3 } from 'three';
 import type { Group } from 'three';
 import { CharacterModel } from './CharacterModel';
-import { PLAYER } from '@/data/gameConfig';
+import { getAvatarModelUrl } from '@/data/avatars';
 import type { RemotePlayer as RemotePlayerData } from '@/stores/worldStore';
 
 interface RemotePlayerProps {
@@ -38,7 +38,9 @@ export function RemotePlayer({ player }: RemotePlayerProps) {
 
   return (
     <group ref={groupRef} position={player.position}>
-      <CharacterModel url={PLAYER.modelUrl} animation={player.animation} />
+      <Suspense fallback={null}>
+        <CharacterModel url={getAvatarModelUrl(player.avatarId)} animation={player.animation} />
+      </Suspense>
       <Billboard position={[0, 2.2, 0]}>
         <Text
           fontSize={0.25}

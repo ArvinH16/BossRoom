@@ -4,8 +4,10 @@
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { gameSocket } from '@/lib/websocket';
 import { statusColors } from '@/data/agents';
+import { SettingsPanel } from './SettingsPanel';
 
 export function HUD() {
   const connected = useWorldStore((s) => s.connected);
@@ -14,6 +16,8 @@ export function HUD() {
   const worldReset = useWorldStore((s) => s.reset);
   const chatReset = useChatStore((s) => s.reset);
   const authSignOut = useAuthStore((s) => s.signOut);
+  const settingsPanelOpen = useSettingsStore((s) => s.settingsPanelOpen);
+  const toggleSettingsPanel = useSettingsStore((s) => s.toggleSettingsPanel);
 
   const handleSignOut = () => {
     gameSocket.disconnect();
@@ -40,7 +44,10 @@ export function HUD() {
           </span>
         </div>
         {user && (
-          <div className="flex items-center gap-2 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-1.5">
+          <div
+            className="relative flex items-center gap-2 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-1.5 cursor-pointer pointer-events-auto"
+            onClick={toggleSettingsPanel}
+          >
             {user.photoURL && (
               <img
                 src={user.photoURL}
@@ -52,11 +59,12 @@ export function HUD() {
               {user.displayName ?? user.email}
             </span>
             <button
-              onClick={handleSignOut}
+              onClick={(e) => { e.stopPropagation(); handleSignOut(); }}
               className="text-[10px] text-white/40 hover:text-white pointer-events-auto cursor-pointer"
             >
               Sign out
             </button>
+            {settingsPanelOpen && <SettingsPanel />}
           </div>
         )}
       </div>

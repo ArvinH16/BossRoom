@@ -8,6 +8,7 @@ export interface RemotePlayer {
   position: [number, number, number];
   rotation: number;
   animation: string;
+  avatarId: string;
 }
 
 interface WorldState {
@@ -27,6 +28,7 @@ interface WorldState {
   setRemotePlayers: (players: Record<string, RemotePlayer>) => void;
   addRemotePlayer: (player: RemotePlayer) => void;
   updateRemotePlayer: (id: string, position: [number, number, number], rotation: number, animation: string) => void;
+  updateRemotePlayerAvatar: (id: string, avatarId: string) => void;
   removeRemotePlayer: (id: string) => void;
 }
 
@@ -76,6 +78,15 @@ export const useWorldStore = create<WorldState>((set) => ({
           ...state.remotePlayers,
           [id]: { ...existing, position, rotation, animation },
         },
+      };
+    }),
+
+  updateRemotePlayerAvatar: (id, avatarId) =>
+    set((state) => {
+      const existing = state.remotePlayers[id];
+      if (!existing) return state;
+      return {
+        remotePlayers: { ...state.remotePlayers, [id]: { ...existing, avatarId } },
       };
     }),
 

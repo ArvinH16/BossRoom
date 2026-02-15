@@ -12,6 +12,7 @@ import { createConversationModule } from './domains/conversations/module.js';
 import { createAgentModule } from './domains/agents/module.js';
 import { handlePlayerJoin } from './handlers/playerJoin.js';
 import { handlePlayerMove } from './handlers/playerMove.js';
+import { handlePlayerSettings } from './handlers/playerSettings.js';
 import { handleAgentInteract, handleAgentMessage, handleAgentStopInteract } from './handlers/agentHandlers.js';
 
 // --- Composition Root ---
@@ -112,6 +113,8 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
       return handlePlayerJoin(ws, msg.payload, { players, agents, userRepo });
     case 'player:move':
       return handlePlayerMove(ws, msg.payload, players);
+    case 'player:updateSettings':
+      return handlePlayerSettings(ws, msg.payload, { players, userRepo });
     case 'agent:interact':
       return handleAgentInteract(ws, msg.payload, { players, agents });
     case 'agent:message':

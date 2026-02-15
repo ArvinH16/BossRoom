@@ -3,15 +3,17 @@
  */
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { Suspense, useRef, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { CapsuleCollider, RigidBody } from '@react-three/rapier';
 import { CharacterModel } from './CharacterModel';
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useAgentBehaviorStore } from '@/stores/agentBehaviorStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useBroadcastPosition } from '@/hooks/useBroadcastPosition';
-import { PLAYER, INTERACTION } from '@/data/gameConfig';
+import { INTERACTION } from '@/data/gameConfig';
+import { getAvatarModelUrl } from '@/data/avatars';
 
 const MOVE_SPEED = 5;
 const SPAWN: [number, number, number] = [0, 2, 6];
@@ -21,13 +23,14 @@ export function Player() {
   const { camera } = useThree();
   const keys = useRef<Record<string, boolean>>({});
   const [animation, setAnimation] = useState('idle');
-  
+
   const agents = useWorldStore((s) => s.agents);
   const setNearestAgent = useWorldStore((s) => s.setNearestAgent);
   const nearestAgent = useWorldStore((s) => s.nearestAgent);
   const openChat = useChatStore((s) => s.openChat);
   const chatPanelOpen = useChatStore((s) => s.chatPanelOpen);
   const setPlayerPosition = useAgentBehaviorStore((s) => s.setPlayerPosition);
+  const avatarId = useSettingsStore((s) => s.avatarId);
 
   useBroadcastPosition(rigidBodyRef, animation);
 
@@ -108,7 +111,9 @@ export function Player() {
     >
       <CapsuleCollider args={[0.5, 0.3]} />
       <group position={[0, -0.8, 0]} rotation={[0, Math.PI, 0]}>
-        <CharacterModel url={PLAYER.modelUrl} animation={animation} />
+        <Suspense fallback={null}>
+          <CharacterModel url={getAvatarModelUrl(avatarId)} animation={animation} />
+        </Suspense>
       </group>
     </RigidBody>
   );

@@ -1,7 +1,9 @@
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
+import { DEFAULT_AVATAR_ID } from '@bossroom/shared-types';
 import { agents as defaultAgents } from '@/data/agents';
 import type { AgentData } from '@/data/agents';
 
@@ -32,7 +34,7 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
 
         // Extract remote players (filter out self)
         const players = msg.payload.players;
-        const remotePlayers: Record<string, { id: string; username: string; position: [number, number, number]; rotation: number; animation: string }> = {};
+        const remotePlayers: Record<string, { id: string; username: string; position: [number, number, number]; rotation: number; animation: string; avatarId: string }> = {};
         for (const [id, p] of Object.entries(players)) {
           if (id === uid) continue;
           remotePlayers[id] = {
@@ -41,9 +43,16 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
             position: p.position,
             rotation: p.rotation,
             animation: p.animation,
+            avatarId: p.avatarId,
           };
         }
         worldStore.setRemotePlayers(remotePlayers);
+
+        // Initialize local user's avatar from server
+        const selfPlayer = players[uid];
+        if (selfPlayer) {
+          useSettingsStore.getState().setAvatarIdLocal(selfPlayer.avatarId ?? DEFAULT_AVATAR_ID);
+        }
         break;
       }
 
@@ -106,6 +115,7 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
           position: jp.position,
           rotation: jp.rotation,
           animation: jp.animation,
+          avatarId: jp.avatarId,
         });
         break;
       }
@@ -124,6 +134,13 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         if (msg.payload.playerId === '__self__') {
           useWorldStore.getState().setConnected(false);
         }
+        break;
+
+      case 'player:avatarChanged':
+        useWorldStore.getState().updateRemotePlayerAvatar(
+          msg.payload.playerId,
+          msg.payload.avatarId,
+        );
         break;
     }
   });

@@ -1,4 +1,5 @@
 import { pgTable, uuid, text, timestamp, jsonb, pgEnum, unique } from 'drizzle-orm/pg-core';
+import type { UserSettings } from '@bossroom/shared-types';
 
 export const agentModelEnum = pgEnum('agent_model', ['claude', 'gpt-4o', 'gemini']);
 
@@ -7,6 +8,7 @@ export const users = pgTable('users', {
   email: text('email').notNull(),
   displayName: text('display_name'),
   photoURL: text('photo_url'),
+  settings: jsonb('settings').$type<UserSettings>().notNull().default({}),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   lastLoginAt: timestamp('last_login_at').defaultNow().notNull(),
 });
