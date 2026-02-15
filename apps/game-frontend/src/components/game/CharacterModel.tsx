@@ -5,8 +5,15 @@ import { useRef, useEffect, useMemo } from 'react';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import { useGraph } from '@react-three/fiber';
 import { SkeletonUtils } from 'three-stdlib';
-import { Color } from 'three';
+import { Color, LoopOnce, LoopRepeat } from 'three';
 import type { Group } from 'three';
+
+/** Animations that should loop. Everything else plays once and clamps on last frame. */
+const LOOPING_ANIMS = new Set(['idle', 'walk', 'run']);
+
+/** Crossfade durations: longer blend when recovering from a one-shot (e.g., die → idle). */
+const FADE_IN_NORMAL = 0.2;
+const FADE_IN_RECOVERY = 0.6;
 
 interface CharacterModelProps {
   url: string;
@@ -22,6 +29,7 @@ export function CharacterModel({
   scale = 2.2,
 }: CharacterModelProps) {
   const group = useRef<Group>(null);
+  const prevAnimation = useRef(animation);
   const { scene, animations } = useGLTF(url);
   
   const clone = useMemo(() => {
@@ -93,9 +101,9 @@ export function CharacterModel({
     }
     
     try {
-      // Stop all other actions first to prevent conflicts
+      // Stop all other actions (including clamped one-shot anims like 'die')
       Object.values(actions).forEach(a => {
-        if (a && a !== action && a.isRunning()) {
+        if (a && a !== action) {
           try {
             a.fadeOut(0.1).stop();
           } catch (err) {
@@ -104,16 +112,27 @@ export function CharacterModel({
         }
       });
       
-      action.reset().fadeIn(0.2).play();
+      // One-shot animations (attacks, die, emotes) play once and hold last frame
+      if (LOOPING_ANIMS.has(animation)) {
+        action.setLoop(LoopRepeat, Infinity);
+      } else {
+        action.setLoop(LoopOnce, 1);
+        action.clampWhenFinished = true;
+      }
+
+      // Use a longer crossfade when recovering from a one-shot (e.g., die → idle)
+      const wasOneShot = !LOOPING_ANIMS.has(prevAnimation.current);
+      const fadeIn = wasOneShot && LOOPING_ANIMS.has(animation) ? FADE_IN_RECOVERY : FADE_IN_NORMAL;
+      prevAnimation.current = animation;
+
+      action.reset().fadeIn(fadeIn).play();
     } catch (err) {
       console.warn(`Failed to play animation "${animation}":`, err);
     }
     
     return () => {
       try {
-        if (action.isRunning()) {
-          action.fadeOut(0.1).stop();
-        }
+        action.fadeOut(0.1).stop();
       } catch (err) {
         // Ignore cleanup errors
       }

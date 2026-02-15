@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { agents as defaultAgents, type AgentData } from '@/data/agents';
 import type { AgentStatus } from '@bossroom/shared-types';
+import { PUNCH } from '@/data/gameConfig';
 
 export interface RemotePlayer {
   id: string;
@@ -39,6 +40,9 @@ interface WorldState {
   updateRemotePlayer: (id: string, position: [number, number, number], rotation: number, animation: string) => void;
   updateRemotePlayerAvatar: (id: string, avatarId: string) => void;
   removeRemotePlayer: (id: string) => void;
+  punchedAgentId: string | null;
+  punchReaction: string | null;
+  punchAgent: (id: string, reaction: string) => void;
 }
 
 export const useWorldStore = create<WorldState>((set) => ({
@@ -121,4 +125,11 @@ export const useWorldStore = create<WorldState>((set) => ({
       delete next[id];
       return { remotePlayers: next };
     }),
+
+  punchedAgentId: null,
+  punchReaction: null,
+  punchAgent: (id, reaction) => {
+    set({ punchedAgentId: id, punchReaction: reaction });
+    setTimeout(() => set({ punchedAgentId: null, punchReaction: null }), PUNCH.reactionDuration);
+  },
 }));

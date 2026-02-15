@@ -68,6 +68,14 @@ export const AGENT_WANDER = {
   playerSenseRadius: 4,
 } as const;
 
+export const PUNCH = {
+  attackDuration: 600,
+  reactionDuration: 1200,
+  cooldown: 1000,
+  attacks: ['attack-melee-right', 'attack-melee-left', 'attack-kick-right', 'attack-kick-left'],
+  reactions: ['die', 'fall', 'emote-no', 'crouch', 'jump', 'sit'],
+} as const;
+
 export const POST_PROCESSING = {
   bloom: { threshold: 0.8, smoothing: 0.9, intensity: 0.4 },
   vignette: { offset: 0.3, darkness: 0.4 },

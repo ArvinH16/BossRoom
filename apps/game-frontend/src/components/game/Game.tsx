@@ -11,6 +11,7 @@ import { PushToTalkOverlay } from '../ui/PushToTalkOverlay';
 import { TTSAudioPlayer } from '../ui/TTSAudioPlayer';
 import { HUD } from '../ui/HUD';
 import { OnboardingOverlay } from '../ui/OnboardingOverlay';
+import { PunchHint } from './PunchHint';
 import { MissionControl } from '../ui/MissionControl';
 import { ScratchpadFeed } from '../ui/ScratchpadFeed';
 import { useAuthStore } from '@/stores/authStore';
@@ -60,6 +61,7 @@ export function Game({ user }: GameProps) {
       <ChatPanel />
       <EmbedPanel />
       <InteractionPrompt />
+      <PunchHint />
       <PushToTalkOverlay />
       <TTSAudioPlayer />
       <OnboardingOverlay />
