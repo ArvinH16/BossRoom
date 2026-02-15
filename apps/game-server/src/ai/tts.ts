@@ -26,6 +26,9 @@ export async function synthesizeSpeech(text: string): Promise<TTSResult | null> 
         text,
         voiceId: env.INWORLD_VOICE_ID,
         modelId: env.INWORLD_TTS_MODEL_ID,
+        audioConfig: {
+          audioEncoding: 'MP3',
+        },
       }),
     });
 
@@ -43,7 +46,7 @@ export async function synthesizeSpeech(text: string): Promise<TTSResult | null> 
     }
 
     log.info(`[DEBUG-FIX] TTS audioContent received, length=${data.audioContent.length}`);
-    return { audioBase64: data.audioContent, mimeType: 'audio/wav' };
+    return { audioBase64: data.audioContent, mimeType: 'audio/mpeg' };
   } catch (err) {
     log.error('[DEBUG-FIX] TTS synthesis error:', err);
     return null;

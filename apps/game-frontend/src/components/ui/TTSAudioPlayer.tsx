@@ -29,14 +29,15 @@ export function TTSAudioPlayer() {
       dequeue();
     };
 
-    audio.onerror = () => {
+    audio.onerror = (e) => {
+      console.error('[TTS] Audio playback error:', e);
       URL.revokeObjectURL(url);
       playingRef.current = false;
       dequeue();
     };
 
-    audio.play().catch(() => {
-      // Autoplay blocked — dequeue and move on
+    audio.play().catch((err) => {
+      console.error('[TTS] Autoplay blocked or play failed:', err);
       URL.revokeObjectURL(url);
       playingRef.current = false;
       dequeue();
