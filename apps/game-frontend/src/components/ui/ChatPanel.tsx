@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/stores/gameStore';
-import { statusColors } from '@/data/agents';
+import { statusColors, statusLabels } from '@/data/agents';
 
 export function ChatPanel() {
   const [input, setInput] = useState('');
@@ -72,10 +72,7 @@ export function ChatPanel() {
                   className="px-2 py-0.5 rounded-full text-[10px] font-medium text-white capitalize"
                   style={{ backgroundColor: statusColors[agent.status] + '80' }}
                 >
-                  {agent.status === 'thinking' ? 'Thinking...' :
-                   agent.status === 'working' ? 'Working...' :
-                   agent.status === 'listening' ? 'Listening' :
-                   agent.status}
+                  {statusLabels[agent.status]}
                 </span>
               )}
               <button

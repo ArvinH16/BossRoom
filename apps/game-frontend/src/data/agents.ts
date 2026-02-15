@@ -1,3 +1,5 @@
+import type { AgentStatus } from '@bossroom/shared-types';
+
 export interface AgentData {
   id: string;
   name: string;
@@ -8,15 +10,23 @@ export interface AgentData {
   zone: string;
   modelUrl: string;
   suggestedPrompts: string[];
-  status: 'idle' | 'listening' | 'thinking' | 'working' | 'error';
+  status: AgentStatus;
 }
 
-export const statusColors: Record<AgentData['status'], string> = {
+export const statusColors: Record<AgentStatus, string> = {
   idle: '#4AD97A',
   listening: '#4A90D9',
   thinking: '#D9D94A',
   working: '#FF8C00',
   error: '#D94A4A',
+};
+
+export const statusLabels: Record<AgentStatus, string> = {
+  idle: '',
+  listening: 'Listening',
+  thinking: 'Thinking...',
+  working: 'Working...',
+  error: 'Error!',
 };
 
 export const zoneColors: Record<string, string> = {

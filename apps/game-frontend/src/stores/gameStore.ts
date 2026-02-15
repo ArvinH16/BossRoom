@@ -9,12 +9,14 @@ interface ChatMessage {
   content: string;
 }
 
+let nextExecId = 0;
+
 interface ToolExecution {
+  id: number;
   agentId: string;
   toolName: string;
   status: 'started' | 'completed' | 'failed';
   result?: string;
-  timestamp: number;
 }
 
 interface GameState {
@@ -50,7 +52,7 @@ interface GameState {
   appendStream: (agentId: string, delta: string) => void;
   finalizeStream: (agentId: string, content: string) => void;
   addToolExecution: (exec: ToolExecution) => void;
-  dismissToolExecution: (timestamp: number) => void;
+  dismissToolExecution: (id: number) => void;
   advanceOnboarding: () => void;
   completeOnboarding: () => void;
 
@@ -126,7 +128,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   updateAgentStatus: (agentId, status) =>
     set((state) => ({
       agents: state.agents.map((a) =>
-        a.id === agentId ? { ...a, status: status as AgentData['status'] } : a,
+        a.id === agentId ? { ...a, status } : a,
       ),
     })),
 
@@ -155,11 +157,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       toolExecutions: [...state.toolExecutions, exec],
     })),
 
-  dismissToolExecution: (timestamp) =>
+  dismissToolExecution: (id) =>
     set((state) => ({
-      toolExecutions: state.toolExecutions.filter(
-        (t) => t.timestamp !== timestamp,
-      ),
+      toolExecutions: state.toolExecutions.filter((t) => t.id !== id),
     })),
 
   advanceOnboarding: () =>
@@ -173,6 +173,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   initWebSocket: (username) => {
+    if (get().connected || gameSocket.connected) return;
+
     gameSocket.onMessage((msg: ServerMessage) => {
       const s = get();
 
@@ -189,23 +191,22 @@ export const useGameStore = create<GameState>((set, get) => ({
           break;
 
         case 'agent:chatMessage': {
-          // This is a complete message (greeting or final response)
           const { agentId, role, content } = msg.payload;
-          const prev = s.chatMessages[agentId] ?? [];
-          // Only add if not a duplicate of stream content
           const streamText = s.streamingText[agentId] ?? '';
           if (role === 'assistant' && streamText && content === streamText) {
-            // Stream finished — finalize
             s.finalizeStream(agentId, content);
           } else {
-            set({
-              chatMessages: {
-                ...s.chatMessages,
-                [agentId]: [
-                  ...prev,
-                  { role: role === 'assistant' ? 'agent' : 'user', content },
-                ],
-              },
+            set((state) => {
+              const prev = state.chatMessages[agentId] ?? [];
+              return {
+                chatMessages: {
+                  ...state.chatMessages,
+                  [agentId]: [
+                    ...prev,
+                    { role: role === 'assistant' ? 'agent' : 'user', content },
+                  ],
+                },
+              };
             });
           }
           break;
@@ -216,17 +217,17 @@ export const useGameStore = create<GameState>((set, get) => ({
           break;
 
         case 'agent:toolExecution': {
+          const execId = nextExecId++;
           const exec: ToolExecution = {
+            id: execId,
             agentId: msg.payload.agentId,
             toolName: msg.payload.toolName,
             status: msg.payload.status,
             result: msg.payload.result,
-            timestamp: Date.now(),
           };
           s.addToolExecution(exec);
-          // Auto-dismiss after 4 seconds
           setTimeout(() => {
-            get().dismissToolExecution(exec.timestamp);
+            get().dismissToolExecution(execId);
           }, 4000);
           break;
         }

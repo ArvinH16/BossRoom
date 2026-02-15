@@ -71,12 +71,31 @@ Copy `.env.example` to `.env` and fill in values. See the example file for detai
 
 We use Cloud SQL (PostgreSQL 15) directly — no local database needed. The `DATABASE_URL` in your `.env` connects straight to it.
 
-To update the schema, edit `apps/game-server/src/db/schema.ts` then run:
+Schema lives in `apps/game-server/src/db/schema.ts`. Drizzle ORM handles migrations.
+
+### Dev workflow (quick iteration)
 
 ```bash
-npm run db:push    # pushes schema changes to the DB (dev workflow)
-npm run db:studio  # opens a visual DB browser at localhost:4983
+# Edit schema.ts, then push directly to the dev DB (no migration files):
+npm run db:push
+
+# Browse the database visually:
+npm run db:studio
 ```
+
+### Production workflow (tracked migrations)
+
+```bash
+# 1. Edit schema.ts with your changes
+# 2. Generate a migration SQL file (creates apps/game-server/drizzle/*.sql):
+npm run db:generate
+
+# 3. Review the generated SQL, then commit it
+# 4. Apply the migration to the production DB:
+npm run db:migrate
+```
+
+Always use `db:generate` + `db:migrate` for production. `db:push` is dev-only — it syncs schema directly without migration history.
 
 ## Infrastructure (one-time setup, already done)
 

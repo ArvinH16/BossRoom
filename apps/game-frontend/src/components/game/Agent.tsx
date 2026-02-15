@@ -5,7 +5,7 @@ import { Billboard, Text, Sparkles } from '@react-three/drei';
 import { RigidBody } from '@react-three/rapier';
 import { CharacterModel } from './CharacterModel';
 import { useGameStore } from '@/stores/gameStore';
-import { statusColors, type AgentData } from '@/data/agents';
+import { statusColors, statusLabels, type AgentData } from '@/data/agents';
 
 interface AgentProps {
   agent: AgentData;
@@ -62,15 +62,7 @@ export function Agent({ agent }: AgentProps) {
             anchorX="center"
             anchorY="middle"
           >
-            {agent.status === 'thinking'
-              ? 'Thinking...'
-              : agent.status === 'working'
-                ? 'Working...'
-                : agent.status === 'listening'
-                  ? 'Listening'
-                  : agent.status === 'error'
-                    ? 'Error!'
-                    : ''}
+            {statusLabels[agent.status]}
           </Text>
         </Billboard>
       )}

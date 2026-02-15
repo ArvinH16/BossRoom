@@ -20,7 +20,6 @@ const required = [
   'DATABASE_URL',
   'CF_AI_GATEWAY_ACCOUNT_ID',
   'CF_AI_GATEWAY_ID',
-  'CF_AI_GATEWAY_TOKEN',
 ];
 const optional = [
   'OPENAI_API_KEY',

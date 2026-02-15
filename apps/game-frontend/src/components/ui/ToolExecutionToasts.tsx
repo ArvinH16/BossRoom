@@ -24,7 +24,7 @@ export function ToolExecutionToasts() {
         const agent = agents.find((a) => a.id === exec.agentId);
         return (
           <div
-            key={exec.timestamp}
+            key={exec.id}
             className="bg-gray-900/95 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-3 min-w-[280px]
               animate-[fadeIn_0.3s_ease-out]"
           >

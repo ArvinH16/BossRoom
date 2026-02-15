@@ -62,7 +62,7 @@ class GameWebSocket {
       this.handler?.({
         type: 'player:left',
         payload: { playerId: '__self__' },
-      } as ServerMessage);
+      });
       this.scheduleReconnect();
     };
 
