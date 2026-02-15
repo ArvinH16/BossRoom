@@ -81,7 +81,8 @@ export const useWorldStore = create<WorldState>((set) => ({
 
   removeRemotePlayer: (id) =>
     set((state) => {
-      const { [id]: _, ...rest } = state.remotePlayers;
-      return { remotePlayers: rest };
+      const next = { ...state.remotePlayers };
+      delete next[id];
+      return { remotePlayers: next };
     }),
 }));
