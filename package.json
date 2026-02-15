@@ -7,7 +7,7 @@
     "dev:frontend": "npx nx dev @org/game-frontend",
     "dev:server": "npx nx dev @org/game-server",
     "build": "npx nx run-many -t build",
-    "lint": "npx nx run-many -t lint",
+    "lint": "npx eslint 'apps/**/*.{ts,tsx}' 'libs/**/*.ts' 'scripts/**/*.mjs'",
     "db:push": "npx drizzle-kit push --config=apps/game-server/src/db/drizzle.config.ts",
     "db:generate": "npx drizzle-kit generate --config=apps/game-server/src/db/drizzle.config.ts",
     "db:migrate": "npx drizzle-kit migrate --config=apps/game-server/src/db/drizzle.config.ts",
@@ -32,10 +32,12 @@
     "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.9",
     "esbuild": "^0.19.2",
+    "eslint": "^9.39.2",
     "nx": "22.5.0",
     "prettier": "^2.6.2",
     "tslib": "^2.3.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.55.0"
   },
   "workspaces": [
     "packages/*",

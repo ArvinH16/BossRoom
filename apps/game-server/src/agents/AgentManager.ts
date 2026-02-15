@@ -11,6 +11,7 @@ import type {
   ServerMessage,
 } from '@bossroom/shared-types';
 import { createGatewayClient } from '../ai/gateway.js';
+import { log } from '../logger.js';
 
 // --- Agent definitions (in-memory, mirrors frontend data/agents.ts) ---
 interface AgentDef extends AgentSkill {
@@ -231,7 +232,7 @@ export class AgentManager {
         payload: { agentId, status: 'idle' },
       });
     } catch (err) {
-      console.error(`Agent ${agentId} error:`, err);
+      log.error(`Agent ${agentId} error:`, err);
 
       this.setAgentStatus(agentId, 'error');
       broadcastFn({

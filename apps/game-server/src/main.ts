@@ -8,6 +8,7 @@ import type {
   WorldState,
 } from '@bossroom/shared-types';
 import { AgentManager } from './agents/AgentManager.js';
+import { log } from './logger.js';
 
 const PORT = parseInt(process.env['PORT'] || '8080', 10);
 
@@ -31,14 +32,14 @@ const wss = new WebSocketServer({ server });
 wss.on('connection', (ws: WebSocket) => {
   const playerId = `player-${nextPlayerId++}`;
   connections.set(playerId, ws);
-  console.log(`[join] ${playerId}`);
+  log.info(`[join] ${playerId}`);
 
   ws.on('message', (data: Buffer) => {
     try {
       const msg: ClientMessage = JSON.parse(data.toString());
       handleMessage(playerId, msg, ws);
     } catch (err) {
-      console.error('Bad message:', err);
+      log.error('Bad message:', err);
     }
   });
 
@@ -47,7 +48,7 @@ wss.on('connection', (ws: WebSocket) => {
     connections.delete(playerId);
     broadcast({ type: 'player:left', payload: { playerId } }, playerId);
     agentManager.handleDisconnect(playerId);
-    console.log(`[leave] ${playerId}`);
+    log.info(`[leave] ${playerId}`);
   });
 });
 
@@ -130,5 +131,5 @@ function broadcast(msg: ServerMessage, excludeId?: string) {
 }
 
 server.listen(PORT, () => {
-  console.log(`BossRoom game server on ws://localhost:${PORT}`);
+  log.info(`BossRoom game server on ws://localhost:${PORT}`);
 });
