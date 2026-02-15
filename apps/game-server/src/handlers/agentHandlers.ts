@@ -21,7 +21,7 @@ export async function handleAgentInteract(
 
 export function handleAgentMessage(
   ws: WebSocket,
-  payload: { agentId: string; conversationId: string; content: string },
+  payload: { agentId: string; conversationId: string; content: string; inputMode?: 'voice' | 'text' },
   deps: AgentHandlerDeps,
 ) {
   const { players, agents } = deps;
@@ -32,6 +32,7 @@ export function handleAgentMessage(
     payload.agentId,
     payload.conversationId,
     payload.content,
+    payload.inputMode ?? 'text',
     ws,
     (statusMsg) => players.broadcast(statusMsg),
   );

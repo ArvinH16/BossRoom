@@ -14,10 +14,11 @@ interface ChatState {
   chatMessages: Record<string, ChatMessage[]>;
   streamingText: Record<string, string>;
   conversationIds: Record<string, string>;
+  lastWalkAwayAgent: string | null;
 
   openChat: (agentId: string) => void;
-  closeChat: () => void;
-  sendMessage: (agentId: string, content: string) => void;
+  closeChat: (reason?: 'explicit' | 'walkAway') => void;
+  sendMessage: (agentId: string, content: string, inputMode?: 'voice' | 'text') => void;
   addMessage: (agentId: string, msg: ChatMessage) => void;
   addToolExecution: (agentId: string, toolName: string, status: 'started' | 'completed' | 'failed', result?: string) => void;
   appendStream: (agentId: string, delta: string) => void;
@@ -31,21 +32,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
   chatMessages: {},
   streamingText: {},
   conversationIds: {},
+  lastWalkAwayAgent: null,
 
   openChat: (agentId) => {
-    useVoiceStore.getState().clearTTSQueue();
-    set({ activeAgent: agentId, chatPanelOpen: true });
+    useVoiceStore.getState().stopTTS();
+    set({ activeAgent: agentId, chatPanelOpen: true, lastWalkAwayAgent: null });
     gameSocket.send({
       type: 'agent:interact',
       payload: { agentId },
     });
   },
 
-  closeChat: () => {
-    useVoiceStore.getState().clearTTSQueue();
+  closeChat: (reason?: 'explicit' | 'walkAway') => {
+    useVoiceStore.getState().stopTTS();
     const { activeAgent } = get();
     if (activeAgent) {
-      // Clear streaming text for active agent before closing
       set((state) => ({
         streamingText: { ...state.streamingText, [activeAgent]: '' },
       }));
@@ -54,10 +55,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
         payload: { agentId: activeAgent },
       });
     }
-    set({ activeAgent: null, chatPanelOpen: false });
+    set({
+      activeAgent: null,
+      chatPanelOpen: false,
+      lastWalkAwayAgent: reason === 'walkAway' ? activeAgent : null,
+    });
   },
 
-  sendMessage: (agentId, content) => {
+  sendMessage: (agentId, content, inputMode?: 'voice' | 'text') => {
+    useVoiceStore.getState().stopTTS();
     const state = get();
     const convId = state.conversationIds[agentId] ?? generateConversationId();
 
@@ -76,7 +82,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     gameSocket.send({
       type: 'agent:message',
-      payload: { agentId, conversationId: convId, content },
+      payload: { agentId, conversationId: convId, content, inputMode: inputMode ?? 'text' },
     });
   },
 
@@ -144,5 +150,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       chatMessages: {},
       streamingText: {},
       conversationIds: {},
+      lastWalkAwayAgent: null,
     }),
 }));

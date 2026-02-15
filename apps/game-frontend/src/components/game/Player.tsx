@@ -68,6 +68,7 @@ export function Player() {
         if (!nearestAgent) return;
         if (recordingRef.current) return;
         if (!chatPanelOpen) openChat(nearestAgent);
+        useVoiceStore.getState().stopTTS();
         recordingRef.current = true;
         useVoiceStore.getState().setRecording(true);
         startPromiseRef.current = startRecording();
@@ -89,7 +90,7 @@ export function Player() {
           useVoiceStore.getState().setVoiceTranscript('');
           const agent = useChatStore.getState().activeAgent;
           if (transcript.trim() && agent) {
-            useChatStore.getState().sendMessage(agent, transcript.trim());
+            useChatStore.getState().sendMessage(agent, transcript.trim(), 'voice');
           }
         };
         doStop();
@@ -166,6 +167,12 @@ export function Player() {
     }
     setNearestAgent(closest);
 
+    // Auto-reopen chat when returning to a walk-away agent
+    const lastWalkAway = useChatStore.getState().lastWalkAwayAgent;
+    if (closest && closest === lastWalkAway && !useChatStore.getState().chatPanelOpen) {
+      useChatStore.getState().openChat(closest);
+    }
+
     // Auto-close chat when player walks too far from the active agent
     const activeAgent = useChatStore.getState().activeAgent;
     if (activeAgent) {
@@ -175,7 +182,7 @@ export function Player() {
         const dz = pos.z - agent.position[2];
         const dist = Math.sqrt(dx * dx + dz * dz);
         if (dist > SPATIAL_AUDIO.maxDistance) {
-          useChatStore.getState().closeChat();
+          useChatStore.getState().closeChat('walkAway');
         }
       }
     }

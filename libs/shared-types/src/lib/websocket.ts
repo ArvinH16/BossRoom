@@ -8,7 +8,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('player:join'), payload: z.object({ username: z.string(), token: z.string() }) }),
   z.object({ type: z.literal('player:move'), payload: z.object({ position: positionSchema, rotation: z.number(), animation: z.string() }) }),
   z.object({ type: z.literal('agent:interact'), payload: z.object({ agentId: z.string() }) }),
-  z.object({ type: z.literal('agent:message'), payload: z.object({ agentId: z.string(), conversationId: z.string(), content: z.string() }) }),
+  z.object({ type: z.literal('agent:message'), payload: z.object({ agentId: z.string(), conversationId: z.string(), content: z.string(), inputMode: z.enum(['voice', 'text']).default('text') }) }),
   z.object({ type: z.literal('agent:stopInteract'), payload: z.object({ agentId: z.string() }) }),
   z.object({ type: z.literal('player:updateSettings'), payload: z.object({ avatarId: z.string() }) }),
 ]);

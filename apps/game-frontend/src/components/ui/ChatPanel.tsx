@@ -8,6 +8,7 @@ import { Markdown } from '@/components/ui/Markdown';
 import { ThinkingIndicator } from '@/components/ui/ThinkingIndicator';
 import { AgentAvatar } from '@/components/ui/AgentAvatar';
 import { AgentStatusBadge } from '@/components/ui/AgentStatusBadge';
+import { useVoiceStore } from '@/stores/voiceStore';
 
 export function ChatPanel() {
   const [input, setInput] = useState('');
@@ -20,6 +21,8 @@ export function ChatPanel() {
   const streamingText = useChatStore((s) => s.streamingText);
   const closeChat = useChatStore((s) => s.closeChat);
   const sendMessage = useChatStore((s) => s.sendMessage);
+  const isTTSPlaying = useVoiceStore((s) => s.isTTSPlaying);
+  const stopTTS = useVoiceStore((s) => s.stopTTS);
 
   const agent = agents.find((a) => a.id === activeAgent);
   const messages = activeAgent ? (chatMessages[activeAgent] ?? []) : [];
@@ -67,8 +70,19 @@ export function ChatPanel() {
             </div>
             <div className="flex items-center gap-2">
               <AgentStatusBadge status={agent.status} />
+              {isTTSPlaying && (
+                <button
+                  onClick={stopTTS}
+                  className="text-white/50 hover:text-red-400 p-1 transition-colors"
+                  title="Stop speaking"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
+                    <rect x="3" y="3" width="10" height="10" rx="1" />
+                  </svg>
+                </button>
+              )}
               <button
-                onClick={closeChat}
+                onClick={() => closeChat()}
                 className="text-white/50 hover:text-white text-xl leading-none p-1"
               >
                 &times;

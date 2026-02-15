@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useVoiceStore } from '@/stores/voiceStore';
 import { SPATIAL_AUDIO } from '@/data/gameConfig';
-import { getAudioContext, setActivePanner } from '@/lib/spatialAudio';
+import { getAudioContext, setActivePanner, setActiveSource } from '@/lib/spatialAudio';
 
 export function TTSAudioPlayer() {
   const queue = useVoiceStore((s) => s.ttsQueue);
@@ -36,18 +36,24 @@ export function TTSAudioPlayer() {
         source.connect(panner);
         panner.connect(ctx.destination);
         setActivePanner(panner, item.agentId);
+        setActiveSource(source);
 
         source.onended = () => {
+          setActiveSource(null);
           setActivePanner(null, null);
+          useVoiceStore.getState().setTTSPlaying(false);
           playingRef.current = false;
           dequeue();
         };
 
         source.start();
+        useVoiceStore.getState().setTTSPlaying(true);
       })
       .catch((err) => {
         console.error('[TTS] decodeAudioData failed:', err);
+        setActiveSource(null);
         setActivePanner(null, null);
+        useVoiceStore.getState().setTTSPlaying(false);
         playingRef.current = false;
         dequeue();
       });

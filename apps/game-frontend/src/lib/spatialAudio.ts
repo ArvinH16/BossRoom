@@ -1,6 +1,7 @@
 let ctx: AudioContext | null = null;
 let activePanner: PannerNode | null = null;
 let activeAgentId: string | null = null;
+let activeSource: AudioBufferSourceNode | null = null;
 
 /** Returns the singleton AudioContext, creating it if needed. Resumes if suspended. */
 export function getAudioContext(): AudioContext {
@@ -25,4 +26,12 @@ export function getActivePanner(): PannerNode | null {
 
 export function getActiveAgentId(): string | null {
   return activeAgentId;
+}
+
+export function setActiveSource(source: AudioBufferSourceNode | null) {
+  activeSource = source;
+}
+
+export function getActiveSource(): AudioBufferSourceNode | null {
+  return activeSource;
 }

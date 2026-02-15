@@ -111,7 +111,6 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         break;
 
       case 'agent:ttsAudio':
-        console.log('[DEBUG-FIX] TTS audio received, base64 length:', msg.payload.audioBase64.length, 'mimeType:', msg.payload.mimeType);
         useVoiceStore.getState().enqueueTTS({
           agentId: msg.payload.agentId,
           audioBase64: msg.payload.audioBase64,

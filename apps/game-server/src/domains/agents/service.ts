@@ -339,6 +339,7 @@ export function createAgentService(deps: AgentServiceDeps) {
       agentId: string,
       conversationId: string,
       content: string,
+      inputMode: 'voice' | 'text',
       ws: WebSocket,
       broadcastFn: (msg: ServerMessage) => void,
     ) {
@@ -350,8 +351,7 @@ export function createAgentService(deps: AgentServiceDeps) {
 
       // --- Static agent (Receptionist) ---
       const agent = agentRepo.get(agentId);
-      log.info(`[DEBUG-FIX] handleMessage called: agentId=${agentId}, playerId=${playerId}, content="${content.substring(0, 100)}"`);
-      if (!agent) { log.error(`[DEBUG-FIX] Agent not found: ${agentId}`); return; }
+      if (!agent) return;
 
       // Find or create conversation
       let conv = conversationService.getConversationForPlayer(playerId, agentId);
@@ -470,27 +470,24 @@ export function createAgentService(deps: AgentServiceDeps) {
         }
 
         // Send complete message (signals end of stream to frontend)
-        log.info(`[DEBUG-FIX] LLM response complete, length=${fullResponse.length}, preview="${fullResponse.substring(0, 100)}"`);
         playerService.send(ws, {
           type: 'agent:chatMessage',
           payload: { agentId, role: 'assistant', content: fullResponse },
         });
 
-        // TTS: synthesize and send audio (non-blocking, fail-soft)
-        log.info(`[DEBUG-FIX] Starting TTS synthesis for agent ${agentId}`);
-        synthesizeSpeech(fullResponse).then((tts) => {
-          if (tts) {
-            log.info(`[DEBUG-FIX] TTS success, audioBase64 length=${tts.audioBase64.length}, mimeType=${tts.mimeType}`);
-            playerService.send(ws, {
-              type: 'agent:ttsAudio',
-              payload: { agentId, audioBase64: tts.audioBase64, mimeType: tts.mimeType },
-            });
-          } else {
-            log.warn('[DEBUG-FIX] TTS returned null (no audio)');
-          }
-        }).catch((err) => {
-          log.error(`[DEBUG-FIX] TTS failed for agent ${agentId}:`, err);
-        });
+        // TTS: synthesize and send audio (non-blocking, fail-soft) — voice input only
+        if (inputMode === 'voice') {
+          synthesizeSpeech(fullResponse).then((tts) => {
+            if (tts) {
+              playerService.send(ws, {
+                type: 'agent:ttsAudio',
+                payload: { agentId, audioBase64: tts.audioBase64, mimeType: tts.mimeType },
+              });
+            }
+          }).catch((err) => {
+            log.error(`[TTS] failed for agent ${agentId}:`, err);
+          });
+        }
 
         // Reset status
         agentRepo.setStatus(agentId, 'idle');
