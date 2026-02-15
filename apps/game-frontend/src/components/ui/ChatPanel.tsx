@@ -252,7 +252,7 @@ export function ChatPanel() {
               const hasUserMessage = messages.some((m) => m.role === 'user');
               const isBusy = agent.status === 'working' || agent.status === 'thinking';
               return !hasUserMessage && !currentStream && !isViewingArchive ? (
-                <>
+                <div className="flex flex-col h-full">
                   {isBusy && messages.length === 0 && (
                     <div className="flex flex-col items-center justify-center gap-3 py-8">
                       <div className="flex gap-1">
@@ -274,14 +274,11 @@ export function ChatPanel() {
                       <Markdown content={msg.role === 'agent' ? msg.content : ''} />
                     </div>
                   ))}
-                  {/* Suggested prompts — always visible until user sends a message */}
+                  {/* Spacer pushes prompts to bottom */}
+                  <div className="flex-1" />
+                  {/* Suggested prompts pinned to bottom */}
                   {!isBusy && agent.suggestedPrompts.length > 0 && (
-                    <div className="space-y-2 mt-2">
-                      {messages.length === 0 && (
-                        <p className="text-white/30 text-xs text-center mb-2">
-                          Start a conversation
-                        </p>
-                      )}
+                    <div className="space-y-2 pb-1">
                       {agent.suggestedPrompts.map((prompt) => (
                         <button
                           key={prompt}
@@ -297,7 +294,7 @@ export function ChatPanel() {
                       ))}
                     </div>
                   )}
-                </>
+                </div>
               ) : null;
             })()}
             {messages.some((m) => m.role === 'user') && messages.map((msg, i) =>
