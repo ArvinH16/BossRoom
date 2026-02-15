@@ -1,4 +1,5 @@
 import './global.css';
+import Providers from './providers';
 
 export const metadata = {
   title: 'BossRoom',
@@ -12,7 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#0a0a1a]">{children}</body>
+      <body className="bg-[#0a0a1a]">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
