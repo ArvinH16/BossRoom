@@ -82,6 +82,17 @@ const jitterNoise = createNoise2D(
   mulberry32(seedHash(TERRAIN.seed + '-color')),
 );
 
+// ── Easter egg campus clearing ────────────────────────────────────────────
+
+/**
+ * Stanford campus surrounds the office at center [0,0].
+ * Model footprint at scale 1: ±58 units from center.
+ * Clearing keeps terrain flat under the entire campus.
+ */
+const CAMPUS_CLEARING_RADIUS = 62;
+/** Distance where terrain reaches full height beyond campus edge. */
+const CAMPUS_TRANSITION_END = 78;
+
 // ── Height sampling ────────────────────────────────────────────────────────
 
 /** Sample terrain height at a world-space position. */
@@ -90,6 +101,9 @@ export function sampleHeight(worldX: number, worldZ: number): number {
 
   // Under the office: flush with floor (polygonOffset prevents z-fighting)
   if (dist < TERRAIN.clearingRadius) return 0;
+
+  // Under the Stanford campus (surrounds office at center): flat clearing
+  if (dist < CAMPUS_CLEARING_RADIUS) return 0;
 
   // Multi-octave simplex noise
   let h = 0;
@@ -103,6 +117,14 @@ export function sampleHeight(worldX: number, worldZ: number): number {
       (dist - TERRAIN.clearingRadius) /
       (TERRAIN.transitionEnd - TERRAIN.clearingRadius);
     h = Math.max(0, h) * t * t; // Quadratic ease-in, clamped ≥ 0
+  }
+
+  // Smooth transition around Stanford campus (extends beyond office transition)
+  if (dist < CAMPUS_TRANSITION_END) {
+    const t =
+      (dist - CAMPUS_CLEARING_RADIUS) /
+      (CAMPUS_TRANSITION_END - CAMPUS_CLEARING_RADIUS);
+    h = Math.max(0, h) * t * t;
   }
 
   return Math.floor(h); // Quantize for blocky look

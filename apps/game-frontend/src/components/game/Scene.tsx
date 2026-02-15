@@ -7,6 +7,7 @@ import { Sky } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { Office } from './Office';
 import { Terrain } from './Terrain';
+import { StanfordCampus } from './StanfordCampus';
 import { Agent } from './Agent';
 import { Player } from './Player';
 import { CameraRig } from './CameraRig';
@@ -64,6 +65,11 @@ export function Scene() {
       <Terrain />
       <Suspense fallback={null}>
         <MissionControlSky />
+      </Suspense>
+
+      {/* Easter egg: Stanford campus hidden in the terrain */}
+      <Suspense fallback={null}>
+        <StanfordCampus />
       </Suspense>
 
       <Physics gravity={[0, -30, 0]}>

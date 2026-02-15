@@ -4,7 +4,7 @@
 import { useRef } from 'react';
 import { Grid, useGLTF, Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { RigidBody } from '@react-three/rapier';
+import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { MathUtils, Group } from 'three';
 import { agents, zoneColors } from '@/data/agents';
 import { WORLD, FURNITURE_SCALE } from '@/data/gameConfig';
@@ -223,12 +223,17 @@ export function Office() {
 
   return (
     <group>
-      {/* Floor with collision */}
+      {/* Office floor with collision */}
       <RigidBody type="fixed" colliders="cuboid">
         <mesh position={[0, -0.1, 0]} receiveShadow>
           <boxGeometry args={[WORLD.floorSize, 0.2, WORLD.floorSize]} />
           <meshStandardMaterial color="#2a2e2c" flatShading />
         </mesh>
+      </RigidBody>
+
+      {/* Extended invisible ground — explicit collider so player can walk outside office */}
+      <RigidBody type="fixed" colliders={false}>
+        <CuboidCollider args={[150, 0.5, 150]} position={[0, -0.6, 0]} />
       </RigidBody>
 
       {/* Grid overlay */}
