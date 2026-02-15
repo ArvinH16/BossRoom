@@ -33,11 +33,42 @@ scripts/              health-check.mjs, generate-env.mjs
 | `npm run dev` | Start frontend (port 3000) + server (port 8080) in parallel |
 | `npm run build` | Build all apps via NX |
 | `npm run lint` | ESLint across all apps |
-| `npm run health` | Validate DB, AI Gateway, Firebase connections |
+| `npm run health` | Validate DB, AI Gateway, Firebase, WebSocket connections |
 | `npm run db:push` | Push schema to DB directly (dev only, no migration history) |
 | `npm run db:generate` | Generate SQL migration from schema diff (production workflow) |
 | `npm run db:migrate` | Apply pending migrations to DB (production workflow) |
 | `npm run db:studio` | Open Drizzle visual DB browser |
+
+## Deployment
+
+### Backend (Cloud Run)
+
+The game server runs as a Docker container on GCP Cloud Run.
+
+- **Dockerfile**: `apps/game-server/Dockerfile` — multi-stage build (build with NX, then slim production image)
+- **Registry**: Google Artifact Registry at `us-central1-docker.pkg.dev/treehacks-2026-487500/bossroom/game-server`
+- **Cloud Build config**: `cloudbuild.yaml` — builds amd64 image on GCP
+
+**Deploy workflow:**
+```bash
+# Build & push via Cloud Build (builds on GCP, always amd64)
+gcloud builds submit --config=cloudbuild.yaml --project=treehacks-2026-487500 --substitutions=SHORT_SHA=$(git rev-parse --short HEAD) .
+
+# Deploy to Cloud Run (Terraform manages env vars, Cloud SQL proxy, etc.)
+cd terraform && terraform apply
+```
+
+**Cloud Run env vars** (managed by Terraform in `cloud-run.tf`):
+- `DATABASE_URL` — Cloud SQL proxy Unix socket connection string
+- `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` — from Terraform service account
+- `AI_GATEWAY_API_KEY` — Vercel AI Gateway key
+- `ALLOWED_ORIGIN` — Cloudflare Pages URL for CORS
+
+### Frontend (Cloudflare Pages)
+
+- Auto-deploys on git push via Cloudflare Pages GitHub integration
+- `NEXT_PUBLIC_*` env vars managed by Terraform in `cloudflare.tf` — do NOT manually set in Cloudflare dashboard
+- `NEXT_PUBLIC_WS_URL` is auto-derived from Cloud Run URL (`https://` → `wss://`)
 
 ## Database / Drizzle
 
@@ -87,9 +118,13 @@ Messages are typed in `libs/shared-types/src/lib/websocket.ts`:
 - Run `npx nx sync` if builds fail with TS project reference errors
 - `drizzle-kit` auto-loads `.env` — no need for dotenv wrapper in npm scripts
 - The frontend WebSocket client (`lib/websocket.ts`) is a singleton; `initWebSocket` guards against double-init
+- Frontend on HTTPS requires `wss://` WebSocket URL — `ws://` will be rejected and the client goes offline
+- `NEXT_PUBLIC_WS_URL` is baked in at build time (static export) — Terraform manages it for prod, do NOT manually set in Cloudflare dashboard
 - Zustand store actions that modify state inside async callbacks must use `get()` (not captured references) to avoid stale closures
 - Firebase Identity Platform `authorized_domains` must include `localhost` for local dev
 - Google IDP config needs explicit `enabled = true` in Terraform — updates to Identity Platform config can reset it
 - Firebase Admin credentials come from Terraform-managed service account (env vars: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`)
 - Vercel AI Gateway is OpenAI-compatible ONLY — must use `@ai-sdk/openai` (`createOpenAI`), NOT native provider packages (`@ai-sdk/google`, `@ai-sdk/anthropic`). Native packages send provider-specific API formats that the gateway rejects.
 - Next.js static export (`output: 'export'`) cannot have API routes — delete any `app/api/` routes before building
+- Docker builds must target `linux/amd64` for Cloud Run — use Cloud Build (`gcloud builds submit`) instead of local `docker build` on ARM machines
+- Cloud Run requires `volume_mounts` for Cloud SQL proxy socket — without it the DB connection fails silently

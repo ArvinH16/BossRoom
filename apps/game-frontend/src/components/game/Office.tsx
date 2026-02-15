@@ -227,7 +227,7 @@ export function Office() {
       <RigidBody type="fixed" colliders="cuboid">
         <mesh position={[0, -0.1, 0]} receiveShadow>
           <boxGeometry args={[WORLD.floorSize, 0.2, WORLD.floorSize]} />
-          <meshStandardMaterial color="#1a1a2e" flatShading />
+          <meshStandardMaterial color="#2a2e2c" flatShading />
         </mesh>
       </RigidBody>
 
@@ -309,7 +309,7 @@ export function Office() {
         <mesh key={i} position={wall.pos}>
           <boxGeometry args={wall.size} />
           <meshStandardMaterial
-            color="#1a1a2e"
+            color="#2a2e2c"
             transparent
             opacity={0.3}
             flatShading

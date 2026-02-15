@@ -6,6 +6,7 @@ import { Physics } from '@react-three/rapier';
 import { Sky } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { Office } from './Office';
+import { Terrain } from './Terrain';
 import { Agent } from './Agent';
 import { Player } from './Player';
 import { CameraRig } from './CameraRig';
@@ -58,6 +59,8 @@ export function Scene() {
         attach="fog"
         args={[LIGHTING.fog.color, LIGHTING.fog.near, LIGHTING.fog.far]}
       />
+
+      <Terrain />
 
       <Physics gravity={[0, -30, 0]}>
         <Suspense fallback={null}>

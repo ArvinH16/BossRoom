@@ -2,7 +2,7 @@ import { WebSocket } from 'ws';
 import { verifyToken } from '../auth/firebase-admin.js';
 import { log } from '../logger.js';
 import type { PlayerState, WorldState } from '@bossroom/shared-types';
-import { DEFAULT_AVATAR_ID } from '@bossroom/shared-types';
+import { RANDOM_AVATAR_ID, randomAvatarId } from '@bossroom/shared-types';
 import type { PlayerService } from '../domains/players/service.js';
 import type { AgentService } from '../domains/agents/service.js';
 import type { UserRepository } from '../domains/users/repository.js';
@@ -51,6 +51,10 @@ export async function handlePlayerJoin(
 
   // 3. Load user settings
   const settings = await userRepo.getSettings(uid);
+  const preference = settings.avatarId || RANDOM_AVATAR_ID;
+  const resolvedAvatar = preference === RANDOM_AVATAR_ID
+    ? randomAvatarId()
+    : preference;
 
   // 4. Register connection
   const player: PlayerState = {
@@ -61,12 +65,18 @@ export async function handlePlayerJoin(
     position: [0, 2, 5],
     rotation: 0,
     animation: 'idle',
-    avatarId: settings.avatarId ?? DEFAULT_AVATAR_ID,
+    avatarId: resolvedAvatar,
   };
   players.addPlayer(uid, player, ws);
 
+  // Include avatarPreference for the joining player so their UI shows the right dropdown state
+  const worldPlayers = players.getWorldPlayers();
+  if (worldPlayers[uid]) {
+    worldPlayers[uid] = { ...worldPlayers[uid], avatarPreference: preference };
+  }
+
   const worldState: WorldState = {
-    players: players.getWorldPlayers(),
+    players: worldPlayers,
     agents: agents.getAgentStates(),
   };
   players.send(ws, { type: 'world:state', payload: worldState });

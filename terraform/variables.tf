@@ -45,5 +45,10 @@ variable "github_repo" {
 variable "backend_image" {
   description = "Container image for Cloud Run backend"
   type        = string
-  default     = "us-docker.pkg.dev/cloudrun/container/hello"
+}
+
+variable "ai_gateway_api_key" {
+  description = "Vercel AI Gateway API key"
+  type        = string
+  sensitive   = true
 }
