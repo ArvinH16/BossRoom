@@ -29,10 +29,15 @@ function AgentCard({
                  border border-white/10 hover:border-white/20 transition-colors cursor-pointer text-left"
     >
       <div className="flex items-center gap-2">
-        <div
-          className="w-3 h-3 rounded-full shrink-0"
-          style={{ backgroundColor: color }}
-        />
+        <div className="relative shrink-0">
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: color }}
+          />
+          {isActive && (
+            <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+          )}
+        </div>
         <span className="text-sm font-medium text-white truncate">{name}</span>
         {isActive && (
           <span
@@ -49,7 +54,7 @@ function AgentCard({
 
       {/* Last streaming text (truncated preview) */}
       <p className="text-[11px] text-white/50 line-clamp-2 leading-tight min-h-[2em]">
-        {lastText || (isActive ? 'Starting up...' : 'Waiting for task...')}
+        {lastText || (isActive ? 'Starting up...' : 'Click to chat →')}
       </p>
 
       {/* Status bar */}
@@ -85,14 +90,7 @@ export function MissionControl() {
   // Only show when workspace is building or ready and there are dynamic agents
   if (phase === 'reception' || dynamicAgents.length === 0) return null;
 
-  // Check if any dynamic agent is active
-  const anyActive = dynamicAgents.some((da) => {
-    const worldAgent = worldAgents.find((a) => a.id === da.agentId);
-    return worldAgent && worldAgent.status !== 'idle';
-  });
-
-  // During building phase or when agents are active, show the overlay
-  if (phase === 'ready' && !anyActive) return null;
+  // Always show the overlay once workspace is built so users can click into agents
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-40 pointer-events-none">
