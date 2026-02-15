@@ -109,7 +109,7 @@ wss.on('connection', (ws: WebSocket) => {
         log.warn('[ws] invalid client message:', parsed.error.issues);
         return;
       }
-      log.debug(`[ws] recv ${parsed.data.type}`);
+      if (parsed.data.type !== 'player:move') log.debug(`[ws] recv ${parsed.data.type}`);
       await handleMessage(ws, parsed.data);
     } catch (err) {
       log.error('[ws] unparseable message:', err);

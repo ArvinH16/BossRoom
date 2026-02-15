@@ -90,13 +90,14 @@ export function compileSystemPrompt(
   // 5.5. Team Scratchpad (if workspace enabled)
   if (options?.hasWorkspace) {
     sections.push('');
-    sections.push('## Team Scratchpad');
+    sections.push('## Team Scratchpad (IMPORTANT)');
     sections.push(
       'You have access to a shared team scratchpad that all agents in your workspace can read and write.',
       'Use `read_scratchpad` before starting work to see what teammates have found.',
-      'Use `write_scratchpad` after completing each meaningful step to log your findings, decisions, or status.',
-      'Keep entries concise — one or two sentences per update.',
-      'The user can also post notes to the scratchpad. Check for user directives.',
+      '**You MUST call `write_scratchpad` every time you:** complete a step, make a decision, hand off to another agent, or finish your task.',
+      'This is how the user sees what you are doing — if you do not write to the scratchpad, the user has no visibility into your progress.',
+      'Keep entries concise — one or two sentences per update. Example: "Generated 15 jokes, handing off to The Critic for selection."',
+      'The user can also post notes to the scratchpad. Always `read_scratchpad` to check for user directives before starting.',
     );
   }
 
