@@ -1,4 +1,4 @@
-/** GTA-style onboarding: bottom text box + step-by-step tutorial teaching core mechanics. */
+/** GTA-style onboarding: bottom text box + step-by-step tutorial with navigation buttons. */
 'use client';
 
 import { useOnboardingStore } from '@/stores/onboardingStore';
@@ -25,7 +25,7 @@ const STEPS = [
   },
   {
     text: 'Explore the office to find more agents! Each one has unique skills.',
-    hint: 'You\'re all set!',
+    hint: "You're all set!",
   },
 ];
 
@@ -34,6 +34,7 @@ export function OnboardingOverlay() {
   const complete = useOnboardingStore((s) => s.onboardingComplete);
   const advance = useOnboardingStore((s) => s.advanceOnboarding);
   const finish = useOnboardingStore((s) => s.completeOnboarding);
+  const setStep = useOnboardingStore((s) => s.setOnboardingStep);
   const nearestAgent = useWorldStore((s) => s.nearestAgent);
   const chatPanelOpen = useChatStore((s) => s.chatPanelOpen);
   const chatMessages = useChatStore((s) => s.chatMessages);
@@ -50,6 +51,7 @@ export function OnboardingOverlay() {
   if (complete || step >= STEPS.length) return null;
 
   const current = STEPS[step];
+  const isLastStep = step === STEPS.length - 1;
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
@@ -70,6 +72,36 @@ export function OnboardingOverlay() {
               }`}
             />
           ))}
+        </div>
+
+        {/* Navigation buttons */}
+        <div className="flex items-center justify-center gap-3 mt-3 pointer-events-auto">
+          {step > 0 && (
+            <button
+              onClick={() => setStep(step - 1)}
+              className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20
+                text-white/60 hover:text-white text-xs transition-colors"
+            >
+              ← Back
+            </button>
+          )}
+          {isLastStep ? (
+            <button
+              onClick={finish}
+              className="px-4 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500
+                text-white text-xs font-medium transition-colors"
+            >
+              Got it!
+            </button>
+          ) : (
+            <button
+              onClick={advance}
+              className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20
+                text-white/60 hover:text-white text-xs transition-colors"
+            >
+              Next →
+            </button>
+          )}
         </div>
 
         {/* Skip button */}

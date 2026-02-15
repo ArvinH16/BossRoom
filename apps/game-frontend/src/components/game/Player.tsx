@@ -1,4 +1,7 @@
-/** Player character: ecctrl controller + Kenney character with animation state machine. */
+/**
+ * Player character: WASD movement + CharacterModel + third-person camera.
+ * Rendered the same way as agents — no physics capsule, just direct position.
+ */
 'use client';
 
 import { useRef, useEffect } from 'react';
@@ -9,19 +12,13 @@ import { useNearestAgent } from '@/hooks/useNearestAgent';
 import { PLAYER, CAMERA } from '@/data/gameConfig';
 import type { Vector3 } from 'three';
 
-const animationSet = {
-  idle: 'idle',
-  walk: 'walk',
-  run: 'sprint',
-  jump: 'jump',
-  jumpIdle: 'fall',
-  jumpLand: 'idle',
-  fall: 'fall',
-  action1: 'emote-yes',
-  action2: 'interact-right',
-  action3: 'pick-up',
-  action4: 'emote-no',
-};
+const MOVE_SPEED = PLAYER.maxSpeed;
+const SPRINT_MULT = 1.8;
+const CAMERA_DISTANCE = 10;
+const CAMERA_HEIGHT = 7;
+const CAMERA_LERP = 0.08;
+const ROTATION_LERP = 0.12;
+const SPAWN: [number, number, number] = [0, 0, 6];
 
 export function Player() {
   const ecctrlRef = useRef<{ group: { translation(): Vector3 } | null }>(null);
@@ -32,6 +29,7 @@ export function Player() {
 
   useNearestAgent(agents, ecctrlRef);
 
+  // E key to interact
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.code === 'KeyE' && nearestAgent && !chatPanelOpen) {
@@ -44,21 +42,36 @@ export function Player() {
 
   return (
     <Ecctrl
-      ref={ecctrlRef as never}
-      camInitDis={CAMERA.initDis}
-      camMinDis={CAMERA.minDis}
-      camMaxDis={CAMERA.maxDis}
-      maxVelLimit={PLAYER.maxSpeed}
-      capsuleHalfHeight={PLAYER.capsuleHalfHeight}
-      capsuleRadius={PLAYER.capsuleRadius}
+      ref={ecctrlRef}
       animated
+      position={SPAWN}
+      maxVelLimit={MOVE_SPEED}
+      sprintMult={SPRINT_MULT}
+      camInitDir={{ x: 0, y: 0, z: 1 }}
+      camMaxDis={CAMERA.maxDistance}
+      camMinDis={CAMERA.minDistance}
+      camInitDis={CAMERA.initialDistance}
+      camMoveSpeed={CAMERA.moveSpeed}
+      camZoomSpeed={CAMERA.zoomSpeed}
+      turnSpeed={2.0}
+      turnVelMultiplier={1.0}
+      jumpVel={4.5}
+      autoBalance={false}
+      autoBalanceSpringK={1.5}
+      autoBalanceSpringOnY={0.5}
     >
       <EcctrlAnimation
         characterURL={PLAYER.modelUrl}
-        animationSet={animationSet}
-      >
-        <group scale={2.2} />
-      </EcctrlAnimation>
+        animationSet={{
+          idle: 'Idle',
+          walk: 'Walk',
+          run: 'Run',
+          jump: 'Jump_Start',
+          jumpIdle: 'Jump_Idle',
+          jumpLand: 'Jump_Land',
+          fall: 'Jump_Idle',
+        }}
+      />
     </Ecctrl>
   );
 }
