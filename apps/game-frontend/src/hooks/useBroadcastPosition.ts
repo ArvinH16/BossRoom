@@ -24,7 +24,9 @@ export function useBroadcastPosition(
     const pos = rb.translation();
     const position: [number, number, number] = [pos.x, pos.y, pos.z];
 
-    const rotation = facingAngleRef?.current ?? 0;
+    // Normalize to [-π, π] so server validation accepts it
+    let rotation = facingAngleRef?.current ?? 0;
+    rotation = ((rotation % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
 
     gameSocket.send({
       type: 'player:move',
