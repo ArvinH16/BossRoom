@@ -8,6 +8,7 @@ import { SkeletonUtils } from 'three-stdlib';
 import Ecctrl, { EcctrlAnimation } from 'ecctrl';
 import { useGameStore } from '@/stores/gameStore';
 import { PLAYER, CAMERA, INTERACTION } from '@/data/gameConfig';
+import { Box3 } from 'three';
 import type { Vector3 } from 'three';
 
 const animationSet = {
@@ -28,9 +29,14 @@ const animationSet = {
 function PlayerModel() {
   const { scene } = useGLTF(PLAYER.modelUrl);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
+  const modelOffsetY = useMemo(() => {
+    // Align model feet to y=0 regardless of GLB pivot/origin.
+    const box = new Box3().setFromObject(clone);
+    return -box.min.y;
+  }, [clone]);
   return (
-    <group scale={2.2} position={[0, -PLAYER.capsuleHalfHeight, 0]}>
-      <primitive object={clone} />
+    <group scale={2.2}>
+      <primitive object={clone} position={[0, modelOffsetY, 0]} />
     </group>
   );
 }
