@@ -1,7 +1,6 @@
 /** Procedural office environment: floor, grid, zone plates, furniture workstations, walls. */
 'use client';
 
-import { RigidBody } from '@react-three/rapier';
 import { Grid, useGLTF } from '@react-three/drei';
 import { agents, zoneColors } from '@/data/agents';
 import { WORLD } from '@/data/gameConfig';
@@ -92,12 +91,10 @@ export function Office() {
   return (
     <group>
       {/* Floor */}
-      <RigidBody type="fixed" colliders="cuboid">
-        <mesh position={[0, -0.1, 0]} receiveShadow>
-          <boxGeometry args={[WORLD.floorSize, 0.2, WORLD.floorSize]} />
-          <meshStandardMaterial color="#1a1a2e" flatShading />
-        </mesh>
-      </RigidBody>
+      <mesh position={[0, -0.1, 0]} receiveShadow>
+        <boxGeometry args={[WORLD.floorSize, 0.2, WORLD.floorSize]} />
+        <meshStandardMaterial color="#1a1a2e" flatShading />
+      </mesh>
 
       {/* Grid overlay */}
       <Grid
@@ -142,17 +139,15 @@ export function Office() {
 
       {/* Perimeter walls */}
       {walls.map((wall, i) => (
-        <RigidBody key={i} type="fixed" colliders="cuboid">
-          <mesh position={wall.pos}>
-            <boxGeometry args={wall.size} />
-            <meshStandardMaterial
-              color="#1a1a2e"
-              transparent
-              opacity={0.3}
-              flatShading
-            />
-          </mesh>
-        </RigidBody>
+        <mesh key={i} position={wall.pos}>
+          <boxGeometry args={wall.size} />
+          <meshStandardMaterial
+            color="#1a1a2e"
+            transparent
+            opacity={0.3}
+            flatShading
+          />
+        </mesh>
       ))}
     </group>
   );

@@ -2,7 +2,6 @@
 'use client';
 
 import { Billboard, Text, Sparkles } from '@react-three/drei';
-import { RigidBody } from '@react-three/rapier';
 import { CharacterModel } from './CharacterModel';
 import { useGameStore } from '@/stores/gameStore';
 import { statusColors, statusLabels, type AgentData } from '@/data/agents';
@@ -17,13 +16,6 @@ export function Agent({ agent }: AgentProps) {
 
   return (
     <group position={agent.position}>
-      <RigidBody type="fixed" colliders="cuboid">
-        <mesh>
-          <boxGeometry args={[0.8, 1.8, 0.6]} />
-          <meshStandardMaterial transparent opacity={0} />
-        </mesh>
-      </RigidBody>
-
       <group
         onClick={(e) => {
           e.stopPropagation();

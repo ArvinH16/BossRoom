@@ -54,6 +54,7 @@ interface GameState {
   addToolExecution: (exec: ToolExecution) => void;
   dismissToolExecution: (id: number) => void;
   advanceOnboarding: () => void;
+  setOnboardingStep: (step: number) => void;
   completeOnboarding: () => void;
 
   // WebSocket init
@@ -165,6 +166,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   advanceOnboarding: () =>
     set((state) => ({ onboardingStep: state.onboardingStep + 1 })),
+
+  setOnboardingStep: (step) => set({ onboardingStep: step }),
 
   completeOnboarding: () => {
     if (typeof window !== 'undefined') {

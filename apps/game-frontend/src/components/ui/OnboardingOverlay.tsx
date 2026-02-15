@@ -1,4 +1,4 @@
-/** GTA-style onboarding: bottom text box + step-by-step tutorial teaching core mechanics. */
+/** GTA-style onboarding: bottom text box + step-by-step tutorial with navigation buttons. */
 'use client';
 
 import { useEffect } from 'react';
@@ -23,7 +23,7 @@ const STEPS = [
   },
   {
     text: 'Explore the office to find more agents! Each one has unique skills.',
-    hint: 'You\'re all set!',
+    hint: "You're all set!",
   },
 ];
 
@@ -32,19 +32,12 @@ export function OnboardingOverlay() {
   const complete = useGameStore((s) => s.onboardingComplete);
   const advance = useGameStore((s) => s.advanceOnboarding);
   const finish = useGameStore((s) => s.completeOnboarding);
+  const setStep = useGameStore((s) => s.setOnboardingStep);
   const nearestAgent = useGameStore((s) => s.nearestAgent);
   const chatPanelOpen = useGameStore((s) => s.chatPanelOpen);
   const chatMessages = useGameStore((s) => s.chatMessages);
 
-  // Auto-advance based on player actions
-  useEffect(() => {
-    if (complete || step !== 0) return;
-
-    // Step 0 -> 1: auto-advance after 4 seconds (give time to read)
-    const t = setTimeout(() => advance(), 4000);
-    return () => clearTimeout(t);
-  }, [step, complete, advance]);
-
+  // Auto-advance based on player actions (in addition to manual navigation)
   useEffect(() => {
     if (complete) return;
     // Step 1 -> 2: when player is near an agent
@@ -66,14 +59,15 @@ export function OnboardingOverlay() {
 
   useEffect(() => {
     if (complete || step !== 4) return;
-    // Step 4 -> done: auto-complete after 5 seconds
-    const t = setTimeout(() => finish(), 5000);
+    // Step 4 -> done: auto-complete after 8 seconds
+    const t = setTimeout(() => finish(), 8000);
     return () => clearTimeout(t);
   }, [step, complete, finish]);
 
   if (complete || step >= STEPS.length) return null;
 
   const current = STEPS[step];
+  const isLastStep = step === STEPS.length - 1;
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
@@ -94,6 +88,36 @@ export function OnboardingOverlay() {
               }`}
             />
           ))}
+        </div>
+
+        {/* Navigation buttons */}
+        <div className="flex items-center justify-center gap-3 mt-3 pointer-events-auto">
+          {step > 0 && (
+            <button
+              onClick={() => setStep(step - 1)}
+              className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20
+                text-white/60 hover:text-white text-xs transition-colors"
+            >
+              ← Back
+            </button>
+          )}
+          {isLastStep ? (
+            <button
+              onClick={finish}
+              className="px-4 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500
+                text-white text-xs font-medium transition-colors"
+            >
+              Got it!
+            </button>
+          ) : (
+            <button
+              onClick={advance}
+              className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20
+                text-white/60 hover:text-white text-xs transition-colors"
+            >
+              Next →
+            </button>
+          )}
         </div>
 
         {/* Skip button */}
