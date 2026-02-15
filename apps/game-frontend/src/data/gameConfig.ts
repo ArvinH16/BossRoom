@@ -34,6 +34,14 @@ export const LIGHTING = {
   fog: { color: '#0a0a1a', near: 10, far: 50 },
 } as const;
 
+export const AGENT_WANDER = {
+  radius: 2.5,
+  walkSpeed: 1.2,
+  arrivalThreshold: 0.15,
+  idleTimeMin: 3,
+  idleTimeMax: 8,
+} as const;
+
 export const POST_PROCESSING = {
   bloom: { threshold: 0.6, smoothing: 0.9, intensity: 0.8 },
   vignette: { offset: 0.1, darkness: 0.8 },
