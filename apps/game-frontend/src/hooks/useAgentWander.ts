@@ -48,10 +48,30 @@ export function useAgentWander(
   );
 
   const pickNewTarget = useCallback(() => {
-    const angle = Math.random() * Math.PI * 2;
-    const dist = Math.random() * AGENT_WANDER.radius;
-    state.current.targetX = home[0] + Math.cos(angle) * dist;
-    state.current.targetZ = home[2] + Math.sin(angle) * dist;
+    const { exclusion, exclusionRetries } = AGENT_WANDER;
+    for (let i = 0; i < exclusionRetries; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * AGENT_WANDER.radius;
+      const cx = home[0] + Math.cos(angle) * dist;
+      const cz = home[2] + Math.sin(angle) * dist;
+
+      const relX = cx - home[0];
+      const relZ = cz - home[2];
+      if (
+        Math.abs(relX) < exclusion.xHalf &&
+        relZ > exclusion.zMin &&
+        relZ < exclusion.zMax
+      ) {
+        continue; // inside workstation — reject
+      }
+
+      state.current.targetX = cx;
+      state.current.targetZ = cz;
+      return;
+    }
+    // All retries landed in the exclusion zone — stay at home
+    state.current.targetX = home[0];
+    state.current.targetZ = home[2];
   }, [home]);
 
   useFrame((_, delta) => {

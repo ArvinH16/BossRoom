@@ -40,6 +40,13 @@ export const AGENT_WANDER = {
   arrivalThreshold: 0.15,
   idleTimeMin: 3,
   idleTimeMax: 8,
+  /** Workstation exclusion zone (relative to agent home position). */
+  exclusion: {
+    xHalf: 0.9,
+    zMin: -3.4,
+    zMax: -0.3,
+  },
+  exclusionRetries: 10,
 } as const;
 
 export const POST_PROCESSING = {
