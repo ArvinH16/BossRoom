@@ -71,8 +71,8 @@ export function createAgentService(deps: AgentServiceDeps) {
     // Build summary request for receptionist
     const summaryRequest = `[System] All agents in the workspace have completed their tasks.\n\nTeam feed:\n${feed}\n\nAgent final outputs:\n${agentOutputs}\n\nCompile a final summary for the user. Highlight the key findings from each team member and present the results clearly. If any agent created a document or embed, reference it so the user can find it.`;
 
-    // Trigger receptionist via handleStaticAgentMessage
-    await handleStaticAgentMessage(playerId, 'receptionist', summaryRequest, 'text', ws, broadcastFn)
+    // Trigger receptionist via handleStaticAgentMessage (hidden = don't show system prompt in chat)
+    await handleStaticAgentMessage(playerId, 'receptionist', summaryRequest, 'text', ws, broadcastFn, { hidden: true })
       .catch(err => log.error(`[workspace] Receptionist summary failed:`, err));
   }
 
@@ -654,6 +654,7 @@ No other text.`,
     inputMode: 'voice' | 'text',
     ws: WebSocket,
     broadcastFn: (msg: ServerMessage) => void,
+    options?: { hidden?: boolean },
   ) {
     const agent = agentRepo.get(agentId);
     if (!agent) return;
@@ -665,8 +666,10 @@ No other text.`,
       conv = conversationService.createInMemory(playerId, agentId, '', ws);
     }
 
-    // Add user message to display history
-    conversationService.addUserMessage(conv.id, content);
+    // Add user message to display history (skip for system-triggered messages)
+    if (!options?.hidden) {
+      conversationService.addUserMessage(conv.id, content);
+    }
 
     // Status -> thinking
     agentRepo.setStatus(agentId, 'thinking');
