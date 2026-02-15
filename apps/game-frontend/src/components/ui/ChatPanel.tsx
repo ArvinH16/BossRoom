@@ -163,12 +163,12 @@ export function ChatPanel() {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape' && chatPanelOpen) {
-        closeChat();
+        useChatStore.setState({ chatPanelOpen: false });
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [chatPanelOpen, closeChat]);
+  }, [chatPanelOpen]);
 
   function handleSend() {
     if (!input.trim() || !activeAgent || isViewingArchive) return;

@@ -86,6 +86,13 @@ export function Player() {
         openChat(nearestAgent);
       }
 
+      if (e.code === 'KeyG') {
+        const state = useChatStore.getState();
+        if (state.activeAgent) {
+          useChatStore.setState({ chatPanelOpen: !state.chatPanelOpen });
+        }
+      }
+
       if (e.code === 'KeyT' && !e.repeat) {
         const target = useWorldStore.getState().nearestTarget;
         if (!target) return;
@@ -93,9 +100,10 @@ export function Player() {
         targetTypeRef.current = target.type; // Lock in the target type
 
         if (target.type === 'agent') {
-          // Existing agent voice flow (unchanged)
+          // Voice interaction — use interactAgent (no ChatPanel)
           if (recordingRef.current) return;
-          if (!chatPanelOpen) openChat(target.id);
+          const chatState = useChatStore.getState();
+          if (!chatState.activeAgent) chatState.interactAgent(target.id);
           useVoiceStore.getState().stopTTS();
           recordingRef.current = true;
           useVoiceStore.getState().setRecording(true);

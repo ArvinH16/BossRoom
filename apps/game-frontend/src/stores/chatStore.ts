@@ -32,6 +32,7 @@ interface ChatState {
   taskCounter: number;
 
   openChat: (agentId: string) => void;
+  interactAgent: (agentId: string) => void;
   closeChat: (reason?: 'explicit' | 'walkAway') => void;
   sendMessage: (agentId: string, content: string, inputMode?: 'voice' | 'text') => void;
   addMessage: (agentId: string, msg: ChatMessage) => void;
@@ -66,6 +67,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
   openChat: (agentId) => {
     useVoiceStore.getState().stopTTS();
     set({ activeAgent: agentId, chatPanelOpen: true, lastWalkAwayAgent: null });
+    gameSocket.send({
+      type: 'agent:interact',
+      payload: { agentId },
+    });
+  },
+
+  interactAgent: (agentId) => {
+    useVoiceStore.getState().stopTTS();
+    set({ activeAgent: agentId, lastWalkAwayAgent: null });
     gameSocket.send({
       type: 'agent:interact',
       payload: { agentId },

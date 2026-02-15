@@ -5,6 +5,7 @@ import { useRef, useEffect, useState } from 'react';
 import { Billboard, Text, Sparkles } from '@react-three/drei';
 import { CharacterModel } from './CharacterModel';
 import { ThoughtBubble } from './ThoughtBubble';
+import { SpeechBubble } from './SpeechBubble';
 import { useChatStore } from '@/stores/chatStore';
 import { useWorldStore } from '@/stores/worldStore';
 import { useAgentWander } from '@/hooks/useAgentWander';
@@ -131,6 +132,9 @@ export function Agent({ agent }: AgentProps) {
 
         {/* Thought bubble */}
         <ThoughtBubble agentId={agent.id} isBusy={isBusy} />
+
+        {/* Speech bubble (streamed agent response) */}
+        <SpeechBubble agentId={agent.id} />
       </group>
     </group>
   );
