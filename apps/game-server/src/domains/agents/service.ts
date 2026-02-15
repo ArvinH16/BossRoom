@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { streamText } from 'ai';
+import { streamText, generateText } from 'ai';
 import type { ServerMessage, DynamicAgent } from '@bossroom/shared-types';
 import { TIMEOUTS } from '@bossroom/shared-utils';
 import { getModel } from '../../ai/gateway.js';
@@ -24,6 +24,96 @@ interface AgentServiceDeps {
 
 export function createAgentService(deps: AgentServiceDeps) {
   const { agentRepo, conversationService, playerService, skillService, scratchpadService } = deps;
+
+  /**
+   * Scratchpad watcher: when an agent (or user) writes to the scratchpad,
+   * a cheap classifier decides which idle agent should continue working.
+   * Fire-and-forget — never blocks the caller.
+   */
+  async function routeScratchpadEntry(
+    workspaceId: string,
+    authorName: string,
+    content: string,
+    playerId: string,
+    ws: WebSocket,
+    broadcastFn: (msg: ServerMessage) => void,
+  ) {
+    try {
+      // Find idle agents in this workspace (excluding the author)
+      const allDynamic = agentRepo.getAllDynamic();
+      const idleAgents = allDynamic.filter(
+        (a) => a.workspaceId === workspaceId && a.status === 'idle' && a.name !== authorName,
+      );
+
+      if (idleAgents.length === 0) return;
+
+      // Get recent scratchpad for context
+      const entries = scratchpadService.read(workspaceId);
+      const recentEntries = entries.slice(-10).map((e) => `[${e.authorName}] ${e.content}`).join('\n');
+
+      const agentList = idleAgents
+        .map((a) => `- ${a.name} (${a.role}): ${a.personality}`)
+        .join('\n');
+
+      const model = getModel('gemini');
+      const result = await generateText({
+        model,
+        prompt: `You are a workspace coordinator. An entry was just posted to the team scratchpad.
+
+LATEST ENTRY:
+[${authorName}] ${content}
+
+RECENT SCRATCHPAD:
+${recentEntries}
+
+IDLE AGENTS AVAILABLE:
+${agentList}
+
+Based on the latest entry, should any idle agent continue working? Only wake an agent if:
+- The entry contains output or results that another agent needs to act on
+- The entry is a handoff (e.g. "done with X, passing to Y")
+- The entry is a user directive asking for action
+
+Do NOT wake an agent if:
+- The entry is just a status update with no actionable content
+- The work described is not relevant to any idle agent
+- All necessary work appears to be complete
+
+Respond with EXACTLY one line in this format:
+WAKE AgentName: brief instruction of what they should do based on the scratchpad
+or:
+NONE
+
+No other text.`,
+      });
+
+      const response = result.text.trim();
+
+      if (response === 'NONE' || !response.startsWith('WAKE ')) return;
+
+      // Parse: "WAKE AgentName: instruction"
+      const match = response.match(/^WAKE\s+(.+?):\s+(.+)$/);
+      if (!match) return;
+
+      const [, targetName, instruction] = match;
+      const targetAgent = idleAgents.find(
+        (a) => a.name.toLowerCase() === targetName.trim().toLowerCase(),
+      );
+      if (!targetAgent) {
+        log.warn(`[scratchpad-watcher] Classifier suggested "${targetName}" but agent not found or not idle`);
+        return;
+      }
+
+      log.info(`[scratchpad-watcher] Waking ${targetAgent.name}: ${instruction.slice(0, 80)}...`);
+
+      // Inject the latest scratchpad context + instruction into the agent
+      const injectedMessage = `[Coordinator] Based on team progress, here's your task:\n\n${instruction}\n\nRecent team updates:\n${recentEntries}`;
+
+      await handleDynamicAgentMessage(playerId, targetAgent.agentId, injectedMessage, ws, broadcastFn);
+    } catch (err) {
+      log.error('[scratchpad-watcher] Routing failed:', err);
+    }
+  }
 
   /**
    * Handle delegation: lead agent sends a task to a worker agent.
@@ -80,6 +170,9 @@ export function createAgentService(deps: AgentServiceDeps) {
         agentName: targetAgent.name,
         agentColor: targetAgent.color,
         broadcastFn: (msg) => playerService.send(ws, msg),
+        onEntryWritten: (author, text) => {
+          routeScratchpadEntry(targetAgent.workspaceId, author, text, playerId, ws, broadcastFn);
+        },
       });
       const workerEmbedTools = createEmbedTools({
         workspaceId: targetAgent.workspaceId,
@@ -227,6 +320,9 @@ export function createAgentService(deps: AgentServiceDeps) {
         agentName: dynamicAgent.name,
         agentColor: dynamicAgent.color,
         broadcastFn: (msg) => playerService.send(ws, msg),
+        onEntryWritten: (author, text) => {
+          routeScratchpadEntry(dynamicAgent.workspaceId, author, text, playerId, ws, broadcastFn);
+        },
       });
       tools = { ...tools, ...scratchpadTools };
 
@@ -583,6 +679,18 @@ export function createAgentService(deps: AgentServiceDeps) {
       for (const agentId of agentIds) {
         agentRepo.setStatus(agentId, 'idle');
       }
+    },
+
+    /** Trigger scratchpad watcher from external callers (e.g. user notes). */
+    onScratchpadWrite(
+      workspaceId: string,
+      authorName: string,
+      content: string,
+      playerId: string,
+      ws: WebSocket,
+      broadcastFn: (msg: ServerMessage) => void,
+    ) {
+      routeScratchpadEntry(workspaceId, authorName, content, playerId, ws, broadcastFn);
     },
   };
 }

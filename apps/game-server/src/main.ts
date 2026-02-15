@@ -182,6 +182,22 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
           },
         },
       });
+      // Trigger scratchpad watcher for user notes too
+      agents.onScratchpadWrite(
+        msg.payload.workspaceId,
+        player?.username ?? 'Unknown',
+        msg.payload.content,
+        uid,
+        ws,
+        (m) => players.send(ws, m),
+      );
+      return;
+    }
+    case 'conversations:reset': {
+      const uid = players.getUidByWs(ws);
+      if (!uid) return;
+      await conversationModule.service.resetConversations(uid, msg.payload.agentIds);
+      log.info(`[conversations] reset ${msg.payload.agentIds.length} conversations for ${uid}`);
       return;
     }
   }

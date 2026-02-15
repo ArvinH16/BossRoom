@@ -101,6 +101,7 @@ interface ScratchpadToolsDeps {
   agentName: string;
   agentColor: string;
   broadcastFn: (msg: ServerMessage) => void;
+  onEntryWritten?: (authorName: string, content: string) => void;
 }
 
 interface EmbedToolsDeps {
@@ -261,7 +262,7 @@ export function createDelegateTaskTool(deps: DelegateTaskDeps): ToolSet {
  * Enables shared team communication and context tracking.
  */
 export function createScratchpadTools(deps: ScratchpadToolsDeps): ToolSet {
-  const { scratchpadService, workspaceId, agentId, agentName, agentColor, broadcastFn } = deps;
+  const { scratchpadService, workspaceId, agentId, agentName, agentColor, broadcastFn, onEntryWritten } = deps;
 
   const readScratchpad = tool({
     description: 'Read the shared team scratchpad to see updates from teammates and the user',
@@ -300,6 +301,9 @@ export function createScratchpadTools(deps: ScratchpadToolsDeps): ToolSet {
           },
         },
       });
+      // Fire scratchpad watcher (non-blocking)
+      if (onEntryWritten) onEntryWritten(agentName, args.content);
+
       return `Posted to scratchpad: "${args.content}"`;
     },
   });
