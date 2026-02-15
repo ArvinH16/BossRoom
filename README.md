@@ -41,6 +41,11 @@ All agents use **Vercel AI SDK** (`streamText` with multi-step tool calling) rou
 - **Agent microinteractions** — Agents wander around their zones, show thought bubbles, and return to their desks when you approach
 - **Decorated office** — Furniture, zone labels, neon strips, whiteboards
 - **Streaming AI chat** — Real-time streamed responses with inline tool execution display
+- **Voice input (STT)** — Talk to agents via microphone using Deepgram speech-to-text (Nova 3)
+- **Voice output (TTS)** — Agents speak responses aloud via Inworld text-to-speech
+- **Proximity voice chat** — Peer-to-peer audio between nearby players via PeerJS (push-to-talk)
+- **Dynamic workspaces** — Agents can create sub-agents and delegate tasks
+- **Agent skills** — Agents learn and create reusable skills over time
 
 ## Project Structure
 
@@ -81,7 +86,7 @@ BossRoom/
 - **Frontend:** Next.js 16, React 19, Tailwind v4, Three.js (React Three Fiber), Zustand, shadcn/ui, Lucide Icons
 - **Backend:** Node.js, WebSocket (ws), Vercel AI SDK, Composio, MCP, Drizzle ORM, PostgreSQL
 - **AI:** Vercel AI Gateway (unified proxy) → Gemini 3 Flash (all agents)
-- **Voice:** Deepgram (speech-to-text), Inworld (text-to-speech)
+- **Voice:** Deepgram (speech-to-text, Nova 3), Inworld (text-to-speech), PeerJS (P2P proximity chat)
 - **Auth:** Firebase Authentication (Google Sign-In)
 - **Infra:** GCP Cloud Run, Cloud SQL, Cloudflare Pages, Terraform
 
@@ -105,24 +110,34 @@ Copy `.env.example` to `.env` and fill in values. Key vars:
 # Database
 DATABASE_URL=              # PostgreSQL (Cloud SQL)
 
-# Firebase Auth
+# Firebase Auth (server)
 FIREBASE_PROJECT_ID=
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
-NEXT_PUBLIC_FIREBASE_*=    # Client SDK config
+
+# Firebase Auth (frontend)
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
 
 # AI
 AI_GATEWAY_API_KEY=        # Vercel AI Gateway — provider keys configured as BYOK in Vercel dashboard
 GOOGLE_AI_API_KEY=         # Google AI API key (for Gemini models)
 
 # Voice
-DEEPGRAM_API_KEY=          # Deepgram speech-to-text
+DEEPGRAM_API_KEY=          # Deepgram speech-to-text (server mints tokens for client)
 INWORLD_API_KEY=           # Inworld text-to-speech
-INWORLD_VOICE_ID=Dominus   # Inworld voice preset
+INWORLD_VOICE_ID=Dominus   # Inworld voice preset (Dominus=robotic, Pixie=cartoonish)
 INWORLD_TTS_MODEL_ID=inworld-tts-1.5-mini
+NEXT_PUBLIC_VOICE_ENABLED=true  # Toggle voice features on frontend
 
 # Composio (optional — agent tools won't work without it)
 COMPOSIO_API_KEY=
+
+# Frontend
+NEXT_PUBLIC_WS_URL=ws://localhost:8080          # WebSocket URL (Terraform manages prod)
+NEXT_PUBLIC_SERVER_HTTP_URL=http://localhost:8080 # HTTP URL for Deepgram token endpoint
 ```
 
 ## Database
@@ -136,10 +151,36 @@ npm run db:generate # Prod: generate migration SQL
 npm run db:migrate  # Prod: apply migrations
 ```
 
+## Voice Architecture
+
+```
+┌─ Frontend ─────────────────────────────────────┐
+│  useVoiceInput.ts                              │
+│    ↓ mic audio via WebSocket                   │
+│    → wss://api.deepgram.com/v1/listen          │
+│    ← transcript → sent as agent:message        │
+│                                                │
+│  voiceStore.ts                                 │
+│    ← agent:ttsAudio (base64 MP3 from server)   │
+│    → Audio() playback queue                    │
+│                                                │
+│  useProximityVoice.ts                          │
+│    ↔ PeerJS P2P audio (nearby players)         │
+│    ← voice:playerTalking (who is talking)      │
+└────────────────────────────────────────────────┘
+
+┌─ Server ───────────────────────────────────────┐
+│  GET /api/deepgram/token → returns API key     │
+│  tts.ts → POST https://api.inworld.ai/tts/v1  │
+│    → sends agent:ttsAudio to client            │
+└────────────────────────────────────────────────┘
+```
+
 ## Known Issues / Next Steps
 
 - **Multi-agent handoff** — Agents don't coordinate or walk to each other yet.
 - **Agent skills from DB** — Agents are hardcoded in `agent-defs.ts`, not loaded from the `agent_skills` table.
+- **Deepgram token** — `/api/deepgram/token` returns raw API key (hackathon shortcut, not production-safe).
 
 ## Infrastructure (one-time setup, already done)
 
