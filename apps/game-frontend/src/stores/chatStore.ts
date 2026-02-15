@@ -238,9 +238,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       type: 'conversations:reset',
       payload: { agentIds: agentIdsToReset },
     });
+    const remaining = state.archivedTasks.filter((t) => t.id !== taskId);
+    const newCounter = remaining.length + 1;
     set({
-      archivedTasks: state.archivedTasks.filter((t) => t.id !== taskId),
+      archivedTasks: remaining,
       activeTaskId: state.activeTaskId === taskId ? null : state.activeTaskId,
+      taskCounter: newCounter,
+      currentTaskId: `task-${newCounter}`,
     });
     return task?.agentIds ?? [];
   },
@@ -255,7 +259,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       payload: { agentIds: agentIdsToReset },
     });
 
-    const newCounter = state.taskCounter + 1;
+    const newCounter = state.archivedTasks.length + 1;
     set({
       currentTaskId: `task-${newCounter}`,
       taskCounter: newCounter,
