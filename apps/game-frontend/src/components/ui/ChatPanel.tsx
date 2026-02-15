@@ -201,7 +201,6 @@ export function ChatPanel() {
                 <h2 className="text-white font-semibold text-sm">
                   {agent.name}
                 </h2>
-                <p className="text-white/50 text-xs">{agent.zone}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

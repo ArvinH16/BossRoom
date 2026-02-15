@@ -5,7 +5,7 @@ import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
 import { gameSocket } from '@/lib/websocket';
-import { statusColors } from '@/data/agents';
+import { statusColors, statusLabels } from '@/data/agents';
 
 export function HUD() {
   const connected = useWorldStore((s) => s.connected);
@@ -13,6 +13,7 @@ export function HUD() {
   const user = useAuthStore((s) => s.user);
   const worldReset = useWorldStore((s) => s.reset);
   const chatReset = useChatStore((s) => s.reset);
+  const openChat = useChatStore((s) => s.openChat);
   const authSignOut = useAuthStore((s) => s.signOut);
 
   const handleSignOut = () => {
@@ -66,7 +67,8 @@ export function HUD() {
         {agents.map((agent) => (
           <div
             key={agent.id}
-            className="flex items-center gap-2 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-1.5"
+            onClick={() => openChat(agent.id)}
+            className="flex items-center gap-2 bg-black/50 hover:bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 pointer-events-auto cursor-pointer transition-colors"
           >
             <div
               className="w-2 h-2 rounded-full"
@@ -75,7 +77,7 @@ export function HUD() {
             <span className="text-xs text-white font-medium">
               {agent.name}
             </span>
-            <span className="text-[10px] text-white/40">{agent.zone}</span>
+            <span className="text-[10px] text-white/40">{statusLabels[agent.status]}</span>
           </div>
         ))}
       </div>
