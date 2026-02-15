@@ -1,5 +1,7 @@
 /** Game-wide constants for the 3D office world. */
 
+export const FURNITURE_SCALE = 2.2;
+
 export const PLAYER = {
   modelUrl: '/models/characters/player.glb',
   capsuleHalfHeight: 0.5,

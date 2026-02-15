@@ -4,9 +4,9 @@ Date: February 14, 2026
 
 ---
 
-## Implementation Status (Updated Feb 14, 2026)
+## Implementation Status (Updated Feb 15, 2026)
 
-### ~75% MVP Complete — Foundation + 3D World + Agent Interaction + Auth
+### ~85% MVP Complete — AI SDK Live + Composio Tools + Test Chat
 
 **All builds passing** — `npx nx run-many -t build` succeeds for all 3 projects.
 
@@ -15,14 +15,18 @@ Date: February 14, 2026
 - [x] `game-frontend` — Next.js 16 + Tailwind v4 (CSS-first) + App Router, builds and serves on :3000
 - [x] `game-server` — Node.js + HTTP/WebSocket server skeleton (ws), builds and serves on :8080
 - [x] `@bossroom/shared-types` — WebSocket message protocol types + Agent skill types, shared across apps
-- [x] Drizzle ORM — Schema (agent_skills, conversations, task_history), client, config. NX targets: db:push/generate/migrate/studio
-- [x] Cloudflare AI Gateway — OpenAI SDK client routed through CF gateway, supports Claude/GPT-4o/Gemini via `GATEWAY_MODEL_MAP`
+- [x] Drizzle ORM — Schema (users, agent_skills, conversations, task_history), client, config. NX targets: db:push/generate/migrate/studio
+- [x] Cloudflare AI Gateway — Vercel AI SDK `@ai-sdk/openai-compatible` routed through CF gateway, supports GPT-4o/Gemini via `GATEWAY_MODEL_MAP`
+- [x] Vercel AI SDK — `streamText` with multi-step tool calling, streaming deltas to frontend, `stopWhen: stepCountIs(5)` guard
+- [x] Composio integration — `@composio/vercel` provider wired into AI SDK tool system. Per-user OAuth sessions (keyed by Firebase UID). Agents can call Gmail, Google Calendar, Google Tasks, Linear, etc.
+- [x] MCP support — `@ai-sdk/mcp` client manager for connecting external MCP tool servers
+- [x] Composio auth HTTP routes — `/composio/status/:userId` and `/composio/initiate/:userId` for checking/starting OAuth connections
 - [x] Terraform — Cloud Run (WebSocket-ready, http1, 3600s timeout), Cloud SQL (Postgres 15), Firebase Auth (Google Sign-In), Vercel project + env vars
 - [x] Scripts — `generate-env.mjs` reads terraform outputs → writes .env.production files
 - [x] Cross-platform — All npm scripts use `npx nx`, no bash dependencies
 - [x] 3D office world — R3F + Rapier physics, 3 zones (comms, ops, calendar) with color plates, procedural walls, 13 Kenney furniture GLBs (desks, chairs, monitors, etc.)
 - [x] Third-person player — ecctrl character controller (WASD + camera orbit), Kenney Minifig GLB with animations (idle, walk, sprint, jump)
-- [x] 3 agent characters — Mailbot (blue/GPT-4o), Taskmaster (red/Claude), Clockwork (green/Gemini) with unique GLB models + color tints
+- [x] 3 agent characters — Mailbot (blue/GPT-4o), Taskmaster (red/Gemini), Clockwork (green/Gemini) with unique GLB models + color tints
 - [x] Agent interaction — Proximity detection, "Press E" overlay, chat panel slide-in with streaming text + suggested prompts
 - [x] Agent visual states — 5 statuses (idle/listening/thinking/working/error) with sparkle particles + status orbs
 - [x] GTA-style onboarding — 5-step tutorial (welcome → discovery → delegation → execution → exploration) with auto-progression
@@ -36,22 +40,26 @@ Date: February 14, 2026
 - [x] Auth infrastructure — Terraform provisions Firebase service account + credentials, Identity Platform config with authorized domains, Google IDP
 - [x] Users table — Drizzle schema with Firebase UID (text PK), email, displayName, photoURL, createdAt, lastLoginAt; FK constraints on conversations and taskHistory
 - [x] Health check — Validates DB, AI Gateway, and Firebase Admin SDK initialization with live `listUsers` call
+- [x] shadcn/ui — New York style, dark theme, Tailwind v4 CSS variables. Components: Button, Input, ScrollArea, Badge, Card, Avatar
+- [x] Markdown rendering — `react-markdown` + `remark-gfm` for rich agent responses (links, lists, code blocks, tables)
+- [x] Test chat page — `/test-chat` route: 3-column layout, all 3 agents side-by-side, no 3D rendering. For testing AI SDK + Composio end-to-end
+- [x] Proper error logging — Logger serializes Error objects (name, message, stack) instead of `{}`
 
 #### Quick Start
 ```bash
 git clone <repo> && cd BossRoom
 npm install
-npx nx serve game-frontend   # Next.js on :3000
-npx nx serve game-server     # WebSocket server on :8080
+cp .env.example .env          # fill in API keys
+npm run dev                    # frontend :3000 + server :8080
+# Visit http://localhost:3000       — 3D world
+# Visit http://localhost:3000/test-chat — standalone chat tester
 ```
 
-#### What's NOT Built Yet
-- [ ] LLM ↔ Composio agent orchestrator — agent `composioTools` field defined but no actual Composio SDK calls
-- [x] Firebase Auth frontend flow — Google Sign-In, LoginPage gate, WebSocket token auth, user upsert
+#### What's NOT Built Yet (Next Steps)
+- [ ] **Conversation persistence** — `conversations` table exists in schema but AgentManager uses in-memory Map only. Chats are lost on server restart. Need to: load conversation history from DB on `startInteraction`, save messages to DB after each exchange, include greeting in AI context
+- [ ] **Agent greeting in AI context** — `startInteraction` sends greeting to client but never adds it to `conv.aiMessages`, so the LLM doesn't know what it said. Fix: push greeting as assistant message into aiMessages
 - [ ] Multi-agent handoff logic — agents don't coordinate or walk to each other
 - [ ] Agent skills from DB — agents are hardcoded in AgentManager.ts, not pulled from DB
-- [ ] Real tool execution — status messages sent but no actual email/calendar/Linear operations
-- [ ] Conversation persistence — chats stored in-memory only, lost on server restart
 - [ ] Agent collaboration animations — no walk-to-each-other or brainstorming visuals
 - [ ] Agent stuck/passing out state — error status exists but no overheat/recovery flow
 - [ ] Task progress board in 3D — not rendered in office
@@ -60,8 +68,8 @@ npx nx serve game-server     # WebSocket server on :8080
 
 #### Architecture (Implemented)
 ```
-apps/game-frontend/     Next.js 16 + Tailwind v4 + R3F + ecctrl + Zustand
-apps/game-server/       Node.js + ws + Drizzle ORM + AI Gateway
+apps/game-frontend/     Next.js 16 + Tailwind v4 + R3F + ecctrl + Zustand + shadcn/ui
+apps/game-server/       Node.js + ws + Drizzle ORM + AI SDK + Composio + MCP
 libs/shared-types/      @bossroom/shared-types (WS protocol + Agent types)
 terraform/              Cloud Run + Cloud SQL + Firebase + Vercel
 scripts/                generate-env.mjs, health-check.mjs

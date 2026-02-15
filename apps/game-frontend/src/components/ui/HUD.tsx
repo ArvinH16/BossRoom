@@ -1,21 +1,24 @@
 /** Heads-up display: logo, connection status, agent roster. */
 'use client';
 
-import { useGameStore } from '@/stores/gameStore';
+import { useWorldStore } from '@/stores/worldStore';
+import { useChatStore } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
 import { gameSocket } from '@/lib/websocket';
 import { statusColors } from '@/data/agents';
 
 export function HUD() {
-  const connected = useGameStore((s) => s.connected);
-  const agents = useGameStore((s) => s.agents);
+  const connected = useWorldStore((s) => s.connected);
+  const agents = useWorldStore((s) => s.agents);
   const user = useAuthStore((s) => s.user);
-  const reset = useGameStore((s) => s.reset);
+  const worldReset = useWorldStore((s) => s.reset);
+  const chatReset = useChatStore((s) => s.reset);
   const authSignOut = useAuthStore((s) => s.signOut);
 
   const handleSignOut = () => {
     gameSocket.disconnect();
-    reset();
+    worldReset();
+    chatReset();
     authSignOut();
   };
 

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "dev": "npx nx run-many -t dev -p @org/game-frontend,@org/game-server",
+    "dev": "NX_TUI=false npx nx run-many -t dev -p @org/game-frontend,@org/game-server",
     "dev:frontend": "npx nx dev @org/game-frontend",
     "dev:server": "npx nx dev @org/game-server",
     "build": "npx nx run-many -t build",
@@ -25,6 +25,7 @@
     "@swc/cli": "~0.8.0",
     "@swc/core": "1.15.8",
     "@swc/helpers": "0.5.18",
+    "@tanstack/eslint-plugin-query": "^5.91.4",
     "@types/node": "20.19.9",
     "@types/pg": "^8.16.0",
     "@types/react": "^19.0.0",
@@ -45,17 +46,33 @@
     "libs/*"
   ],
   "dependencies": {
+    "@ai-sdk/mcp": "^1.0.21",
+    "@ai-sdk/openai-compatible": "^2.0.30",
+    "@composio/core": "^0.6.3",
+    "@composio/vercel": "^0.6.3",
+    "@radix-ui/react-avatar": "^1.1.11",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-slot": "^1.2.4",
     "@tailwindcss/postcss": "^4.1.18",
+    "ai": "^6.0.86",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "dotenv": "^17.3.1",
     "drizzle-orm": "^0.45.1",
+    "drizzle-zod": "^0.8.3",
     "firebase": "^12.9.0",
     "firebase-admin": "^13.6.1",
+    "lucide-react": "^0.564.0",
     "next": "~16.0.1",
     "openai": "^6.22.0",
     "pg": "^8.18.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "zod": "^4.3.6"
   }
 }

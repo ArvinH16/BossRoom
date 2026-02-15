@@ -7,6 +7,7 @@ import {
   onAuthStateChanged,
 } from 'firebase/auth';
 import { firebaseAuth } from '@/lib/firebase';
+import { getQueryClient } from '@/app/get-query-client';
 
 interface AuthUser {
   uid: string;
@@ -57,6 +58,7 @@ export const useAuthStore = create<AuthState>((set) => {
 
     signOut: async () => {
       await fbSignOut(firebaseAuth);
+      getQueryClient().removeQueries();
     },
 
     getToken: async () => {

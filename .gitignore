@@ -43,9 +43,13 @@ Thumbs.db
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
+# TypeScript build info
+*.tsbuildinfo
+
 # Next.js
 .next
 out
+next-env.d.ts
 
 # Terraform
 terraform/.terraform/

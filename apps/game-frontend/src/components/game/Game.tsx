@@ -9,10 +9,9 @@ import { Scene } from './Scene';
 import { ChatPanel } from '../ui/ChatPanel';
 import { InteractionPrompt } from './InteractionPrompt';
 import { HUD } from '../ui/HUD';
-import { ToolExecutionToasts } from '../ui/ToolExecutionToasts';
 import { OnboardingOverlay } from '../ui/OnboardingOverlay';
-import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
+import { initWebSocket } from '@/lib/messageHandler';
 import { CAMERA, WORLD } from '@/data/gameConfig';
 
 const keyboardMap = [
@@ -29,8 +28,6 @@ interface GameProps {
 }
 
 export function Game({ user }: GameProps) {
-  const initWebSocket = useGameStore((s) => s.initWebSocket);
-
   useEffect(() => {
     let cancelled = false;
     async function init() {
@@ -47,7 +44,7 @@ export function Game({ user }: GameProps) {
     return () => {
       cancelled = true;
     };
-  }, [initWebSocket, user]);
+  }, [user]);
 
   return (
     <div className="w-screen h-screen relative">
@@ -66,7 +63,6 @@ export function Game({ user }: GameProps) {
       </KeyboardControls>
       <HUD />
       <ChatPanel />
-      <ToolExecutionToasts />
       <InteractionPrompt />
       <OnboardingOverlay />
     </div>

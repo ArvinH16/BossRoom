@@ -1,4 +1,5 @@
-import type { AgentStatus } from '@bossroom/shared-types';
+import type { AgentStatus, AgentZone } from '@bossroom/shared-types';
+import { AGENT_DEFS } from '@bossroom/shared-utils';
 
 export interface AgentData {
   id: string;
@@ -7,7 +8,7 @@ export interface AgentData {
   personality: string;
   color: string;
   position: [number, number, number];
-  zone: string;
+  zone: AgentZone;
   modelUrl: string;
   suggestedPrompts: string[];
   status: AgentStatus;
@@ -35,53 +36,15 @@ export const zoneColors: Record<string, string> = {
   calendar: '#4AD97A',
 };
 
-export const agents: AgentData[] = [
-  {
-    id: 'mailbot',
-    name: 'Mailbot',
-    description: 'Handles all internal and external communications.',
-    personality: 'Cheerful and efficient. Loves sorting things.',
-    color: '#4A90D9',
-    position: [-6, 0, -6],
-    zone: 'communications',
-    modelUrl: '/models/characters/agent-mailbot.glb',
-    suggestedPrompts: [
-      'Check my messages',
-      'Send an update to the team',
-      'Summarize recent emails',
-    ],
-    status: 'idle',
-  },
-  {
-    id: 'taskmaster',
-    name: 'Taskmaster',
-    description: 'Manages projects, tasks, and deadlines.',
-    personality: 'Strict but fair. Never misses a deadline.',
-    color: '#D94A4A',
-    position: [6, 0, -6],
-    zone: 'project-ops',
-    modelUrl: '/models/characters/agent-taskmaster.glb',
-    suggestedPrompts: [
-      "What's on my plate today?",
-      'Create a new task',
-      'Show project status',
-    ],
-    status: 'idle',
-  },
-  {
-    id: 'clockwork',
-    name: 'Clockwork',
-    description: 'Keeps track of time, schedules, and calendar events.',
-    personality: 'Precise and punctual. Speaks in time metaphors.',
-    color: '#4AD97A',
-    position: [0, 0, -10],
-    zone: 'calendar',
-    modelUrl: '/models/characters/agent-clockwork.glb',
-    suggestedPrompts: [
-      "What's on my schedule?",
-      'Book a meeting',
-      'When is my next free slot?',
-    ],
-    status: 'idle',
-  },
-];
+export const agents: AgentData[] = AGENT_DEFS.map((def) => ({
+  id: def.id,
+  name: def.name,
+  description: def.description,
+  personality: def.personality,
+  color: def.color,
+  position: def.avatarConfig.position,
+  zone: def.zone,
+  modelUrl: def.modelUrl,
+  suggestedPrompts: def.suggestedPrompts,
+  status: 'idle' as AgentStatus,
+}));

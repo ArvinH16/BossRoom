@@ -3,7 +3,7 @@
 
 import { useGLTF } from '@react-three/drei';
 
-const FURNITURE_SCALE = 2.2;
+import { FURNITURE_SCALE } from '@/data/gameConfig';
 
 export function Workstation({
   position,
