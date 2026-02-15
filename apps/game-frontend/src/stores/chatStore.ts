@@ -8,6 +8,9 @@ export type ChatMessage =
   | { role: 'agent'; content: string }
   | { role: 'tool'; toolName: string; status: 'started' | 'completed' | 'failed'; result?: string };
 
+/** Detect markdown links or raw URLs in agent text. */
+const LINK_REGEX = /https?:\/\/[^\s)]+|\[.+?\]\(.+?\)/;
+
 /** Archived receptionist task (read-only snapshot). */
 export interface ArchivedTask {
   id: string;
@@ -23,6 +26,9 @@ interface ChatState {
   streamingText: Record<string, string>;
   conversationIds: Record<string, string>;
   lastWalkAwayAgent: string | null;
+
+  /** Agent IDs whose latest turn contains a link the user hasn't seen yet. */
+  agentsWithLinks: Set<string>;
 
   /** Receptionist task tabs */
   archivedTasks: ArchivedTask[];
@@ -57,6 +63,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   streamingText: {},
   conversationIds: {},
   lastWalkAwayAgent: null,
+  agentsWithLinks: new Set<string>(),
 
   archivedTasks: [],
   activeTaskId: null,
@@ -66,7 +73,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   openChat: (agentId) => {
     useVoiceStore.getState().stopTTS();
-    set({ activeAgent: agentId, chatPanelOpen: true, lastWalkAwayAgent: null });
+    const next = new Set(get().agentsWithLinks);
+    next.delete(agentId);
+    set({ activeAgent: agentId, chatPanelOpen: true, lastWalkAwayAgent: null, agentsWithLinks: next });
     gameSocket.send({
       type: 'agent:interact',
       payload: { agentId },
@@ -128,12 +137,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
   addMessage: (agentId, msg) =>
     set((state) => {
       const prev = state.chatMessages[agentId] ?? [];
-      return {
+      const next: Partial<ChatState> = {
         chatMessages: {
           ...state.chatMessages,
           [agentId]: [...prev, msg],
         },
       };
+      // Track links in agent messages (skip if user is already viewing this agent)
+      if (msg.role === 'agent' && LINK_REGEX.test(msg.content) && state.activeAgent !== agentId) {
+        const updated = new Set(state.agentsWithLinks);
+        updated.add(agentId);
+        next.agentsWithLinks = updated;
+      }
+      return next;
     }),
 
   addToolExecution: (agentId, toolName, status, result) =>
@@ -173,13 +189,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => {
       const content = state.streamingText[agentId] ?? '';
       const prev = state.chatMessages[agentId] ?? [];
-      return {
+      const next: Partial<ChatState> = {
         chatMessages: {
           ...state.chatMessages,
           [agentId]: [...prev, { role: 'agent' as const, content }],
         },
         streamingText: { ...state.streamingText, [agentId]: '' },
       };
+      if (LINK_REGEX.test(content) && state.activeAgent !== agentId) {
+        const updated = new Set(state.agentsWithLinks);
+        updated.add(agentId);
+        next.agentsWithLinks = updated;
+      }
+      return next;
     }),
 
   /** Called when workspace:build fires — associates agent IDs with the current task. */
@@ -285,6 +307,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       streamingText: {},
       conversationIds: {},
       lastWalkAwayAgent: null,
+      agentsWithLinks: new Set<string>(),
       archivedTasks: [],
       activeTaskId: null,
       currentTaskId: 'task-1',
