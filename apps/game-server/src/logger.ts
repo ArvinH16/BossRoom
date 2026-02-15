@@ -9,9 +9,30 @@ function timestamp(): string {
   return new Date().toISOString();
 }
 
+function serialize(data: unknown): string {
+  if (data instanceof Error) {
+    return JSON.stringify({
+      name: data.name,
+      message: data.message,
+      stack: data.stack,
+      ...(data.cause ? { cause: serialize(data.cause) } : {}),
+    });
+  }
+  // Handle AI SDK and other errors that embed an Error as a property
+  if (data && typeof data === 'object' && 'message' in data) {
+    const obj = data as Record<string, unknown>;
+    return JSON.stringify({
+      ...obj,
+      message: obj['message'],
+      stack: obj['stack'],
+    });
+  }
+  return JSON.stringify(data);
+}
+
 function format(level: Level, msg: string, data?: unknown): string {
   const base = `${timestamp()} [${level}] ${msg}`;
-  return data !== undefined ? `${base} ${JSON.stringify(data)}` : base;
+  return data !== undefined ? `${base} ${serialize(data)}` : base;
 }
 
 export const log = {
