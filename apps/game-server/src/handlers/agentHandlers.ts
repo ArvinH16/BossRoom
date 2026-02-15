@@ -1,45 +1,52 @@
 import { WebSocket } from 'ws';
-import * as playerState from '../state/playerState.js';
-import { AgentManager } from '../agents/AgentManager.js';
-import type { ServerMessage } from '@bossroom/shared-types';
+import type { PlayerService } from '../domains/players/service.js';
+import type { AgentService } from '../domains/agents/service.js';
+
+interface AgentHandlerDeps {
+  players: PlayerService;
+  agents: AgentService;
+}
 
 export async function handleAgentInteract(
   ws: WebSocket,
   payload: { agentId: string },
-  agentManager: AgentManager,
+  deps: AgentHandlerDeps,
 ) {
-  const uid = playerState.getUidByWs(ws);
+  const { players, agents } = deps;
+  const uid = players.getUidByWs(ws);
   if (!uid) return;
-  const user = playerState.getPlayer(uid);
-  await agentManager.startInteraction(uid, payload.agentId, ws, user?.username ?? null);
+  const user = players.getPlayer(uid);
+  await agents.handleInteraction(uid, payload.agentId, ws, user?.username ?? null);
 }
 
 export function handleAgentMessage(
   ws: WebSocket,
   payload: { agentId: string; conversationId: string; content: string },
-  agentManager: AgentManager,
+  deps: AgentHandlerDeps,
 ) {
-  const uid = playerState.getUidByWs(ws);
+  const { players, agents } = deps;
+  const uid = players.getUidByWs(ws);
   if (!uid) return;
-  agentManager.handleMessage(
+  agents.handleMessage(
     uid,
     payload.agentId,
     payload.conversationId,
     payload.content,
     ws,
-    (statusMsg: ServerMessage) => playerState.broadcast(statusMsg),
+    (statusMsg) => players.broadcast(statusMsg),
   );
 }
 
 export function handleAgentStopInteract(
   ws: WebSocket,
   payload: { agentId: string },
-  agentManager: AgentManager,
+  deps: AgentHandlerDeps,
 ) {
-  const uid = playerState.getUidByWs(ws);
+  const { players, agents } = deps;
+  const uid = players.getUidByWs(ws);
   if (!uid) return;
-  agentManager.stopInteraction(uid, payload.agentId);
-  playerState.broadcast({
+  agents.stopInteraction(uid, payload.agentId);
+  players.broadcast({
     type: 'agent:statusChanged',
     payload: { agentId: payload.agentId, status: 'idle' },
   });

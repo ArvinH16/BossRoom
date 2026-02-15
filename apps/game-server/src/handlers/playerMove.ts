@@ -1,12 +1,13 @@
 import { WebSocket } from 'ws';
-import * as playerState from '../state/playerState.js';
 import { log } from '../logger.js';
+import type { PlayerService } from '../domains/players/service.js';
 
 export function handlePlayerMove(
   ws: WebSocket,
   payload: { position: [number, number, number]; rotation: number; animation: string },
+  players: PlayerService,
 ) {
-  const uid = playerState.getUidByWs(ws);
+  const uid = players.getUidByWs(ws);
   if (!uid) return;
 
   // Validate position and rotation
@@ -21,8 +22,8 @@ export function handlePlayerMove(
     return;
   }
 
-  playerState.updatePosition(uid, position, rotation, animation);
-  playerState.broadcast(
+  players.updatePosition(uid, position, rotation, animation);
+  players.broadcast(
     { type: 'player:moved', payload: { playerId: uid, ...payload } },
     uid,
   );
