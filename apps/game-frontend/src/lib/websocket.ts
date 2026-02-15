@@ -63,6 +63,7 @@ class GameWebSocket {
   }
 
   private async doConnect() {
+    if (this.disabled) return;
     if (this.ws?.readyState === WebSocket.OPEN) return;
     if (this.intentionallyClosed) return;
 
@@ -136,6 +137,7 @@ class GameWebSocket {
   }
 
   private scheduleReconnect() {
+    if (this.disabled) return;
     if (this.intentionallyClosed) return;
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.log('[WS] Server unavailable — game works offline, connect server with `npm run dev`');
