@@ -10,6 +10,7 @@ import { createUserModule } from './domains/users/module.js';
 import { createAgentRepository } from './domains/agents/repository.js';
 import { createConversationModule } from './domains/conversations/module.js';
 import { createAgentModule } from './domains/agents/module.js';
+import { createSkillModule } from './domains/skills/module.js';
 import { handlePlayerJoin } from './handlers/playerJoin.js';
 import { handlePlayerMove } from './handlers/playerMove.js';
 import { handlePlayerSettings } from './handlers/playerSettings.js';
@@ -20,15 +21,24 @@ const playerModule = createPlayerModule();
 const userModule = createUserModule({ db });
 const agentRepo = createAgentRepository();
 const conversationModule = createConversationModule({ db, agentRepo });
+const skillModule = createSkillModule(db);
 const agentModule = createAgentModule({
   agentRepo,
   conversationService: conversationModule.service,
   playerService: playerModule.service,
+  skillService: skillModule.skillService,
 });
 
 const players = playerModule.service;
 const agents = agentModule.service;
 const userRepo = userModule.repository;
+
+// --- Initialize skills (seed receptionist defaults) ---
+skillModule.skillService.initialize().then(() => {
+  log.info('[startup] Skill service initialized');
+}).catch((err) => {
+  log.error('[startup] Skill service init failed:', err);
+});
 
 // --- HTTP + WebSocket Server ---
 const PORT = env.PORT;

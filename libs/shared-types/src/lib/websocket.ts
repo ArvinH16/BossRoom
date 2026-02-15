@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { agentSkillSchema, agentStatusSchema } from './agents.js';
+import { agentSkillSchema, agentStatusSchema, skillSummarySchema, dynamicAgentSchema } from './agents.js';
 
 const positionSchema = z.tuple([z.number(), z.number(), z.number()]);
 
@@ -47,5 +47,10 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('agent:conversationHistory'), payload: z.object({ agentId: z.string(), messages: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string() })) }) }),
   z.object({ type: z.literal('agent:ttsAudio'), payload: z.object({ agentId: z.string(), audioBase64: z.string(), mimeType: z.string() }) }),
   z.object({ type: z.literal('player:avatarChanged'), payload: z.object({ playerId: z.string(), avatarId: z.string() }) }),
+  // Dynamic workspace + skills
+  z.object({ type: z.literal('workspace:build'), payload: z.object({ agents: z.array(dynamicAgentSchema), taskSummary: z.string() }) }),
+  z.object({ type: z.literal('agent:skills'), payload: z.object({ agentId: z.string(), skills: z.array(skillSummarySchema) }) }),
+  z.object({ type: z.literal('agent:skillCreated'), payload: z.object({ agentId: z.string(), skill: skillSummarySchema }) }),
+  z.object({ type: z.literal('agent:delegatedTask'), payload: z.object({ fromAgentId: z.string(), toAgentId: z.string(), toAgentName: z.string(), task: z.string() }) }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;

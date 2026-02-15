@@ -10,6 +10,7 @@ import { PushToTalkOverlay } from '../ui/PushToTalkOverlay';
 import { TTSAudioPlayer } from '../ui/TTSAudioPlayer';
 import { HUD } from '../ui/HUD';
 import { OnboardingOverlay } from '../ui/OnboardingOverlay';
+import { MissionControl } from '../ui/MissionControl';
 import { useAuthStore } from '@/stores/authStore';
 import { initWebSocket } from '@/lib/messageHandler';
 import { CAMERA, WORLD } from '@/data/gameConfig';
@@ -59,6 +60,7 @@ export function Game({ user }: GameProps) {
       <PushToTalkOverlay />
       <TTSAudioPlayer />
       <OnboardingOverlay />
+      <MissionControl />
     </div>
   );
 }

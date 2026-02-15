@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, jsonb, pgEnum, unique } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, jsonb, pgEnum, unique, boolean } from 'drizzle-orm/pg-core';
 import type { UserSettings } from '@bossroom/shared-types';
 
 export const agentModelEnum = pgEnum('agent_model', ['claude', 'gpt-4o', 'gemini']);
@@ -13,17 +13,17 @@ export const users = pgTable('users', {
   lastLoginAt: timestamp('last_login_at').defaultNow().notNull(),
 });
 
-export const agentSkills = pgTable('agent_skills', {
+export const skills = pgTable('skills', {
   id: uuid('id').defaultRandom().primaryKey(),
+  agentId: text('agent_id').notNull(),
   name: text('name').notNull(),
   description: text('description').notNull(),
-  systemPrompt: text('system_prompt').notNull(),
-  model: agentModelEnum('model').notNull(),
-  zone: text('zone').notNull(),
-  personality: text('personality').notNull(),
-  avatarConfig: jsonb('avatar_config').$type<{ color: string; position: [number, number, number] }>().notNull(),
+  instructions: text('instructions').notNull(),
+  requiredTools: jsonb('required_tools').$type<string[]>().notNull().default([]),
+  creatorType: text('creator_type').notNull().default('system'),
+  sessionId: text('session_id'),
+  enabled: boolean('enabled').notNull().default(true),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const conversations = pgTable('conversations', {

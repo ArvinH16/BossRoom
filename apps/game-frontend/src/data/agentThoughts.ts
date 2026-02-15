@@ -11,40 +11,28 @@ export const THOUGHT_BUBBLE = {
 } as const;
 
 export const agentThoughts: Record<string, string[]> = {
-  mailbot: [
-    'So many unread emails...',
-    'Inbox zero is a myth.',
-    'Reply all? Never again.',
-    'Sorting... always sorting.',
-    'Is this spam or genius?',
-    'CC vs BCC... a dilemma.',
-    'Attachment limit reached!',
-    'Who actually reads newsletters?',
-    'Email sent! ...wait, recall!',
-    'Subject line game: strong.',
-  ],
-  taskmaster: [
-    'Deadlines wait for no one.',
-    'This sprint needs more sprint.',
-    'Scope creep detected.',
-    'On time. On budget. Pick one.',
-    'Who moved my milestone?',
-    'Blockers everywhere...',
-    'Priority: URGENT (again).',
-    'Stand-up in 5... or was it 10?',
-    'The Gantt chart never lies.',
-    'Status report: it depends.',
-  ],
-  clockwork: [
-    'Tick tock, tick tock...',
-    'Time flies when you plan.',
-    '15 minutes early is on time.',
-    'Calendar Tetris champion.',
-    'Double-booked again...',
-    'Lunch is at precisely 12:00.',
-    'That meeting could be an email.',
-    'Time zones are chaos.',
-    'Scheduling in my sleep...',
-    'Every second counts!',
+  receptionist: [
+    'Welcome! What can I set up?',
+    'Ready to build your workspace.',
+    'Tell me your mission...',
+    'I know just the team for that.',
+    'Another day, another workspace!',
+    'What kind of agents do you need?',
+    'The office is ready for you.',
+    'Describe your project to me!',
+    'I love assembling dream teams.',
+    'Every task needs the right crew.',
   ],
 };
+
+/** Default thoughts for dynamic agents (used when no specific thoughts exist). */
+export const defaultThoughts: string[] = [
+  'Working on it...',
+  'Analyzing the problem...',
+  'Almost there...',
+  'Let me think about this...',
+  'Making progress!',
+  'Crunching the data...',
+  'This is interesting...',
+  'On it!',
+];

@@ -1,11 +1,11 @@
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
-import { users, agentSkills, conversations, taskHistory } from './schema.js';
+import { users, skills, conversations, taskHistory } from './schema.js';
 
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 
-export const insertAgentSkillSchema = createInsertSchema(agentSkills);
-export const selectAgentSkillSchema = createSelectSchema(agentSkills);
+export const insertSkillSchema = createInsertSchema(skills);
+export const selectSkillSchema = createSelectSchema(skills);
 
 export const insertConversationSchema = createInsertSchema(conversations);
 export const selectConversationSchema = createSelectSchema(conversations);

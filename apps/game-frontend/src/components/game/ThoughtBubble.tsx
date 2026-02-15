@@ -6,7 +6,7 @@ import { useFrame } from '@react-three/fiber';
 import { Billboard, Text, RoundedBox } from '@react-three/drei';
 import { MathUtils } from 'three';
 import type { Group, MeshBasicMaterial } from 'three';
-import { THOUGHT_BUBBLE, agentThoughts } from '@/data/agentThoughts';
+import { THOUGHT_BUBBLE, agentThoughts, defaultThoughts } from '@/data/agentThoughts';
 
 type Phase = 'hidden' | 'fadeIn' | 'visible' | 'fadeOut';
 
@@ -16,7 +16,7 @@ interface ThoughtBubbleProps {
 }
 
 export function ThoughtBubble({ agentId, isBusy }: ThoughtBubbleProps) {
-  const thoughts = agentThoughts[agentId] ?? [];
+  const thoughts = agentThoughts[agentId] ?? defaultThoughts;
   const groupRef = useRef<Group>(null);
   const textRef = useRef<{ fillOpacity: number } | null>(null);
   const bgRef = useRef<MeshBasicMaterial>(null);
