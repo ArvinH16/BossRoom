@@ -5,7 +5,7 @@ import { generateConversationId } from '@bossroom/shared-utils';
 export type ChatMessage =
   | { role: 'user'; content: string }
   | { role: 'agent'; content: string }
-  | { role: 'tool'; toolName: string; status: 'started' | 'completed' | 'failed' };
+  | { role: 'tool'; toolName: string; status: 'started' | 'completed' | 'failed'; result?: string };
 
 interface ChatState {
   activeAgent: string | null;
@@ -18,7 +18,7 @@ interface ChatState {
   closeChat: () => void;
   sendMessage: (agentId: string, content: string) => void;
   addMessage: (agentId: string, msg: ChatMessage) => void;
-  addToolExecution: (agentId: string, toolName: string, status: 'started' | 'completed' | 'failed') => void;
+  addToolExecution: (agentId: string, toolName: string, status: 'started' | 'completed' | 'failed', result?: string) => void;
   appendStream: (agentId: string, delta: string) => void;
   finalizeStream: (agentId: string) => void;
   reset: () => void;
@@ -88,7 +88,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       };
     }),
 
-  addToolExecution: (agentId, toolName, status) =>
+  addToolExecution: (agentId, toolName, status, result?) =>
     set((state) => {
       const prev = state.chatMessages[agentId] ?? [];
       if (status === 'started') {
@@ -104,7 +104,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       for (let i = updated.length - 1; i >= 0; i--) {
         const msg = updated[i];
         if (msg.role === 'tool' && msg.toolName === toolName && msg.status === 'started') {
-          updated[i] = { ...msg, status };
+          updated[i] = { ...msg, status, result };
           break;
         }
       }

@@ -19,7 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Markdown } from '@/components/ui/Markdown';
 import { ThinkingIndicator } from '@/components/ui/ThinkingIndicator';
 import { AgentAvatar } from '@/components/ui/AgentAvatar';
-import { Send, LogOut, Wifi, WifiOff, Bot } from 'lucide-react';
+import { Send, LogOut, Wifi, WifiOff, Bot, ChevronRight } from 'lucide-react';
 
 function AgentColumn({ agentId }: { agentId: string }) {
   const [input, setInput] = useState('');
@@ -137,15 +137,7 @@ function AgentColumn({ agentId }: { agentId: string }) {
 
           {messages.map((msg, i) =>
             msg.role === 'tool' ? (
-              <p key={i} className={`text-[11px] leading-relaxed ${
-                msg.status === 'failed' ? 'text-red-400/70' : 'text-muted-foreground/60'
-              }`}>
-                {msg.status === 'started'
-                  ? `Running ${formatToolName(msg.toolName)}...`
-                  : msg.status === 'completed'
-                    ? formatToolName(msg.toolName)
-                    : `Failed: ${formatToolName(msg.toolName)}`}
-              </p>
+              <ToolDebugRow key={i} toolName={msg.toolName} status={msg.status} result={msg.result} />
             ) : (
               <div
                 key={i}
@@ -212,6 +204,38 @@ function AgentColumn({ agentId }: { agentId: string }) {
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ToolDebugRow({ toolName, status, result }: {
+  toolName: string;
+  status: 'started' | 'completed' | 'failed';
+  result?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const label = status === 'started'
+    ? `Running ${formatToolName(toolName)}...`
+    : status === 'completed'
+      ? formatToolName(toolName)
+      : `Failed: ${formatToolName(toolName)}`;
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1 text-[11px] leading-relaxed ${
+          status === 'failed' ? 'text-red-400/70' : 'text-muted-foreground/60'
+        } hover:text-muted-foreground transition-colors`}
+      >
+        <ChevronRight className={`size-3 shrink-0 transition-transform ${open ? 'rotate-90' : ''}`} />
+        {label}
+      </button>
+      {open && (
+        <pre className="mt-1 ml-4 p-2 rounded bg-black/30 text-[10px] text-muted-foreground/50 font-mono overflow-x-auto whitespace-pre-wrap">
+          {JSON.stringify({ toolName, status, result }, null, 2)}
+        </pre>
+      )}
     </div>
   );
 }

@@ -73,6 +73,7 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
           msg.payload.agentId,
           msg.payload.toolName,
           msg.payload.status,
+          msg.payload.result,
         );
         break;
 
