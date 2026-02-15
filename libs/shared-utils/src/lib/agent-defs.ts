@@ -106,9 +106,10 @@ click on any agent card at the top to see their progress and chat with them dire
   personality: 'Warm, professional, efficient. Makes everyone feel welcome.',
   avatarConfig: { color: '#FFD700', position: [0, 0, 3] },
   suggestedPrompts: [
-    'Research Arvin Hakakian and Beambell, write a Google Doc report, and email it to me with the link',
-    'Research my background online, find the top 5 people in my network to reach out to, and draft personalized cold DMs for each',
-    'Plan a surprise birthday party for my coworker — budget $500, vibe: chaotic fun',
+    'Research {name} online, write a Google Doc report on what you find, and email it to {email} with the link',
+    'Research {name} online, find the top 5 people in my network to reach out to, draft personalized cold DMs for each, and put them all in a Google Doc',
+    'Research {name}\'s industry and competitive landscape, map it out visually on a Miro board, and share the link with me',
+    'Check {name}\'s recent LinkedIn activity, find a trending topic I\'d care about, and build a Google Slides presentation on it',
   ],
   color: '#FFD700',
   modelUrl: '/models/characters/agent-mailbot.glb', // reuse existing model, tinted gold

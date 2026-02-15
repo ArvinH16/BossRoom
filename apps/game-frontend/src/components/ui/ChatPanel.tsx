@@ -13,6 +13,7 @@ import { AgentStatusBadge } from '@/components/ui/AgentStatusBadge';
 import { useVoiceStore } from '@/stores/voiceStore';
 import { useEmbedStore } from '@/stores/embedStore';
 import { toDynamicAgentData } from '@/data/agents';
+import { useAuthStore } from '@/stores/authStore';
 
 function TaskTabs() {
   const archivedTasks = useChatStore((s) => s.archivedTasks);
@@ -143,6 +144,7 @@ export function ChatPanel() {
   const archivedTasks = useChatStore((s) => s.archivedTasks);
   const activeTaskId = useChatStore((s) => s.activeTaskId);
 
+  const authUser = useAuthStore((s) => s.user);
   const dynamicAgents = useWorkspaceStore((s) => s.dynamicAgents);
   const worldAgent = agents.find((a) => a.id === activeAgent);
   const dynAgent = dynamicAgents.find((a) => a.agentId === activeAgent);
@@ -279,19 +281,24 @@ export function ChatPanel() {
                   {/* Suggested prompts pinned to bottom */}
                   {!isBusy && agent.suggestedPrompts.length > 0 && (
                     <div className="space-y-2 pb-1">
-                      {agent.suggestedPrompts.map((prompt) => (
-                        <button
-                          key={prompt}
-                          onClick={() => {
-                            if (activeAgent) sendMessage(activeAgent, prompt);
-                          }}
-                          className="block w-full text-left px-3 py-2 rounded-lg cursor-pointer
-                            bg-white/5 hover:bg-white/10 border border-white/10
-                            text-white/70 text-xs transition-colors"
-                        >
-                          {prompt}
-                        </button>
-                      ))}
+                      {agent.suggestedPrompts.map((template) => {
+                        const prompt = template
+                          .replace(/\{name\}/g, authUser?.displayName ?? 'me')
+                          .replace(/\{email\}/g, authUser?.email ?? 'me');
+                        return (
+                          <button
+                            key={template}
+                            onClick={() => {
+                              if (activeAgent) sendMessage(activeAgent, prompt);
+                            }}
+                            className="block w-full text-left px-3 py-2 rounded-lg cursor-pointer
+                              bg-white/5 hover:bg-white/10 border border-white/10
+                              text-white/70 text-xs transition-colors"
+                          >
+                            {prompt}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

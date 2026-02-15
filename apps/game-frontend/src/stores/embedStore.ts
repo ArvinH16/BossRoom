@@ -2,6 +2,33 @@
 
 import { create } from 'zustand';
 
+/** Domains that block iframes via X-Frame-Options / CSP frame-ancestors. */
+const IFRAME_BLOCKED_DOMAINS = [
+  'linkedin.com',
+  'twitter.com',
+  'x.com',
+  'facebook.com',
+  'instagram.com',
+  'github.com',
+  'mail.google.com',
+  'accounts.google.com',
+  'notion.so',
+  'slack.com',
+  'discord.com',
+  'linear.app',
+];
+
+function isIframeBlocked(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname;
+    return IFRAME_BLOCKED_DOMAINS.some(
+      (d) => hostname === d || hostname.endsWith('.' + d),
+    );
+  } catch {
+    return false;
+  }
+}
+
 interface EmbedTab {
   id: string;
   url: string;
@@ -31,6 +58,12 @@ export const useEmbedStore = create<EmbedState>((set, get) => ({
   panelOpen: false,
 
   addEmbed: (embed) => {
+    // Sites that block iframes — open in a new tab instead
+    if (isIframeBlocked(embed.url)) {
+      window.open(embed.url, '_blank', 'noopener');
+      return;
+    }
+
     const state = get();
     // Deduplicate by URL: if same URL exists, just focus that tab
     const existing = state.embeds.find((e) => e.url === embed.url);

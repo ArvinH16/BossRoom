@@ -324,7 +324,7 @@ export function createEmbedTools(deps: EmbedToolsDeps): ToolSet {
   const { workspaceId, agentId, agentName, broadcastFn } = deps;
 
   const showEmbed = tool({
-    description: 'Show an embedded document, board, or artifact to the user in a panel. Only use for services that support iframe embedding (Google Docs, Google Sheets, Miro, etc). Do NOT use for Gmail, Linear, or other services that block iframes.',
+    description: 'Show an embedded document, board, or artifact to the user in a panel. Only use for services that support iframe embedding (Google Docs, Google Sheets, Miro, etc). Do NOT use for Gmail, Linear, LinkedIn, or other services that block iframes — use links instead.',
     inputSchema: showEmbedParams,
     execute: async (args) => {
       log.info(`[embed] ${agentName} showing "${args.title}" (${args.type}): ${args.url}`);

@@ -72,8 +72,36 @@ export function createAgentService(deps: AgentServiceDeps) {
     const summaryRequest = `[System] All agents in the workspace have completed their tasks.\n\nTeam feed:\n${feed}\n\nAgent final outputs:\n${agentOutputs}\n\nCompile a final summary for the user. Highlight the key findings from each team member and present the results clearly. If any agent created a document or embed, reference it so the user can find it.`;
 
     // Trigger receptionist via handleStaticAgentMessage (hidden = don't show system prompt in chat)
-    await handleStaticAgentMessage(playerId, 'receptionist', summaryRequest, 'text', ws, broadcastFn, { hidden: true })
-      .catch(err => log.error(`[workspace] Receptionist summary failed:`, err));
+    try {
+      const summaryText = await handleStaticAgentMessage(playerId, 'receptionist', summaryRequest, 'text', ws, broadcastFn, { hidden: true });
+
+      // Also post the receptionist's summary to the team feed
+      if (summaryText) {
+        const entry = scratchpadService.write(workspaceId, {
+          authorType: 'agent',
+          authorId: 'receptionist',
+          authorName: 'Reception',
+          authorColor: '#FFD700',
+          content: summaryText,
+        });
+        broadcastFn({
+          type: 'workspace:scratchpadEntry',
+          payload: {
+            workspaceId,
+            entry: {
+              id: entry.id,
+              authorType: entry.authorType,
+              authorName: entry.authorName,
+              authorColor: entry.authorColor,
+              content: entry.content,
+              timestamp: entry.timestamp,
+            },
+          },
+        });
+      }
+    } catch (err) {
+      log.error(`[workspace] Receptionist summary failed:`, err);
+    }
   }
 
   /**
@@ -811,6 +839,8 @@ No other text.`,
       agentRepo.setStatus(agentId, 'idle');
       broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
 
+      return fullResponse;
+
     } catch (err) {
       log.error(`Agent ${agentId} error:`, err);
 
@@ -830,6 +860,8 @@ No other text.`,
         agentRepo.setStatus(agentId, 'idle');
         broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
       }, TIMEOUTS.AGENT_ERROR_RECOVERY_MS);
+
+      return '';
     }
   }
 
