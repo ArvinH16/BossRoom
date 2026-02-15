@@ -15,10 +15,24 @@ export function useBroadcastPosition(
   const lastSendTime = useRef(0);
 
   useFrame(() => {
-    // Disabled: player:move broadcast removed to reduce noise
-    void rigidBodyRef;
-    void animation;
-    void facingAngleRef;
-    void lastSendTime;
+    const now = performance.now();
+    if (now - lastSendTime.current < SEND_INTERVAL_MS) return;
+
+    const rb = rigidBodyRef.current;
+    if (!rb) return;
+
+    const pos = rb.translation();
+    const position: [number, number, number] = [pos.x, pos.y, pos.z];
+
+    // Normalize to [-π, π] so server validation accepts it
+    let rotation = facingAngleRef?.current ?? 0;
+    rotation = ((rotation % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+
+    gameSocket.send({
+      type: 'player:move',
+      payload: { position, rotation, animation },
+    });
+
+    lastSendTime.current = now;
   });
 }

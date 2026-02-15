@@ -144,7 +144,7 @@ class GameWebSocket {
 
   send(msg: ClientMessage) {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      log.debug(`[ws] send ${msg.type}`);
+      if (msg.type !== 'player:move') log.debug(`[ws] send ${msg.type}`);
       this.ws.send(JSON.stringify(msg));
     }
   }
