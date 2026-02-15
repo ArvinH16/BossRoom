@@ -1,8 +1,10 @@
 /** Player character: ecctrl controller + Kenney character with animation state machine. */
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { useGLTF } from '@react-three/drei';
+import { SkeletonUtils } from 'three-stdlib';
 import Ecctrl, { EcctrlAnimation } from 'ecctrl';
 import { useGameStore } from '@/stores/gameStore';
 import { PLAYER, CAMERA, INTERACTION } from '@/data/gameConfig';
@@ -21,6 +23,17 @@ const animationSet = {
   action3: 'pick-up',
   action4: 'emote-no',
 };
+
+/** Renders the player's Kenney character mesh (animations handled by EcctrlAnimation). */
+function PlayerModel() {
+  const { scene } = useGLTF(PLAYER.modelUrl);
+  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
+  return (
+    <group scale={2.2}>
+      <primitive object={clone} />
+    </group>
+  );
+}
 
 export function Player() {
   const ecctrlRef = useRef<{ group: { translation(): Vector3 } | null }>(null);
@@ -68,6 +81,9 @@ export function Player() {
   return (
     <Ecctrl
       ref={ecctrlRef as never}
+      position={[0, PLAYER.capsuleHalfHeight, 6]}
+      characterInitDir={Math.PI}
+      camInitDir={{ x: 0, y: Math.PI }}
       camInitDis={CAMERA.initDis}
       camMinDis={CAMERA.minDis}
       camMaxDis={CAMERA.maxDis}
@@ -80,8 +96,10 @@ export function Player() {
         characterURL={PLAYER.modelUrl}
         animationSet={animationSet}
       >
-        <group scale={2.2} />
+        <PlayerModel />
       </EcctrlAnimation>
     </Ecctrl>
   );
 }
+
+useGLTF.preload(PLAYER.modelUrl);
