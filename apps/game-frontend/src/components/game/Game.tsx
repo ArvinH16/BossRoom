@@ -18,6 +18,7 @@ import { ViewHint } from './ViewHint';
 import { ScratchpadFeed } from '../ui/ScratchpadFeed';
 import { BackgroundMusic } from '../ui/BackgroundMusic';
 import { GameToolbar } from '../ui/GameToolbar';
+import { WorkspaceBar } from '../ui/WorkspaceBar';
 import { useAuthStore } from '@/stores/authStore';
 import { initWebSocket } from '@/lib/messageHandler';
 import { CAMERA, WORLD } from '@/data/gameConfig';
@@ -74,6 +75,7 @@ export function Game({ user }: GameProps) {
       <ScratchpadFeed />
       <BackgroundMusic />
       <GameToolbar />
+      <WorkspaceBar />
     </div>
   );
 }
