@@ -58,9 +58,25 @@ export const agents: AgentData[] = AGENT_DEFS.map((def) => ({
   status: 'idle' as AgentStatus,
 }));
 
+/** Agent model pool — dynamic agents pick one deterministically based on their ID. */
+const AGENT_MODELS = [
+  '/models/characters/agent-taskmaster.glb',
+  '/models/characters/agent-mailbot.glb',
+  '/models/characters/agent-clockwork.glb',
+];
+
+/** Simple hash of a string to a stable index. */
+function hashToIndex(str: string, len: number): number {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 31 + str.charCodeAt(i)) | 0;
+  }
+  return ((h % len) + len) % len;
+}
+
 /**
  * Convert a DynamicAgent (from workspace:build) to frontend AgentData.
- * Uses a generic model with color tinting.
+ * Picks a model deterministically from the pool based on the agent ID.
  */
 export function toDynamicAgentData(agent: DynamicAgent): AgentData {
   return {
@@ -71,7 +87,7 @@ export function toDynamicAgentData(agent: DynamicAgent): AgentData {
     color: agent.color,
     position: agent.position,
     zone: 'command' as AgentZone, // dynamic agents don't have a fixed zone
-    modelUrl: '/models/characters/agent-taskmaster.glb', // generic model, tinted by color
+    modelUrl: AGENT_MODELS[hashToIndex(agent.agentId, AGENT_MODELS.length)],
     suggestedPrompts: [],
     status: 'idle' as AgentStatus,
   };

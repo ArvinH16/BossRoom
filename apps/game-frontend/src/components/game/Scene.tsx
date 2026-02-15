@@ -10,6 +10,7 @@ import { Terrain } from './Terrain';
 import { Agent } from './Agent';
 import { Player } from './Player';
 import { CameraRig } from './CameraRig';
+import { MissionControlSky } from './MissionControlSky';
 import { RemotePlayer } from './RemotePlayer';
 import { useWorldStore } from '@/stores/worldStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
@@ -59,6 +60,9 @@ export function Scene() {
       />
 
       <Terrain />
+      <Suspense fallback={null}>
+        <MissionControlSky />
+      </Suspense>
 
       <Physics gravity={[0, -30, 0]}>
         <Suspense fallback={null}>
