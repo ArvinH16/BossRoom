@@ -27,11 +27,20 @@ Instead of chatting with AI through a boring text box, you navigate a 3D office,
 
 | Agent | Zone | Model | Composio Integrations |
 |-------|------|-------|-----------------------|
-| **Mailbot** | Communications | GPT-4o | Gmail |
-| **Taskmaster** | Project Ops | Gemini 2.5 Flash | Google Tasks, Linear |
-| **Clockwork** | Calendar | Gemini 2.5 Flash | Google Calendar |
+| **Mailbot** | Communications | Gemini 3 Flash | Gmail |
+| **Taskmaster** | Project Ops | Gemini 3 Flash | Google Tasks, Linear |
+| **Clockwork** | Calendar | Gemini 3 Flash | Google Calendar |
 
-All agents use **Vercel AI SDK** (`streamText` with multi-step tool calling) routed through **Cloudflare AI Gateway**. **Composio** handles OAuth tool integrations per-user. **MCP** support for external tool servers.
+All agents use **Vercel AI SDK** (`streamText` with multi-step tool calling) routed through **Vercel AI Gateway**. **Composio** handles OAuth tool integrations per-user. **MCP** support for external tool servers. Agent definitions live in `libs/shared-utils/src/lib/agent-defs.ts`.
+
+## Features
+
+- **Multiplayer** — See other players moving around the office in real time with smooth interpolation
+- **Avatar selection** — Choose from 13 character models (settings panel in HUD)
+- **Roblox-style camera** — Third-person follow cam with right-click orbit and scroll zoom
+- **Agent microinteractions** — Agents wander around their zones, show thought bubbles, and return to their desks when you approach
+- **Decorated office** — Furniture, zone labels, neon strips, whiteboards
+- **Streaming AI chat** — Real-time streamed responses with inline tool execution display
 
 ## Project Structure
 
@@ -41,8 +50,9 @@ BossRoom/
 │   ├── game-frontend/     # Next.js 16 + Tailwind v4 + Three.js (R3F) + shadcn/ui
 │   └── game-server/       # Node.js + WebSocket + AI SDK + Composio + Drizzle ORM
 ├── libs/
-│   └── shared-types/      # @bossroom/shared-types (WS protocol + agent types)
-├── terraform/             # GCP Cloud Run, Cloud SQL, Firebase Auth, Vercel
+│   ├── shared-types/      # @bossroom/shared-types (WS protocol + agent types)
+│   └── shared-utils/      # @bossroom/shared-utils (agent defs, constants, logger)
+├── terraform/             # GCP Cloud Run, Cloud SQL, Firebase Auth, Cloudflare Pages
 └── scripts/
     ├── health-check.mjs   # Infrastructure health check
     └── generate-env.mjs   # Terraform outputs → .env files
@@ -70,9 +80,9 @@ BossRoom/
 
 - **Frontend:** Next.js 16, React 19, Tailwind v4, Three.js (React Three Fiber), Zustand, shadcn/ui, Lucide Icons
 - **Backend:** Node.js, WebSocket (ws), Vercel AI SDK, Composio, MCP, Drizzle ORM, PostgreSQL
-- **AI:** Cloudflare AI Gateway (unified proxy) → GPT-4o, Gemini 2.5 Flash
+- **AI:** Vercel AI Gateway (unified proxy) → Gemini 3 Flash (all agents)
 - **Auth:** Firebase Authentication (Google Sign-In)
-- **Infra:** GCP Cloud Run, Cloud SQL, Vercel, Terraform
+- **Infra:** GCP Cloud Run, Cloud SQL, Cloudflare Pages, Terraform
 
 ## Authentication
 
@@ -91,11 +101,8 @@ Firebase Auth with Google Sign-In gates the entire app:
 Copy `.env.example` to `.env` and fill in values. Key vars:
 
 ```bash
-# Cloudflare AI Gateway
-CF_AI_GATEWAY_ACCOUNT_ID=
-CF_AI_GATEWAY_ID=
-OPENAI_API_KEY=            # GPT-4o (Mailbot)
-GOOGLE_AI_API_KEY=         # Gemini (Taskmaster, Clockwork)
+# Vercel AI Gateway
+AI_GATEWAY_API_KEY=        # Single key — provider keys configured as BYOK in Vercel dashboard
 
 # Firebase Auth
 FIREBASE_PROJECT_ID=
@@ -123,11 +130,8 @@ npm run db:migrate  # Prod: apply migrations
 
 ## Known Issues / Next Steps
 
-- **Conversation persistence not wired up** — The `conversations` table exists in the DB schema but `AgentManager` only stores chats in-memory. Conversations are lost on server restart. Next: load/save from DB on each interaction.
-- **Agent greeting missing from AI context** — The greeting sent on `startInteraction` is not added to `conv.aiMessages`, so the LLM doesn't know what it said. Causes slight context confusion.
-- **Taskmaster uses Gemini** — Originally planned for Claude (Anthropic) but no `ANTHROPIC_API_KEY` is configured. Switch back if key becomes available.
 - **Multi-agent handoff** — Agents don't coordinate or walk to each other yet.
-- **Agent skills from DB** — Agents are hardcoded in `AgentManager.ts`, not loaded from the `agent_skills` table.
+- **Agent skills from DB** — Agents are hardcoded in `agent-defs.ts`, not loaded from the `agent_skills` table.
 
 ## Infrastructure (one-time setup, already done)
 
@@ -140,4 +144,3 @@ terraform init && terraform apply
 cd ..
 npm run generate:env
 ```
-
