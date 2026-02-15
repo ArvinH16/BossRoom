@@ -12,6 +12,7 @@ import { AgentAvatar } from '@/components/ui/AgentAvatar';
 import { AgentStatusBadge } from '@/components/ui/AgentStatusBadge';
 import { useVoiceStore } from '@/stores/voiceStore';
 import { useEmbedStore } from '@/stores/embedStore';
+import { toDynamicAgentData } from '@/data/agents';
 
 function TaskTabs() {
   const archivedTasks = useChatStore((s) => s.archivedTasks);
@@ -142,7 +143,10 @@ export function ChatPanel() {
   const archivedTasks = useChatStore((s) => s.archivedTasks);
   const activeTaskId = useChatStore((s) => s.activeTaskId);
 
-  const agent = agents.find((a) => a.id === activeAgent);
+  const dynamicAgents = useWorkspaceStore((s) => s.dynamicAgents);
+  const worldAgent = agents.find((a) => a.id === activeAgent);
+  const dynAgent = dynamicAgents.find((a) => a.agentId === activeAgent);
+  const agent = worldAgent ?? (dynAgent ? toDynamicAgentData(dynAgent) : null);
 
   // Determine which messages to show
   const isReceptionist = activeAgent === 'receptionist';
@@ -244,39 +248,58 @@ export function ChatPanel() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3 min-w-0">
-            {messages.length === 0 && !currentStream && (
-              agent.status === 'working' || agent.status === 'thinking' ? (
-                <div className="flex flex-col items-center justify-center gap-3 py-8">
-                  <div className="flex gap-1">
-                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:0ms]" />
-                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:150ms]" />
-                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:300ms]" />
-                  </div>
-                  <p className="text-white/40 text-xs">
-                    {agent.name} is working on it...
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-white/30 text-xs text-center mb-4">
-                    Start a conversation
-                  </p>
-                  {agent.suggestedPrompts.map((prompt) => (
-                    <button
-                      key={prompt}
-                      onClick={() => {
-                        if (activeAgent && !isViewingArchive) sendMessage(activeAgent, prompt);
-                      }}
-                      className="block w-full text-left px-3 py-2 rounded-lg
-                        bg-white/5 hover:bg-white/10 border border-white/10
-                        text-white/70 text-xs transition-colors"
+            {(() => {
+              const hasUserMessage = messages.some((m) => m.role === 'user');
+              const isBusy = agent.status === 'working' || agent.status === 'thinking';
+              return !hasUserMessage && !currentStream && !isViewingArchive ? (
+                <>
+                  {isBusy && messages.length === 0 && (
+                    <div className="flex flex-col items-center justify-center gap-3 py-8">
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:0ms]" />
+                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:150ms]" />
+                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:300ms]" />
+                      </div>
+                      <p className="text-white/40 text-xs">
+                        {agent.name} is working on it...
+                      </p>
+                    </div>
+                  )}
+                  {/* Show any existing messages (e.g. welcome message from history) */}
+                  {messages.filter((m) => m.role !== 'tool').map((msg, i) => (
+                    <div
+                      key={i}
+                      className="max-w-prose mr-auto px-3 py-2 rounded-lg text-sm bg-white/10 text-white/80 break-words"
                     >
-                      {prompt}
-                    </button>
+                      <Markdown content={msg.role === 'agent' ? msg.content : ''} />
+                    </div>
                   ))}
-                </div>
-              )
-            )}
+                  {/* Suggested prompts — always visible until user sends a message */}
+                  {!isBusy && agent.suggestedPrompts.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      {messages.length === 0 && (
+                        <p className="text-white/30 text-xs text-center mb-2">
+                          Start a conversation
+                        </p>
+                      )}
+                      {agent.suggestedPrompts.map((prompt) => (
+                        <button
+                          key={prompt}
+                          onClick={() => {
+                            if (activeAgent) sendMessage(activeAgent, prompt);
+                          }}
+                          className="block w-full text-left px-3 py-2 rounded-lg
+                            bg-white/5 hover:bg-white/10 border border-white/10
+                            text-white/70 text-xs transition-colors"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : null;
+            })()}
             {messages.map((msg, i) =>
               msg.role === 'tool' ? (
                 <ToolChip key={i} toolName={msg.toolName} status={msg.status} />
