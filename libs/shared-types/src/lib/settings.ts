@@ -2,6 +2,12 @@ import { z } from 'zod';
 
 export const DEFAULT_AVATAR_ID = 'default';
 
+/** Pick a random avatar from the full list (excluding 'default'). */
+export function randomAvatarId(): string {
+  const pool = VALID_AVATAR_IDS.filter((id) => id !== 'default');
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 export const VALID_AVATAR_IDS = [
   'default',
   'female-a',

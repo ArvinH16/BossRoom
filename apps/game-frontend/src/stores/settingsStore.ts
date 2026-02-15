@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DEFAULT_AVATAR_ID } from '@bossroom/shared-types';
+import { randomAvatarId } from '@bossroom/shared-types';
 import { gameSocket } from '@/lib/websocket';
 
 interface SettingsState {
@@ -13,7 +13,7 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  avatarId: DEFAULT_AVATAR_ID,
+  avatarId: randomAvatarId(),
   settingsPanelOpen: false,
 
   setAvatarIdLocal: (id) => set({ avatarId: id }),
