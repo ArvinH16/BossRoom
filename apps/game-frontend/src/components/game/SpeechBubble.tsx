@@ -116,8 +116,7 @@ export function SpeechBubble({ agentId }: SpeechBubbleProps) {
 
   function updateText(raw: string) {
     if (!textRef.current) return;
-    let clean = stripMarkdown(raw);
-    if (clean.length > 200) clean = clean.slice(0, 200) + '...';
+    const clean = stripMarkdown(raw);
     (textRef.current as unknown as { text: string }).text = clean;
   }
 
@@ -126,7 +125,7 @@ export function SpeechBubble({ agentId }: SpeechBubbleProps) {
       <Billboard position={[0, 2.8, 0]}>
         <group>
           {/* Background box */}
-          <RoundedBox args={[3.5, 1.0, 0.05]} radius={0.12} smoothness={4}>
+          <RoundedBox args={[3.5, 2.0, 0.05]} radius={0.12} smoothness={4}>
             <meshStandardMaterial
               ref={bgRef}
               color="#ffffff"
@@ -139,18 +138,19 @@ export function SpeechBubble({ agentId }: SpeechBubbleProps) {
           <Text
             ref={textRef}
             position={[0, 0, 0.03]}
-            fontSize={0.14}
+            fontSize={0.13}
             color="#111111"
             anchorX="center"
             anchorY="middle"
             maxWidth={3.2}
+            clipRect={[-1.6, -0.9, 1.6, 0.9]}
             fillOpacity={0}
           >
             {''}
           </Text>
 
           {/* Tail triangle pointing down */}
-          <mesh position={[0, -0.58, 0]} rotation={[0, 0, Math.PI]}>
+          <mesh position={[0, -1.08, 0]} rotation={[0, 0, Math.PI]}>
             <coneGeometry args={[0.12, 0.18, 3]} />
             <meshStandardMaterial
               ref={tailRef}
