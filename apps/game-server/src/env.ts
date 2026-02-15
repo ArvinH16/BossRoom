@@ -23,8 +23,11 @@ const envSchema = z.object({
 
   // Voice: Inworld TTS
   INWORLD_API_KEY: z.string().optional(),
-  INWORLD_VOICE_ID: z.string().default('Ashley'),
+  INWORLD_VOICE_ID: z.string().default('Dominus'),
   INWORLD_TTS_MODEL_ID: z.string().default('inworld-tts-1.5-mini'),
+
+  // Google AI
+  GOOGLE_AI_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

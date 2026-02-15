@@ -52,3 +52,41 @@ variable "ai_gateway_api_key" {
   type        = string
   sensitive   = true
 }
+
+variable "deepgram_api_key" {
+  description = "Deepgram API key for speech-to-text"
+  type        = string
+  sensitive   = true
+}
+
+variable "inworld_api_key" {
+  description = "Inworld API key for TTS"
+  type        = string
+  sensitive   = true
+}
+
+variable "inworld_voice_id" {
+  description = "Inworld voice ID"
+  type        = string
+  default     = "Dominus"
+}
+
+variable "inworld_tts_model_id" {
+  description = "Inworld TTS model ID"
+  type        = string
+  default     = "inworld-tts-1.5-mini"
+}
+
+variable "composio_api_key" {
+  description = "Composio API key for agent tools"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "google_ai_api_key" {
+  description = "Google AI API key"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

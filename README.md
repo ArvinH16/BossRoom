@@ -81,6 +81,7 @@ BossRoom/
 - **Frontend:** Next.js 16, React 19, Tailwind v4, Three.js (React Three Fiber), Zustand, shadcn/ui, Lucide Icons
 - **Backend:** Node.js, WebSocket (ws), Vercel AI SDK, Composio, MCP, Drizzle ORM, PostgreSQL
 - **AI:** Vercel AI Gateway (unified proxy) → Gemini 3 Flash (all agents)
+- **Voice:** Deepgram (speech-to-text), Inworld (text-to-speech)
 - **Auth:** Firebase Authentication (Google Sign-In)
 - **Infra:** GCP Cloud Run, Cloud SQL, Cloudflare Pages, Terraform
 
@@ -101,8 +102,8 @@ Firebase Auth with Google Sign-In gates the entire app:
 Copy `.env.example` to `.env` and fill in values. Key vars:
 
 ```bash
-# Vercel AI Gateway
-AI_GATEWAY_API_KEY=        # Single key — provider keys configured as BYOK in Vercel dashboard
+# Database
+DATABASE_URL=              # PostgreSQL (Cloud SQL)
 
 # Firebase Auth
 FIREBASE_PROJECT_ID=
@@ -110,8 +111,15 @@ FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
 NEXT_PUBLIC_FIREBASE_*=    # Client SDK config
 
-# Database
-DATABASE_URL=              # PostgreSQL (Cloud SQL)
+# AI
+AI_GATEWAY_API_KEY=        # Vercel AI Gateway — provider keys configured as BYOK in Vercel dashboard
+GOOGLE_AI_API_KEY=         # Google AI API key (for Gemini models)
+
+# Voice
+DEEPGRAM_API_KEY=          # Deepgram speech-to-text
+INWORLD_API_KEY=           # Inworld text-to-speech
+INWORLD_VOICE_ID=Dominus   # Inworld voice preset
+INWORLD_TTS_MODEL_ID=inworld-tts-1.5-mini
 
 # Composio (optional — agent tools won't work without it)
 COMPOSIO_API_KEY=

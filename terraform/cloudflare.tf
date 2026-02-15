@@ -35,6 +35,14 @@ resource "cloudflare_pages_project" "frontend" {
           type  = "plain_text"
           value = replace(google_cloud_run_v2_service.game_server.uri, "https://", "wss://")
         }
+        NEXT_PUBLIC_SERVER_HTTP_URL = {
+          type  = "plain_text"
+          value = google_cloud_run_v2_service.game_server.uri
+        }
+        NEXT_PUBLIC_VOICE_ENABLED = {
+          type  = "plain_text"
+          value = "true"
+        }
       }
     }
 
@@ -63,6 +71,14 @@ resource "cloudflare_pages_project" "frontend" {
         NEXT_PUBLIC_WS_URL = {
           type  = "plain_text"
           value = replace(google_cloud_run_v2_service.game_server.uri, "https://", "wss://")
+        }
+        NEXT_PUBLIC_SERVER_HTTP_URL = {
+          type  = "plain_text"
+          value = google_cloud_run_v2_service.game_server.uri
+        }
+        NEXT_PUBLIC_VOICE_ENABLED = {
+          type  = "plain_text"
+          value = "true"
         }
       }
     }

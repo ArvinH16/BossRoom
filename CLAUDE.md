@@ -22,6 +22,7 @@ scripts/              health-check.mjs, generate-env.mjs
 - **`module: "nodenext"`** requires `.js` extensions in all relative imports on the server
 - **Tailwind v4** uses CSS-first config (`@import "tailwindcss"`), PostCSS plugin is `@tailwindcss/postcss`
 - **AI Gateway**: Vercel AI Gateway at `https://ai-gateway.vercel.sh/v1`. Single `AI_GATEWAY_API_KEY` env var. Provider API keys configured as BYOK in Vercel dashboard (not in code). Uses `@ai-sdk/openai` (`createOpenAI`) with model strings like `google/gemini-3-flash`, `anthropic/claude-sonnet-4-5`, `openai/gpt-4o`.
+- **Voice**: Deepgram for speech-to-text (`DEEPGRAM_API_KEY`), Inworld for text-to-speech (`INWORLD_API_KEY`, voice preset `INWORLD_VOICE_ID=Dominus`, model `INWORLD_TTS_MODEL_ID=inworld-tts-1.5-mini`)
 - **Frontend hosting**: Cloudflare Pages with static export (`output: 'export'` in next.config.js). No API routes allowed.
 - **Single source of truth for types**: `AgentStatus`, `AgentSkill`, `ClientMessage`, `ServerMessage` all live in `libs/shared-types/`. Frontend and server import from `@bossroom/shared-types`.
 - **Agent definitions**: All agent configs (system prompts, models, zones, positions, personalities) live in `libs/shared-utils/src/lib/agent-defs.ts`. Currently all agents use `google/gemini-3-flash`.
@@ -63,6 +64,10 @@ cd terraform && terraform apply
 - `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` — from Terraform service account
 - `AI_GATEWAY_API_KEY` — Vercel AI Gateway key
 - `ALLOWED_ORIGIN` — Cloudflare Pages URL for CORS
+- `COMPOSIO_API_KEY` — Composio agent tools
+- `DEEPGRAM_API_KEY` — Deepgram speech-to-text
+- `INWORLD_API_KEY`, `INWORLD_VOICE_ID`, `INWORLD_TTS_MODEL_ID` — Inworld TTS
+- `GOOGLE_AI_API_KEY` — Google AI API key
 
 ### Frontend (Cloudflare Pages)
 

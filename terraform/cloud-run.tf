@@ -56,6 +56,38 @@ resource "google_cloud_run_v2_service" "game_server" {
         name  = "LOG_LEVEL"
         value = "INFO"
       }
+
+      # Composio
+      env {
+        name  = "COMPOSIO_API_KEY"
+        value = var.composio_api_key
+      }
+
+      # Deepgram STT
+      env {
+        name  = "DEEPGRAM_API_KEY"
+        value = var.deepgram_api_key
+      }
+
+      # Inworld TTS
+      env {
+        name  = "INWORLD_API_KEY"
+        value = var.inworld_api_key
+      }
+      env {
+        name  = "INWORLD_VOICE_ID"
+        value = var.inworld_voice_id
+      }
+      env {
+        name  = "INWORLD_TTS_MODEL_ID"
+        value = var.inworld_tts_model_id
+      }
+
+      # Google AI
+      env {
+        name  = "GOOGLE_AI_API_KEY"
+        value = var.google_ai_api_key
+      }
     }
 
     volumes {
