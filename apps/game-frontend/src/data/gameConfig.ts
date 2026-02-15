@@ -21,6 +21,15 @@ export const INTERACTION = {
   proximityRadius: 3,
 } as const;
 
+export const SPATIAL_AUDIO = {
+  /** Distance at which volume starts to decrease. */
+  refDistance: 2,
+  /** Distance at which volume reaches zero + chat auto-closes. */
+  maxDistance: 6,
+  /** Rolloff factor for linear distance model (1 = full linear fade). */
+  rolloffFactor: 1,
+} as const;
+
 export const WORLD = {
   floorSize: 50,
   wallHeight: 3,

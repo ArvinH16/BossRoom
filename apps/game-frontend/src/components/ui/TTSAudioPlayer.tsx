@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import { useVoiceStore } from '@/stores/voiceStore';
+import { SPATIAL_AUDIO } from '@/data/gameConfig';
+import { getAudioContext, setActivePanner } from '@/lib/spatialAudio';
 
 export function TTSAudioPlayer() {
   const queue = useVoiceStore((s) => s.ttsQueue);
@@ -14,35 +16,42 @@ export function TTSAudioPlayer() {
     const item = queue[0];
     playingRef.current = true;
 
+    const ctx = getAudioContext();
     const byteChars = atob(item.audioBase64);
-    const byteArray = new Uint8Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) {
-      byteArray[i] = byteChars.charCodeAt(i);
-    }
-    const blob = new Blob([byteArray], { type: item.mimeType });
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
+    const bytes = new Uint8Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
 
-    audio.onended = () => {
-      URL.revokeObjectURL(url);
-      playingRef.current = false;
-      dequeue();
-    };
+    ctx.decodeAudioData(bytes.buffer.slice(0) as ArrayBuffer)
+      .then((audioBuffer) => {
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
 
-    audio.onerror = (e) => {
-      console.error('[TTS] Audio playback error:', e);
-      URL.revokeObjectURL(url);
-      playingRef.current = false;
-      dequeue();
-    };
+        const panner = ctx.createPanner();
+        panner.panningModel = 'HRTF';
+        panner.distanceModel = 'linear';
+        panner.refDistance = SPATIAL_AUDIO.refDistance;
+        panner.maxDistance = SPATIAL_AUDIO.maxDistance;
+        panner.rolloffFactor = SPATIAL_AUDIO.rolloffFactor;
 
-    audio.play().catch((err) => {
-      console.error('[TTS] Autoplay blocked or play failed:', err);
-      URL.revokeObjectURL(url);
-      playingRef.current = false;
-      dequeue();
-    });
+        source.connect(panner);
+        panner.connect(ctx.destination);
+        setActivePanner(panner, item.agentId);
+
+        source.onended = () => {
+          setActivePanner(null, null);
+          playingRef.current = false;
+          dequeue();
+        };
+
+        source.start();
+      })
+      .catch((err) => {
+        console.error('[TTS] decodeAudioData failed:', err);
+        setActivePanner(null, null);
+        playingRef.current = false;
+        dequeue();
+      });
   }, [queue, dequeue]);
 
-  return null; // No visual output
+  return null;
 }

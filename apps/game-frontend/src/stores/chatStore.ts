@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { gameSocket } from '@/lib/websocket';
 import { generateConversationId } from '@bossroom/shared-utils';
+import { useVoiceStore } from '@/stores/voiceStore';
 
 export type ChatMessage =
   | { role: 'user'; content: string }
@@ -32,6 +33,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   conversationIds: {},
 
   openChat: (agentId) => {
+    useVoiceStore.getState().clearTTSQueue();
     set({ activeAgent: agentId, chatPanelOpen: true });
     gameSocket.send({
       type: 'agent:interact',
@@ -40,6 +42,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   closeChat: () => {
+    useVoiceStore.getState().clearTTSQueue();
     const { activeAgent } = get();
     if (activeAgent) {
       // Clear streaming text for active agent before closing

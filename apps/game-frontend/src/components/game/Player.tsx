@@ -15,7 +15,7 @@ import { useVoiceStore } from '@/stores/voiceStore';
 import { useAgentBehaviorStore } from '@/stores/agentBehaviorStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useBroadcastPosition } from '@/hooks/useBroadcastPosition';
-import { INTERACTION } from '@/data/gameConfig';
+import { INTERACTION, SPATIAL_AUDIO } from '@/data/gameConfig';
 import { getAvatarModelUrl } from '@/data/avatars';
 
 const MOVE_SPEED = 5;
@@ -165,6 +165,20 @@ export function Player() {
       }
     }
     setNearestAgent(closest);
+
+    // Auto-close chat when player walks too far from the active agent
+    const activeAgent = useChatStore.getState().activeAgent;
+    if (activeAgent) {
+      const agent = agents.find((a) => a.id === activeAgent);
+      if (agent) {
+        const dx = pos.x - agent.position[0];
+        const dz = pos.z - agent.position[2];
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist > SPATIAL_AUDIO.maxDistance) {
+          useChatStore.getState().closeChat();
+        }
+      }
+    }
   });
 
   return (

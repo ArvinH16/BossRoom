@@ -9,6 +9,7 @@ import { Office } from './Office';
 import { Agent } from './Agent';
 import { Player } from './Player';
 import { CameraRig } from './CameraRig';
+import { SpatialAudioListener } from './SpatialAudioListener';
 import { RemotePlayer } from './RemotePlayer';
 import { useWorldStore } from '@/stores/worldStore';
 import { LIGHTING, POST_PROCESSING } from '@/data/gameConfig';
@@ -43,6 +44,7 @@ export function Scene() {
 
       <Sky sunPosition={[100, 60, 100]} turbidity={0.8} rayleigh={0.5} />
       <CameraRig />
+      <SpatialAudioListener />
 
       <fog
         attach="fog"
