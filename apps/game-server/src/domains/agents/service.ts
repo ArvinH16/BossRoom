@@ -104,13 +104,16 @@ export function createAgentService(deps: AgentServiceDeps) {
               const tc = toolCalls[i];
               const tr = toolResults[i];
               const failed = tr && typeof tr === 'object' && 'error' in tr;
+              const resultStr = tr != null
+                ? (typeof tr === 'string' ? tr : JSON.stringify(tr))
+                : undefined;
               playerService.send(ws, {
                 type: 'agent:toolExecution',
                 payload: {
                   agentId,
                   toolName: tc.toolName,
                   status: failed ? 'failed' : 'completed',
-                  result: failed ? String((tr as { error: unknown }).error) : undefined,
+                  result: resultStr,
                 },
               });
             }
