@@ -7,7 +7,7 @@ export type AgentModel = z.infer<typeof agentModelSchema>;
 export const agentZoneSchema = z.enum(['communications', 'project-ops', 'calendar', 'research', 'creative', 'command']);
 export type AgentZone = z.infer<typeof agentZoneSchema>;
 
-export const agentStatusSchema = z.enum(['idle', 'listening', 'thinking', 'working', 'error']);
+export const agentStatusSchema = z.enum(['idle', 'listening', 'thinking', 'working', 'error', 'done']);
 export type AgentStatus = z.infer<typeof agentStatusSchema>;
 
 export const agentSkillSchema = z.object({

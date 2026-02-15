@@ -12,7 +12,7 @@ import type { ConversationService } from '../conversations/service.js';
 import type { PlayerService } from '../players/service.js';
 import type { SkillService } from '../skills/service.js';
 import type { ScratchpadService } from '../scratchpad/service.js';
-import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools, createEmbedTools } from './skillTools.js';
+import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools, createEmbedTools, createFinishTaskTool } from './skillTools.js';
 
 interface AgentServiceDeps {
   agentRepo: AgentRepository;
@@ -151,6 +151,8 @@ No other text.`,
     });
 
     try {
+      let calledFinishTask = false;
+
       const model = getModel(targetAgent.model);
 
       // Build tools for the worker agent
@@ -180,7 +182,20 @@ No other text.`,
         agentName: targetAgent.name,
         broadcastFn: (msg) => playerService.send(ws, msg),
       });
-      const workerToolsFinal = { ...workerTools, ...workerScratchpadTools, ...workerEmbedTools };
+      const workerFinishTaskTools = createFinishTaskTool({
+        scratchpadService,
+        workspaceId: targetAgent.workspaceId,
+        agentId: targetAgent.agentId,
+        agentName: targetAgent.name,
+        agentColor: targetAgent.color,
+        broadcastFn: (msg) => playerService.send(ws, msg),
+        onFinished: () => {
+          calledFinishTask = true;
+          agentRepo.setStatus(targetAgent.agentId, 'done');
+          broadcastFn({ type: 'agent:statusChanged', payload: { agentId: targetAgent.agentId, status: 'done' } });
+        },
+      });
+      const workerToolsFinal = { ...workerTools, ...workerScratchpadTools, ...workerEmbedTools, ...workerFinishTaskTools };
 
       // Set to working
       agentRepo.setStatus(targetAgent.agentId, 'working');
@@ -213,12 +228,14 @@ No other text.`,
         payload: { agentId: targetAgent.agentId, role: 'assistant', content: fullResponse },
       });
 
-      // Reset status
-      agentRepo.setStatus(targetAgent.agentId, 'idle');
-      broadcastFn({
-        type: 'agent:statusChanged',
-        payload: { agentId: targetAgent.agentId, status: 'idle' },
-      });
+      // If finish_task was called, status is already 'done'. Otherwise idle.
+      if (!calledFinishTask) {
+        agentRepo.setStatus(targetAgent.agentId, 'idle');
+        broadcastFn({
+          type: 'agent:statusChanged',
+          payload: { agentId: targetAgent.agentId, status: 'idle' },
+        });
+      }
 
       return fullResponse;
     } catch (err) {
@@ -288,6 +305,7 @@ No other text.`,
     content: string,
     ws: WebSocket,
     broadcastFn: (msg: ServerMessage) => void,
+    isNudge = false,
   ) {
     const dynamicAgent = agentRepo.getDynamic(agentId);
     if (!dynamicAgent) {
@@ -301,6 +319,10 @@ No other text.`,
 
     try {
       const model = getModel(dynamicAgent.model);
+
+      // --- Tracking flags ---
+      let calledFinishTask = false;
+      let calledWriteScratchpad = false;
 
       // Build tools based on role
       const agentSkillToolSet = createAgentSkillTools({
@@ -322,6 +344,7 @@ No other text.`,
         agentColor: dynamicAgent.color,
         broadcastFn: (msg) => playerService.send(ws, msg),
         onEntryWritten: (author, text) => {
+          calledWriteScratchpad = true;
           routeScratchpadEntry(dynamicAgent.workspaceId, author, text, playerId, ws, broadcastFn);
         },
       });
@@ -334,6 +357,22 @@ No other text.`,
         broadcastFn: (msg) => playerService.send(ws, msg),
       });
       tools = { ...tools, ...embedTools };
+
+      // Finish task tool
+      const finishTaskTools = createFinishTaskTool({
+        scratchpadService,
+        workspaceId: dynamicAgent.workspaceId,
+        agentId,
+        agentName: dynamicAgent.name,
+        agentColor: dynamicAgent.color,
+        broadcastFn: (msg) => playerService.send(ws, msg),
+        onFinished: () => {
+          calledFinishTask = true;
+          agentRepo.setStatus(agentId, 'done');
+          broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'done' } });
+        },
+      });
+      tools = { ...tools, ...finishTaskTools };
 
       // Lead agents get delegate_task tool
       if (dynamicAgent.role === 'lead') {
@@ -364,6 +403,9 @@ No other text.`,
         onStepFinish: ({ toolCalls, toolResults }) => {
           for (let i = 0; i < toolCalls.length; i++) {
             const tc = toolCalls[i];
+            // Belt-and-suspenders: track tool calls via onStepFinish
+            if (tc.toolName === 'finish_task') calledFinishTask = true;
+            if (tc.toolName === 'write_scratchpad') calledWriteScratchpad = true;
             const tr = toolResults[i];
             const failed = tr && typeof tr === 'object' && 'error' in tr;
             const resultStr = tr != null
@@ -414,9 +456,24 @@ No other text.`,
         payload: { agentId, role: 'assistant', content: fullResponse },
       });
 
-      // Reset status
-      agentRepo.setStatus(agentId, 'idle');
-      broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
+      // --- POST-STREAM: Nudge check ---
+      if (calledFinishTask) {
+        // Status already 'done' from callback — nothing to do
+      } else if (!calledWriteScratchpad && !isNudge) {
+        // Agent stopped without ANY signal — nudge once
+        log.info(`[nudge] ${dynamicAgent.name} stopped without finish_task or write_scratchpad, nudging...`);
+        agentRepo.setStatus(agentId, 'idle');
+        broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
+        await handleDynamicAgentMessage(
+          playerId, agentId,
+          '[System] Please call finish_task with a brief summary of what you accomplished.',
+          ws, broadcastFn, true,
+        );
+        return;
+      } else {
+        agentRepo.setStatus(agentId, 'idle');
+        broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
+      }
 
     } catch (err) {
       log.error(`Dynamic Agent ${agentId} error:`, err);

@@ -44,6 +44,7 @@ export function compileSystemPrompt(
     <rule>Include all context the worker needs to produce a complete, user-facing response.</rule>
     <rule>After delegating, tell the user what you kicked off and who is handling what. Do NOT promise to summarize.</rule>
     <rule>Tell the user that agent cards have appeared at the top of their screen — they can click into them to see progress.</rule>
+    <rule>When you've delegated all necessary work, call finish_task to signal your coordination is complete.</rule>
   </communication_rules>
 </role>`);
   } else if (!options?.isLead) {
@@ -67,6 +68,7 @@ export function compileSystemPrompt(
   if (options?.hasWorkspace) {
     toolList.push('  <tool name="read_scratchpad">Read the shared team feed for teammate updates and user directives</tool>');
     toolList.push('  <tool name="write_scratchpad">Post a progress update to the shared team feed (visible to user and all agents)</tool>');
+    toolList.push('  <tool name="finish_task">Signal task completion with a summary of what you accomplished</tool>');
     toolList.push('  <tool name="show_embed">Show an embedded document, board, or artifact to the user in an iframe panel</tool>');
   }
   toolList.push('  <tool name="composio_*">OAuth-integrated tools (Gmail, Google Calendar, Google Tasks, Linear, etc.) — available per user</tool>');
@@ -91,6 +93,11 @@ export function compileSystemPrompt(
   if (options?.hasWorkspace) {
     parts.push(
 `<workspace_workflow priority="critical">
+  <completion priority="critical">
+    <rule>ALWAYS call finish_task when you complete your assigned task. This signals completion to the coordinator and the user.</rule>
+    <rule>Keep the summary concise (1-2 sentences). If you produced a deliverable (embedded doc, email sent, etc.), reference it in the summary so the user knows where to find your work.</rule>
+  </completion>
+
   <overview>You have two collaboration tools: embedded documents (for deliverables) and the scratchpad (for coordination). Documents are preferred for any substantial output.</overview>
 
   <documents>

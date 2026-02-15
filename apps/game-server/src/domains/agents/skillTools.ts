@@ -343,3 +343,59 @@ export function createEmbedTools(deps: EmbedToolsDeps): ToolSet {
 
   return { show_embed: showEmbed } as ToolSet;
 }
+
+// ----- Finish task tool -----
+
+const finishTaskParams = z.object({
+  summary: z.string().describe('Summary of what you accomplished. If you produced a deliverable (doc, embed, email), reference it here.'),
+});
+
+interface FinishTaskDeps {
+  scratchpadService: ScratchpadService;
+  workspaceId: string;
+  agentId: string;
+  agentName: string;
+  agentColor: string;
+  broadcastFn: (msg: ServerMessage) => void;
+  onFinished: () => void;
+}
+
+/**
+ * The finish_task tool — available to all dynamic agents in a workspace.
+ * Signals task completion, writes a summary to the scratchpad, and notifies the coordinator.
+ */
+export function createFinishTaskTool(deps: FinishTaskDeps): ToolSet {
+  const { scratchpadService, workspaceId, agentId, agentName, agentColor, broadcastFn, onFinished } = deps;
+
+  const finishTask = tool({
+    description: 'Signal that you have completed your assigned task. Call this when your work is done.',
+    inputSchema: finishTaskParams,
+    execute: async (args) => {
+      const entry = scratchpadService.write(workspaceId, {
+        authorType: 'agent',
+        authorId: agentId,
+        authorName: agentName,
+        authorColor: agentColor,
+        content: `✅ Done: ${args.summary}`,
+      });
+      broadcastFn({
+        type: 'workspace:scratchpadEntry',
+        payload: {
+          workspaceId,
+          entry: {
+            id: entry.id,
+            authorType: entry.authorType,
+            authorName: entry.authorName,
+            authorColor: entry.authorColor,
+            content: entry.content,
+            timestamp: entry.timestamp,
+          },
+        },
+      });
+      onFinished();
+      return `Task completed. Summary posted to scratchpad.`;
+    },
+  });
+
+  return { finish_task: finishTask } as ToolSet;
+}

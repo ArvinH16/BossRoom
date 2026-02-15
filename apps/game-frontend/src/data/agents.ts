@@ -20,6 +20,7 @@ export const statusColors: Record<AgentStatus, string> = {
   thinking: '#D9D94A',
   working: '#FF8C00',
   error: '#D94A4A',
+  done: '#14B8A6',
 };
 
 export const statusLabels: Record<AgentStatus, string> = {
@@ -28,6 +29,7 @@ export const statusLabels: Record<AgentStatus, string> = {
   thinking: 'Thinking...',
   working: 'Working...',
   error: 'Error!',
+  done: 'Done',
 };
 
 export const zoneColors: Record<string, string> = {

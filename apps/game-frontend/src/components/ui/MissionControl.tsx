@@ -29,11 +29,17 @@ function AgentBadge({
       className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1
                  border border-white/10 hover:border-white/25 transition-all cursor-pointer"
     >
-      {/* Status dot — color based on processing state, pulses when active */}
-      <div
-        className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'animate-pulse' : ''}`}
-        style={{ backgroundColor: statusColor }}
-      />
+      {/* Status indicator — checkmark when done, dot otherwise */}
+      {status === 'done' ? (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="#14B8A6" className="w-3 h-3 shrink-0">
+          <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
+        </svg>
+      ) : (
+        <div
+          className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'animate-pulse' : ''}`}
+          style={{ backgroundColor: statusColor }}
+        />
+      )}
       {/* Agent name */}
       <span className="text-xs text-white/80 whitespace-nowrap">
         {name}
