@@ -10,6 +10,7 @@ const SEND_INTERVAL_MS = 100; // 10Hz
 export function useBroadcastPosition(
   rigidBodyRef: React.RefObject<RapierRigidBody | null>,
   animation: string,
+  facingAngleRef?: React.RefObject<number>,
 ) {
   const lastSendTime = useRef(0);
 
@@ -23,9 +24,7 @@ export function useBroadcastPosition(
     const pos = rb.translation();
     const position: [number, number, number] = [pos.x, pos.y, pos.z];
 
-    // Derive rotation from quaternion Y
-    const quat = rb.rotation();
-    const rotation = Math.atan2(2 * (quat.w * quat.y), 1 - 2 * (quat.y * quat.y));
+    const rotation = facingAngleRef?.current ?? 0;
 
     gameSocket.send({
       type: 'player:move',

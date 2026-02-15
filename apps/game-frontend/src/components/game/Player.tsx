@@ -6,6 +6,7 @@
 import { Suspense, useRef, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { CapsuleCollider, RigidBody } from '@react-three/rapier';
+import type { Group } from 'three';
 import { CharacterModel } from './CharacterModel';
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -17,9 +18,12 @@ import { getAvatarModelUrl } from '@/data/avatars';
 
 const MOVE_SPEED = 5;
 const SPAWN: [number, number, number] = [0, 2, 6];
+const ROTATION_LERP = 0.15;
 
 export function Player() {
   const rigidBodyRef = useRef<any>(null);
+  const modelGroupRef = useRef<Group>(null);
+  const facingAngle = useRef(Math.PI); // default facing camera (away from camera)
   const { camera } = useThree();
   const keys = useRef<Record<string, boolean>>({});
   const [animation, setAnimation] = useState('idle');
@@ -32,7 +36,7 @@ export function Player() {
   const setPlayerPosition = useAgentBehaviorStore((s) => s.setPlayerPosition);
   const avatarId = useSettingsStore((s) => s.avatarId);
 
-  useBroadcastPosition(rigidBodyRef, animation);
+  useBroadcastPosition(rigidBodyRef, animation, facingAngle);
 
   // Keyboard input
   useEffect(() => {
@@ -73,9 +77,22 @@ export function Player() {
       const impulse = { x: moveX * MOVE_SPEED, y: 0, z: moveZ * MOVE_SPEED };
       rb.setLinvel(impulse, true);
       setAnimation('walk');
+
+      // Face movement direction
+      const targetAngle = Math.atan2(moveX, moveZ);
+      // Smooth rotation with angle wrapping
+      let delta = targetAngle - facingAngle.current;
+      while (delta > Math.PI) delta -= 2 * Math.PI;
+      while (delta < -Math.PI) delta += 2 * Math.PI;
+      facingAngle.current += delta * ROTATION_LERP;
     } else {
       rb.setLinvel({ x: 0, y: rb.linvel().y, z: 0 }, true);
       setAnimation('idle');
+    }
+
+    // Apply visual rotation to model group
+    if (modelGroupRef.current) {
+      modelGroupRef.current.rotation.y = facingAngle.current;
     }
 
     // Camera follow
@@ -110,7 +127,7 @@ export function Player() {
       ccd
     >
       <CapsuleCollider args={[0.5, 0.3]} />
-      <group position={[0, -0.8, 0]} rotation={[0, Math.PI, 0]}>
+      <group ref={modelGroupRef} position={[0, -0.8, 0]} rotation={[0, Math.PI, 0]}>
         <Suspense fallback={null}>
           <CharacterModel url={getAvatarModelUrl(avatarId)} animation={animation} />
         </Suspense>
