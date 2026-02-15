@@ -141,22 +141,18 @@ export function Player() {
         openChat('receptionist');
       }
 
-      // Ctrl+1-9: switch workspace tabs
-      if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
+      // Ctrl+1-9 or Cmd+1-9: switch workspace tabs
+      if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
         e.preventDefault();
         const index = parseInt(e.key) - 1;
         const tabs = useChatStore.getState().workspaceTabs;
         if (index < tabs.length) {
           useChatStore.getState().switchWorkspace(tabs[index].id);
-          if (!useChatStore.getState().chatPanelOpen) {
-            openChat('receptionist');
-          }
+          // Just open the panel — workspace:snapshot will set the active agent
+          useChatStore.setState({ chatPanelOpen: true });
         } else if (index === tabs.length) {
-          // Ctrl+N where N = tabs.length+1 = new conversation tab
-          useChatStore.getState().switchWorkspace(null);
-          if (!useChatStore.getState().chatPanelOpen) {
-            openChat('receptionist');
-          }
+          useChatStore.getState().newConversation();
+          useChatStore.setState({ chatPanelOpen: true, activeAgent: 'receptionist' });
         }
       }
     }

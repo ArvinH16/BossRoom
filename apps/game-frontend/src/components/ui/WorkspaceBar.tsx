@@ -19,7 +19,6 @@ export function WorkspaceBar() {
   const switchWorkspace = useChatStore((s) => s.switchWorkspace);
   const newConversation = useChatStore((s) => s.newConversation);
   const chatPanelOpen = useChatStore((s) => s.chatPanelOpen);
-  const openChat = useChatStore((s) => s.openChat);
   const mod = useModKey();
 
   // Nothing to show if no workspaces exist
@@ -31,11 +30,12 @@ export function WorkspaceBar() {
   function handleTabClick(workspaceId: string | null) {
     if (workspaceId === null) {
       newConversation();
+      useChatStore.setState({ chatPanelOpen: true, activeAgent: 'receptionist' });
     } else {
       switchWorkspace(workspaceId);
+      // Just open the panel — workspace:snapshot will set the active agent
+      useChatStore.setState({ chatPanelOpen: true });
     }
-    // Open the receptionist chat panel so the user sees the workspace
-    openChat('receptionist');
   }
 
   function truncate(text: string, maxLen = 18): string {
