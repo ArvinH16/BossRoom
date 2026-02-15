@@ -57,7 +57,8 @@ interface GameState {
   completeOnboarding: () => void;
 
   // WebSocket init
-  initWebSocket: (username: string) => void;
+  initWebSocket: (username: string, token: string, tokenRefresher: () => Promise<string>) => void;
+  reset: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -172,7 +173,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ onboardingComplete: true });
   },
 
-  initWebSocket: (username) => {
+  initWebSocket: (username, token, tokenRefresher) => {
     if (get().connected || gameSocket.connected) return;
 
     gameSocket.onMessage((msg: ServerMessage) => {
@@ -240,6 +241,21 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     });
 
-    gameSocket.connect(username);
+    gameSocket.setTokenRefresher(tokenRefresher);
+    gameSocket.connect(username, token);
   },
+
+  reset: () =>
+    set({
+      connected: false,
+      playerId: null,
+      agents: defaultAgents,
+      nearestAgent: null,
+      activeAgent: null,
+      chatPanelOpen: false,
+      chatMessages: {},
+      streamingText: {},
+      conversationIds: {},
+      toolExecutions: [],
+    }),
 }));

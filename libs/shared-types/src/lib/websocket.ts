@@ -17,11 +17,14 @@ export type ServerMessage =
   | { type: 'agent:statusChanged'; payload: { agentId: string; status: AgentStatus } }
   | { type: 'agent:chatMessage'; payload: { agentId: string; role: 'assistant' | 'user'; content: string } }
   | { type: 'agent:chatStream'; payload: { agentId: string; delta: string } }
-  | { type: 'agent:toolExecution'; payload: { agentId: string; toolName: string; status: 'started' | 'completed' | 'failed'; result?: string } };
+  | { type: 'agent:toolExecution'; payload: { agentId: string; toolName: string; status: 'started' | 'completed' | 'failed'; result?: string } }
+  | { type: 'auth:error'; payload: { message: string } };
 
 export interface PlayerState {
   id: string;
   username: string;
+  email: string;
+  photoURL: string | null;
   position: [number, number, number];
   rotation: number;
   animation: string;

@@ -2,11 +2,22 @@
 'use client';
 
 import { useGameStore } from '@/stores/gameStore';
+import { useAuthStore } from '@/stores/authStore';
+import { gameSocket } from '@/lib/websocket';
 import { statusColors } from '@/data/agents';
 
 export function HUD() {
   const connected = useGameStore((s) => s.connected);
   const agents = useGameStore((s) => s.agents);
+  const user = useAuthStore((s) => s.user);
+  const reset = useGameStore((s) => s.reset);
+  const authSignOut = useAuthStore((s) => s.signOut);
+
+  const handleSignOut = () => {
+    gameSocket.disconnect();
+    reset();
+    authSignOut();
+  };
 
   return (
     <div className="fixed top-0 left-0 right-0 p-4 flex justify-between items-start pointer-events-none z-40">
@@ -25,6 +36,26 @@ export function HUD() {
             {connected ? 'Connected' : 'Connecting...'}
           </span>
         </div>
+        {user && (
+          <div className="flex items-center gap-2 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-1.5">
+            {user.photoURL && (
+              <img
+                src={user.photoURL}
+                alt="User avatar"
+                className="w-6 h-6 rounded-full"
+              />
+            )}
+            <span className="text-xs text-white/60">
+              {user.displayName ?? user.email}
+            </span>
+            <button
+              onClick={handleSignOut}
+              className="text-[10px] text-white/40 hover:text-white pointer-events-auto cursor-pointer"
+            >
+              Sign out
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Right: Agent roster */}

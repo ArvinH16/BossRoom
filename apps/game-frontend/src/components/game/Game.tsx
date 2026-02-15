@@ -12,6 +12,7 @@ import { HUD } from '../ui/HUD';
 import { ToolExecutionToasts } from '../ui/ToolExecutionToasts';
 import { OnboardingOverlay } from '../ui/OnboardingOverlay';
 import { useGameStore } from '@/stores/gameStore';
+import { useAuthStore } from '@/stores/authStore';
 import { CAMERA, WORLD } from '@/data/gameConfig';
 
 const keyboardMap = [
@@ -23,12 +24,30 @@ const keyboardMap = [
   { name: 'run', keys: ['ShiftLeft'] },
 ];
 
-export function Game() {
+interface GameProps {
+  user: { uid: string; displayName: string | null; email: string };
+}
+
+export function Game({ user }: GameProps) {
   const initWebSocket = useGameStore((s) => s.initWebSocket);
 
   useEffect(() => {
-    initWebSocket('Player');
-  }, [initWebSocket]);
+    let cancelled = false;
+    async function init() {
+      const token = await useAuthStore.getState().getToken();
+      if (!cancelled) {
+        initWebSocket(
+          user.displayName ?? user.email,
+          token,
+          useAuthStore.getState().getToken
+        );
+      }
+    }
+    init();
+    return () => {
+      cancelled = true;
+    };
+  }, [initWebSocket, user]);
 
   return (
     <div className="w-screen h-screen relative">

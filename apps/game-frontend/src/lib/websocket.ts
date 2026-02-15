@@ -13,7 +13,9 @@ class GameWebSocket {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private username = 'Player';
+  private username = '';
+  private token = '';
+  private tokenRefresher: (() => Promise<string>) | null = null;
 
   constructor() {
     this.url =
@@ -26,14 +28,36 @@ class GameWebSocket {
     this.handler = handler;
   }
 
-  connect(username: string) {
+  setTokenRefresher(fn: () => Promise<string>) {
+    this.tokenRefresher = fn;
+  }
+
+  connect(username: string, token: string) {
     this.username = username;
+    this.token = token;
     this.doConnect();
   }
 
-  private doConnect() {
+  private async doConnect() {
     if (this.ws?.readyState === WebSocket.OPEN) return;
 
+    // If reconnecting and tokenRefresher exists, refresh the token first
+    if (this.reconnectAttempts > 0 && this.tokenRefresher) {
+      try {
+        this.token = await this.tokenRefresher();
+      } catch {
+        this.handler?.({
+          type: 'player:left',
+          payload: { playerId: '__self__' },
+        });
+        return;
+      }
+    }
+
+    this.createConnection();
+  }
+
+  private createConnection() {
     try {
       this.ws = new WebSocket(this.url);
     } catch {
@@ -45,7 +69,7 @@ class GameWebSocket {
       this.reconnectAttempts = 0;
       this.send({
         type: 'player:join',
-        payload: { username: this.username, token: '' },
+        payload: { username: this.username, token: this.token },
       });
     };
 

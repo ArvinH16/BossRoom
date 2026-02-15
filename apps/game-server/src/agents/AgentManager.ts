@@ -107,7 +107,7 @@ export class AgentManager {
     return result;
   }
 
-  startInteraction(playerId: string, agentId: string, ws: WebSocket) {
+  startInteraction(playerId: string, agentId: string, ws: WebSocket, displayName: string | null) {
     const agent = this.agents.get(agentId);
     if (!agent) return;
 
@@ -138,7 +138,7 @@ export class AgentManager {
       payload: {
         agentId,
         role: 'assistant',
-        content: this.getGreeting(agent),
+        content: this.getGreeting(agent, displayName),
       },
     });
   }
@@ -288,16 +288,17 @@ export class AgentManager {
     }
   }
 
-  private getGreeting(agent: AgentDef): string {
+  private getGreeting(agent: AgentDef, displayName: string | null): string {
+    const name = displayName ?? 'there';
     switch (agent.id) {
       case 'mailbot':
-        return "Hey there! I'm Mailbot, your communications sidekick. Need to send an email, check your inbox, or draft something? I'm on it!";
+        return `Hey ${name}! I'm Mailbot, your communications sidekick. Need to send an email, check your inbox, or draft something? I'm on it!`;
       case 'taskmaster':
-        return "Attention! Taskmaster reporting for duty. Give me your mission briefing — tasks to create, issues to track, deadlines to crush.";
+        return `Attention, ${name}! Taskmaster reporting for duty. Give me your mission briefing — tasks to create, issues to track, deadlines to crush.`;
       case 'clockwork':
-        return "Tick tock! Clockwork here, at your service. Every second counts — let's make sure your schedule is perfectly synchronized!";
+        return `Tick tock, ${name}! Clockwork here, at your service. Every second counts — let's make sure your schedule is perfectly synchronized!`;
       default:
-        return `Hi! I'm ${agent.name}. How can I help you today?`;
+        return `Hi ${name}! I'm ${agent.name}. How can I help you today?`;
     }
   }
 }

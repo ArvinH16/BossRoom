@@ -20,6 +20,9 @@ const required = [
   'DATABASE_URL',
   'CF_AI_GATEWAY_ACCOUNT_ID',
   'CF_AI_GATEWAY_ID',
+  'FIREBASE_PROJECT_ID',
+  'FIREBASE_CLIENT_EMAIL',
+  'FIREBASE_PRIVATE_KEY',
 ];
 const optional = [
   'OPENAI_API_KEY',
@@ -117,12 +120,47 @@ if (accountId && gatewayId) {
   fail('AI Gateway', 'Missing CF_AI_GATEWAY_ACCOUNT_ID or CF_AI_GATEWAY_ID');
 }
 
-// --- 4. Firebase config ---
+// --- 4. Firebase ---
 console.info('\n[FIREBASE]');
+
+// 4a. Client config (env vars)
 if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-  ok('Firebase Config', `Project: ${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}`);
+  ok('Firebase Client Config', `Project: ${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}`);
 } else {
-  fail('Firebase Config', 'NEXT_PUBLIC_FIREBASE_API_KEY or PROJECT_ID not set');
+  fail('Firebase Client Config', 'NEXT_PUBLIC_FIREBASE_API_KEY or PROJECT_ID not set');
+}
+
+// 4b. Admin SDK (actually initialize and list users to verify credentials)
+const fbProjectId = process.env.FIREBASE_PROJECT_ID;
+const fbClientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+const fbPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+if (fbProjectId && fbClientEmail && fbPrivateKey) {
+  try {
+    const { initializeApp, cert } = await import('firebase-admin/app');
+    const { getAuth } = await import('firebase-admin/auth');
+
+    initializeApp({
+      credential: cert({
+        projectId: fbProjectId,
+        clientEmail: fbClientEmail,
+        privateKey: fbPrivateKey.replace(/\\n/g, '\n'),
+      }),
+    });
+
+    // listUsers with maxResults=1 is the cheapest call that proves credentials work
+    const listResult = await getAuth().listUsers(1);
+    ok('Firebase Admin SDK', `Initialized (${listResult.users.length} user(s) found)`);
+  } catch (err) {
+    fail('Firebase Admin SDK', err.message);
+  }
+} else {
+  const missing = [
+    !fbProjectId && 'FIREBASE_PROJECT_ID',
+    !fbClientEmail && 'FIREBASE_CLIENT_EMAIL',
+    !fbPrivateKey && 'FIREBASE_PRIVATE_KEY',
+  ].filter(Boolean).join(', ');
+  fail('Firebase Admin SDK', `Missing: ${missing}`);
 }
 
 // --- Summary ---
