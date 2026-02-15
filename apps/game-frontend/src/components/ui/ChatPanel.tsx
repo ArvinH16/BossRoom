@@ -300,7 +300,7 @@ export function ChatPanel() {
                 </>
               ) : null;
             })()}
-            {messages.map((msg, i) =>
+            {messages.some((m) => m.role === 'user') && messages.map((msg, i) =>
               msg.role === 'tool' ? (
                 <ToolChip key={i} toolName={msg.toolName} status={msg.status} />
               ) : (
