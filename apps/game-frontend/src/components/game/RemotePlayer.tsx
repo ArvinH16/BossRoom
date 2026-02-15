@@ -38,9 +38,11 @@ export function RemotePlayer({ player }: RemotePlayerProps) {
 
   return (
     <group ref={groupRef} position={player.position}>
-      <Suspense fallback={null}>
-        <CharacterModel url={getAvatarModelUrl(player.avatarId)} animation={player.animation} />
-      </Suspense>
+      <group position={[0, -0.8, 0]}>
+        <Suspense fallback={null}>
+          <CharacterModel url={getAvatarModelUrl(player.avatarId)} animation={player.animation} />
+        </Suspense>
+      </group>
       <Billboard position={[0, 2.2, 0]}>
         <Text
           fontSize={0.25}
