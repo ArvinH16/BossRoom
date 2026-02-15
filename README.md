@@ -22,6 +22,8 @@ Infrastructure is already set up. You just need:
 
 That's it. Frontend runs on `http://localhost:3000`, server on `ws://localhost:8080`.
 
+You'll see a **Sign in with Google** screen — sign in and you'll enter the 3D world.
+
 ## NPM Scripts
 
 | Script | Description |
@@ -47,7 +49,7 @@ BossRoom/
 │   └── game-server/       # Node.js + WebSocket + Drizzle ORM
 ├── libs/
 │   └── shared-types/      # @bossroom/shared-types (shared TS types)
-├── terraform/             # GCP Cloud Run, Cloud SQL, Firebase, Vercel
+├── terraform/             # GCP Cloud Run, Cloud SQL, Firebase Auth, Vercel
 └── scripts/
     ├── health-check.mjs   # Infrastructure health check
     └── generate-env.mjs   # Terraform outputs → .env files
@@ -61,11 +63,26 @@ BossRoom/
 - **Auth:** Firebase Authentication (email + Google Sign-In)
 - **Infra:** GCP Cloud Run, Cloud SQL, Vercel, Terraform
 
+## Authentication
+
+Firebase Auth with Google Sign-In gates the entire app. The flow:
+
+1. User lands on app → sees "Sign in with Google" button
+2. Google OAuth popup → Firebase creates/retrieves user
+3. App gets Firebase ID token → opens WebSocket with token
+4. Game server verifies token via Admin SDK → upserts user in DB → user enters 3D world
+
+**OAuth consent screen is in testing mode** — only approved test users can sign in. To add testers: GCP Console → APIs & Services → OAuth consent screen → Test users.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env` and fill in values. See the example file for details on where to get each credential.
 
 **For teammates:** You don't need to set these up yourself — get the `.env` file from the person who ran Terraform.
+
+Key env vars for auth:
+- `NEXT_PUBLIC_FIREBASE_*` — Client SDK config (API key, auth domain, project ID, app ID)
+- `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` — Admin SDK credentials (server-side token verification)
 
 ## Database
 

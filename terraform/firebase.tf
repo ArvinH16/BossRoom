@@ -9,6 +9,13 @@ resource "google_identity_platform_config" "default" {
   provider = google-beta
   project  = var.project_id
 
+  authorized_domains = [
+    "localhost",
+    "${var.project_id}.firebaseapp.com",
+    "${var.project_id}.web.app",
+    "bossroom.vercel.app",
+  ]
+
   sign_in {
     allow_duplicate_emails = false
 
@@ -25,6 +32,7 @@ resource "google_identity_platform_default_supported_idp_config" "google" {
   provider      = google-beta
   project       = var.project_id
   idp_id        = "google.com"
+  enabled       = true
   client_id     = var.google_oauth_client_id
   client_secret = var.google_oauth_client_secret
 

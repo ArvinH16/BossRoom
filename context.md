@@ -6,7 +6,7 @@ Date: February 14, 2026
 
 ## Implementation Status (Updated Feb 14, 2026)
 
-### Completed: NX Monorepo + Terraform Infrastructure
+### ~75% MVP Complete — Foundation + 3D World + Agent Interaction + Auth
 
 **All builds passing** — `npx nx run-many -t build` succeeds for all 3 projects.
 
@@ -20,6 +20,22 @@ Date: February 14, 2026
 - [x] Terraform — Cloud Run (WebSocket-ready, http1, 3600s timeout), Cloud SQL (Postgres 15), Firebase Auth (Google Sign-In), Vercel project + env vars
 - [x] Scripts — `generate-env.mjs` reads terraform outputs → writes .env.production files
 - [x] Cross-platform — All npm scripts use `npx nx`, no bash dependencies
+- [x] 3D office world — R3F + Rapier physics, 3 zones (comms, ops, calendar) with color plates, procedural walls, 13 Kenney furniture GLBs (desks, chairs, monitors, etc.)
+- [x] Third-person player — ecctrl character controller (WASD + camera orbit), Kenney Minifig GLB with animations (idle, walk, sprint, jump)
+- [x] 3 agent characters — Mailbot (blue/GPT-4o), Taskmaster (red/Claude), Clockwork (green/Gemini) with unique GLB models + color tints
+- [x] Agent interaction — Proximity detection, "Press E" overlay, chat panel slide-in with streaming text + suggested prompts
+- [x] Agent visual states — 5 statuses (idle/listening/thinking/working/error) with sparkle particles + status orbs
+- [x] GTA-style onboarding — 5-step tutorial (welcome → discovery → delegation → execution → exploration) with auto-progression
+- [x] HUD — Top-left logo + connection status indicator; top-right agent roster with status dots
+- [x] Tool execution toasts — Floating notifications showing agent tool calls (started/completed/failed)
+- [x] Zustand state management — Connection state, agents, chat messages, streaming, tool execution, onboarding
+- [x] WebSocket client — Singleton with reconnection logic, typed message handling
+- [x] ESLint — Configured across all apps, zero warnings
+- [x] Visual polish — Bloom + Vignette post-processing, ambient/directional/point lighting, fog, infinite grid floor
+- [x] Firebase Auth — Full end-to-end: Google Sign-In on frontend (LoginPage gate), Firebase Admin SDK on server, WebSocket token verification on `player:join`, user upsert in DB, personalized agent greetings, sign-out with state cleanup
+- [x] Auth infrastructure — Terraform provisions Firebase service account + credentials, Identity Platform config with authorized domains, Google IDP
+- [x] Users table — Drizzle schema with Firebase UID (text PK), email, displayName, photoURL, createdAt, lastLoginAt; FK constraints on conversations and taskHistory
+- [x] Health check — Validates DB, AI Gateway, and Firebase Admin SDK initialization with live `listUsers` call
 
 #### Quick Start
 ```bash
@@ -30,22 +46,25 @@ npx nx serve game-server     # WebSocket server on :8080
 ```
 
 #### What's NOT Built Yet
-- [ ] Three.js 3D world + character navigation
-- [ ] Agent interaction UI (click-to-chat panel)
-- [ ] LLM ↔ Composio agent orchestrator
-- [ ] Firebase Auth frontend flow
-- [ ] GTA-style onboarding
-- [ ] Agent visual state animations
-- [ ] Multi-agent handoff logic
-- [ ] Actual agent skills seeded in DB
+- [ ] LLM ↔ Composio agent orchestrator — agent `composioTools` field defined but no actual Composio SDK calls
+- [x] Firebase Auth frontend flow — Google Sign-In, LoginPage gate, WebSocket token auth, user upsert
+- [ ] Multi-agent handoff logic — agents don't coordinate or walk to each other
+- [ ] Agent skills from DB — agents are hardcoded in AgentManager.ts, not pulled from DB
+- [ ] Real tool execution — status messages sent but no actual email/calendar/Linear operations
+- [ ] Conversation persistence — chats stored in-memory only, lost on server restart
+- [ ] Agent collaboration animations — no walk-to-each-other or brainstorming visuals
+- [ ] Agent stuck/passing out state — error status exists but no overheat/recovery flow
+- [ ] Task progress board in 3D — not rendered in office
+- [ ] Celebration microinteractions — no completion confetti/dance
+- [ ] Voice interaction (stretch) — phone booth concept not implemented
 
 #### Architecture (Implemented)
 ```
-apps/game-frontend/     Next.js 16 + Tailwind v4
+apps/game-frontend/     Next.js 16 + Tailwind v4 + R3F + ecctrl + Zustand
 apps/game-server/       Node.js + ws + Drizzle ORM + AI Gateway
 libs/shared-types/      @bossroom/shared-types (WS protocol + Agent types)
 terraform/              Cloud Run + Cloud SQL + Firebase + Vercel
-scripts/                generate-env.mjs
+scripts/                generate-env.mjs, health-check.mjs
 ```
 
 ---
