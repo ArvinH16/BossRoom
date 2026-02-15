@@ -20,8 +20,9 @@ export interface RegisteredDynamicAgent {
   status: AgentStatus;
   position: [number, number, number];
   skills: Skill[];
-  teamMembers?: string[];    // names of other agents (for lead)
+  teamMembers: string[];     // names of other agents (for lead and workers)
   initialTask?: string;
+  chatHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
 export function createAgentRepository() {
@@ -83,7 +84,7 @@ export function createAgentRepository() {
         skills,
         {
           isLead: agent.role === 'lead',
-          teamMembers: agent.role === 'lead' ? teamMembers : undefined,
+          teamMembers,
           hasWorkspace: true,
         },
       );
@@ -101,8 +102,9 @@ export function createAgentRepository() {
         status: 'idle',
         position: agent.position,
         skills,
-        teamMembers: agent.role === 'lead' ? teamMembers : undefined,
+        teamMembers,
         initialTask: agent.initialTask,
+        chatHistory: [],
       };
 
       dynamicAgents.set(agent.agentId, registered);
@@ -132,6 +134,26 @@ export function createAgentRepository() {
     /** Clear all dynamic agents (workspace reset). */
     clearDynamic(): void {
       dynamicAgents.clear();
+    },
+
+    /** Get all dynamic agents for a specific workspace. */
+    getByWorkspace(workspaceId: string): RegisteredDynamicAgent[] {
+      return [...dynamicAgents.values()].filter(a => a.workspaceId === workspaceId);
+    },
+
+    /** Append a chat message to an agent's history (keeps last 50). */
+    appendChatHistory(agentId: string, role: 'user' | 'assistant', content: string): void {
+      const agent = dynamicAgents.get(agentId);
+      if (!agent) return;
+      agent.chatHistory.push({ role, content });
+      if (agent.chatHistory.length > 50) agent.chatHistory.shift();
+    },
+
+    /** Get the last N messages from an agent's chat history. */
+    getChatHistory(agentId: string, lastN = 5): Array<{ role: 'user' | 'assistant'; content: string }> {
+      const agent = dynamicAgents.get(agentId);
+      if (!agent) return [];
+      return agent.chatHistory.slice(-lastN);
     },
   };
 }

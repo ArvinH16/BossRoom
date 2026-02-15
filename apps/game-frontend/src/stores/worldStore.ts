@@ -30,6 +30,8 @@ interface WorldState {
   setNearestTarget: (target: NearestTarget | null) => void;
   setPlayerTalking: (id: string, talking: boolean) => void;
   updateAgentStatus: (agentId: string, status: AgentStatus) => void;
+  addAgents: (newAgents: AgentData[]) => void;
+  removeAgents: (ids: string[]) => void;
   reset: () => void;
 
   // Internal (called by message handler)
@@ -74,6 +76,18 @@ export const useWorldStore = create<WorldState>((set) => ({
         a.id === agentId ? { ...a, status } : a,
       ),
     })),
+
+  addAgents: (newAgents) =>
+    set((state) => ({
+      agents: [...state.agents, ...newAgents],
+    })),
+
+  removeAgents: (ids) => {
+    const idsToRemove = new Set(ids);
+    set((state) => ({
+      agents: state.agents.filter((a) => !idsToRemove.has(a.id)),
+    }));
+  },
 
   reset: () =>
     set({

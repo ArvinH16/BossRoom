@@ -50,12 +50,26 @@ export function EmbedPanel() {
             </button>
           ))}
         </div>
-        <button
-          onClick={closePanel}
-          className="text-white/50 hover:text-white text-xl leading-none p-3 shrink-0"
-        >
-          &times;
-        </button>
+        <div className="flex items-center gap-1 shrink-0 pr-2">
+          {/* Minimize — back to 3D screen */}
+          <button
+            onClick={closePanel}
+            className="text-white/50 hover:text-white p-1.5 rounded hover:bg-white/10 transition-colors"
+            title="Minimize to 3D screen"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M4 12h8M2 8l6 4 6-4" />
+            </svg>
+          </button>
+          {/* Close — remove all */}
+          <button
+            onClick={() => useEmbedStore.getState().clearAll()}
+            className="text-white/50 hover:text-white text-lg leading-none p-1.5 rounded hover:bg-white/10 transition-colors"
+            title="Close all"
+          >
+            &times;
+          </button>
+        </div>
       </div>
 
       {/* Iframe body */}

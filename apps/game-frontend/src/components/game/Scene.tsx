@@ -14,6 +14,7 @@ import { CameraRig } from './CameraRig';
 import { SpatialAudioListener } from './SpatialAudioListener';
 import { MissionControlSky } from './MissionControlSky';
 import { RemotePlayer } from './RemotePlayer';
+import { EmbedScreen } from './EmbedScreen';
 import { useWorldStore } from '@/stores/worldStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useBuildSequence } from '@/hooks/useBuildSequence';
@@ -105,6 +106,9 @@ export function Scene() {
           <Player />
         </Suspense>
       </Physics>
+
+      {/* 3D embed screen — outside Physics, purely visual */}
+      <EmbedScreen />
 
       <EffectComposer>
         <Bloom

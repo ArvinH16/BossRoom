@@ -35,13 +35,14 @@ export const useEmbedStore = create<EmbedState>((set, get) => ({
     // Deduplicate by URL: if same URL exists, just focus that tab
     const existing = state.embeds.find((e) => e.url === embed.url);
     if (existing) {
-      set({ activeEmbedId: existing.id, panelOpen: true });
+      set({ activeEmbedId: existing.id });
       return;
     }
+    // Don't auto-open sidebar — the 3D screen shows the embed first.
+    // User expands to sidebar manually.
     set({
       embeds: [...state.embeds, embed],
       activeEmbedId: embed.id,
-      panelOpen: true,
     });
   },
 

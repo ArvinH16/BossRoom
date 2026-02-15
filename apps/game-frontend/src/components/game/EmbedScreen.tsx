@@ -1,0 +1,110 @@
+'use client';
+
+import { useRef } from 'react';
+import { Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import type { Group } from 'three';
+import { useEmbedStore } from '@/stores/embedStore';
+
+/** 3D floating screen near the receptionist that shows embedded docs. */
+export function EmbedScreen() {
+  const embeds = useEmbedStore((s) => s.embeds);
+  const activeEmbedId = useEmbedStore((s) => s.activeEmbedId);
+  const panelOpen = useEmbedStore((s) => s.panelOpen);
+  const openPanel = useEmbedStore((s) => s.openPanel);
+  const setActiveEmbed = useEmbedStore((s) => s.setActiveEmbed);
+  const groupRef = useRef<Group>(null);
+
+  // Gentle hover animation
+  useFrame((_, delta) => {
+    if (groupRef.current) {
+      groupRef.current.position.y = 2.2 + Math.sin(Date.now() * 0.001) * 0.05;
+    }
+  });
+
+  const activeEmbed = embeds.find((e) => e.id === activeEmbedId);
+
+  // Don't render if no embeds or sidebar is already open
+  if (embeds.length === 0 || panelOpen) return null;
+
+  return (
+    <group ref={groupRef} position={[0, 3.5, -2]}>
+      <Html
+        transform
+        distanceFactor={6}
+        className="pointer-events-auto"
+        style={{ pointerEvents: 'auto' }}
+      >
+        <div
+          className="bg-gray-950/95 rounded-xl border border-white/15 overflow-hidden shadow-2xl backdrop-blur-sm"
+          style={{ width: '520px', height: '380px' }}
+        >
+          {/* Header bar */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-black/60 border-b border-white/10">
+            {/* Tabs */}
+            <div className="flex items-center gap-1 flex-1 overflow-x-auto scrollbar-none">
+              {embeds.map((embed) => (
+                <button
+                  key={embed.id}
+                  onClick={() => setActiveEmbed(embed.id)}
+                  className={`px-2 py-0.5 rounded text-[10px] whitespace-nowrap transition-colors ${
+                    activeEmbedId === embed.id
+                      ? 'bg-white/15 text-white'
+                      : 'text-white/40 hover:text-white/60'
+                  }`}
+                >
+                  {embed.title}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-0.5 ml-2 shrink-0">
+              {/* Open in new tab */}
+              {activeEmbed && (
+                <a
+                  href={activeEmbed.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                  title="Open in new tab"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M7 3H4a1 1 0 00-1 1v8a1 1 0 001 1h8a1 1 0 001-1V9" />
+                    <path d="M10 3h3v3M13 3L7 9" />
+                  </svg>
+                </a>
+              )}
+              {/* Expand to sidebar */}
+              <button
+                onClick={openPanel}
+                className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                title="Expand to sidebar"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="2" y="2" width="12" height="12" rx="2" />
+                  <path d="M9 2v12M13 6l-2-2-2 2M13 10l-2 2-2-2" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Iframe */}
+          <div className="w-full bg-white" style={{ height: 'calc(100% - 32px)' }}>
+            {activeEmbed ? (
+              <iframe
+                key={activeEmbed.id}
+                src={activeEmbed.url}
+                title={activeEmbed.title}
+                sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
+                className="w-full h-full border-0"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400 text-xs">
+                No document loaded
+              </div>
+            )}
+          </div>
+        </div>
+      </Html>
+    </group>
+  );
+}

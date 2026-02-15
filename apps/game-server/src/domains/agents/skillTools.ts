@@ -7,6 +7,7 @@ import { WORLD_SIZE } from '@bossroom/shared-utils';
 import { log } from '../../logger.js';
 import { randomUUID } from 'node:crypto';
 import type { ScratchpadService } from '../scratchpad/service.js';
+import type { AgentRepository } from './repository.js';
 
 /**
  * Compute a unique zone position for a dynamic agent based on its global index.
@@ -67,7 +68,7 @@ const delegateTaskParams = z.object({
 const readScratchpadParams = z.object({});
 
 const writeScratchpadParams = z.object({
-  content: z.string().max(500).describe('Brief update about what you found, decided, or completed'),
+  content: z.string().max(2000).describe('Share your findings, data, or a status update with the team. Use @AgentName to directly notify a specific teammate. Be substantive — include actual content, not just status.'),
 });
 
 const showEmbedParams = z.object({
@@ -326,6 +327,7 @@ export function createEmbedTools(deps: EmbedToolsDeps): ToolSet {
     description: 'Show an embedded document, board, or artifact to the user in a panel. Only use for services that support iframe embedding (Google Docs, Google Sheets, Miro, etc). Do NOT use for Gmail, Linear, or other services that block iframes.',
     inputSchema: showEmbedParams,
     execute: async (args) => {
+      log.info(`[embed] ${agentName} showing "${args.title}" (${args.type}): ${args.url}`);
       const embedId = 'embed-' + randomUUID().slice(0, 8);
       broadcastFn({
         type: 'workspace:embedPanel',
@@ -348,10 +350,49 @@ export function createEmbedTools(deps: EmbedToolsDeps): ToolSet {
   return { show_embed: showEmbed } as ToolSet;
 }
 
+// ----- Peek conversation tool -----
+
+const peekConversationParams = z.object({
+  agentName: z.string().describe('Name of the teammate whose recent work you want to see'),
+  turns: z.number().min(1).max(10).default(5).optional()
+    .describe('Number of recent message turns to retrieve (default 5)'),
+});
+
+interface PeekConversationDeps {
+  agentRepo: AgentRepository;
+  workspaceId: string;
+}
+
+/**
+ * The peek_conversation tool — available to all dynamic agents in a workspace.
+ * Lets agents read teammates' recent chat history for real knowledge transfer.
+ */
+export function createPeekConversationTool(deps: PeekConversationDeps): ToolSet {
+  const { agentRepo, workspaceId } = deps;
+
+  const peekConversation = tool({
+    description: 'Read the recent conversation history of a teammate to see their findings and work output',
+    inputSchema: peekConversationParams,
+    execute: async (args) => {
+      const target = agentRepo.findDynamicByName(args.agentName);
+      if (!target || target.workspaceId !== workspaceId) {
+        return `Agent "${args.agentName}" not found in this workspace.`;
+      }
+      const history = agentRepo.getChatHistory(target.agentId, args.turns ?? 5);
+      if (history.length === 0) {
+        return `No conversation history yet for ${args.agentName}.`;
+      }
+      return history.map(m => `[${m.role}] ${m.content}`).join('\n\n');
+    },
+  });
+
+  return { peek_conversation: peekConversation } as ToolSet;
+}
+
 // ----- Finish task tool -----
 
 const finishTaskParams = z.object({
-  summary: z.string().describe('Summary of what you accomplished. If you produced a deliverable (doc, embed, email), reference it here.'),
+  summary: z.string().max(2000).describe('Detailed summary of what you accomplished and your key findings. Include enough detail for the final report. If you produced a deliverable (doc, embed, email), reference it here.'),
 });
 
 interface FinishTaskDeps {

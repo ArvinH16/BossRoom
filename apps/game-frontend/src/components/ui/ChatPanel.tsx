@@ -38,6 +38,7 @@ function TaskTabs() {
         // Close the live task
         if (currentTaskAgentIds.length > 0) {
           removeAgents(currentTaskAgentIds);
+          useWorldStore.getState().removeAgents(currentTaskAgentIds);
           useEmbedStore.getState().removeEmbedsByAgentIds(currentTaskAgentIds);
         }
         closeCurrentTask();
@@ -47,6 +48,7 @@ function TaskTabs() {
         const task = archivedTasks.find((t) => t.id === taskId);
         if (task && task.agentIds.length > 0) {
           removeAgents(task.agentIds);
+          useWorldStore.getState().removeAgents(task.agentIds);
           useEmbedStore.getState().removeEmbedsByAgentIds(task.agentIds);
         }
         closeTask(taskId);

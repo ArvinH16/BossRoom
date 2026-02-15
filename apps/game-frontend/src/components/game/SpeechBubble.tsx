@@ -25,6 +25,12 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
+/** Calculate display duration based on word count (~150 WPM, min 3s, max 15s). */
+function readingTime(text: string): number {
+  const words = text.split(/\s+/).filter(Boolean).length;
+  return Math.min(15, Math.max(3, words / 2.5)); // ~150 WPM = 2.5 words/sec
+}
+
 export function SpeechBubble({ agentId }: SpeechBubbleProps) {
   const groupRef = useRef<Group>(null);
   const textRef = useRef<{ fillOpacity: number } | null>(null);
@@ -65,12 +71,16 @@ export function SpeechBubble({ agentId }: SpeechBubbleProps) {
         if (stream) {
           updateText(stream);
         } else if (agentMsgCount > s.lastAgentMsgCount) {
-          // Stream just finalized
+          // Stream just finalized — show for a duration based on word count
           s.lastAgentMsgCount = agentMsgCount;
           const lastMsg = msgs.filter((m) => m.role === 'agent').pop();
-          if (lastMsg && lastMsg.role === 'agent') updateText(lastMsg.content);
+          if (lastMsg && lastMsg.role === 'agent') {
+            updateText(lastMsg.content);
+            s.timer = readingTime(stripMarkdown(lastMsg.content));
+          } else {
+            s.timer = 3;
+          }
           s.phase = 'fadeOut';
-          s.timer = 4.0;
         }
         break;
 

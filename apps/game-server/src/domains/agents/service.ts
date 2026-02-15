@@ -13,7 +13,7 @@ import type { PlayerService } from '../players/service.js';
 import type { SkillService } from '../skills/service.js';
 import type { ScratchpadService } from '../scratchpad/service.js';
 import type { UserRepository } from '../users/repository.js';
-import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools, createEmbedTools, createFinishTaskTool } from './skillTools.js';
+import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools, createEmbedTools, createFinishTaskTool, createPeekConversationTool } from './skillTools.js';
 
 interface AgentServiceDeps {
   agentRepo: AgentRepository;
@@ -26,6 +26,55 @@ interface AgentServiceDeps {
 
 export function createAgentService(deps: AgentServiceDeps) {
   const { agentRepo, conversationService, playerService, skillService, scratchpadService, userRepo } = deps;
+
+  /** Guard against duplicate workspace completion triggers. */
+  const completedWorkspaces = new Set<string>();
+
+  /**
+   * Check if all agents in a workspace are done. If so, trigger the receptionist
+   * to compile and deliver a final summary to the user.
+   */
+  async function checkWorkspaceCompletion(
+    workspaceId: string,
+    playerId: string,
+    ws: WebSocket,
+    broadcastFn: (msg: ServerMessage) => void,
+  ) {
+    if (completedWorkspaces.has(workspaceId)) return;
+
+    const agents = agentRepo.getByWorkspace(workspaceId);
+    if (agents.length === 0) return;
+
+    // Completion is lead-driven: trigger when the lead agent calls finish_task.
+    // Workers stay idle (available for re-delegation) — we don't wait for them.
+    const leadAgent = agents.find(a => a.role === 'lead');
+    if (!leadAgent || leadAgent.status !== 'done') {
+      const statusMap = agents.map(a => `${a.name}(${a.role})=${a.status}`).join(', ');
+      log.debug(`[workspace-completion] ${workspaceId}: waiting for lead — ${statusMap}`);
+      return;
+    }
+
+    completedWorkspaces.add(workspaceId);
+    log.info(`[workspace] Lead "${leadAgent.name}" done in ${workspaceId}, triggering receptionist summary`);
+
+    // Gather scratchpad
+    const entries = scratchpadService.read(workspaceId);
+    const feed = entries.map(e => `[${e.authorName}] ${e.content}`).join('\n');
+
+    // Gather each agent's last assistant message for richer context
+    const agentOutputs = agents.filter(a => a.chatHistory.length > 0).map(a => {
+      const lastMsg = a.chatHistory.filter(m => m.role === 'assistant').pop();
+      const snippet = lastMsg ? lastMsg.content.slice(0, 500) : '(no output)';
+      return `[${a.name}] ${snippet}`;
+    }).join('\n\n');
+
+    // Build summary request for receptionist
+    const summaryRequest = `[System] All agents in the workspace have completed their tasks.\n\nTeam feed:\n${feed}\n\nAgent final outputs:\n${agentOutputs}\n\nCompile a final summary for the user. Highlight the key findings from each team member and present the results clearly. If any agent created a document or embed, reference it so the user can find it.`;
+
+    // Trigger receptionist via handleStaticAgentMessage
+    await handleStaticAgentMessage(playerId, 'receptionist', summaryRequest, 'text', ws, broadcastFn)
+      .catch(err => log.error(`[workspace] Receptionist summary failed:`, err));
+  }
 
   /**
    * Scratchpad watcher: when an agent (or user) writes to the scratchpad,
@@ -41,6 +90,35 @@ export function createAgentService(deps: AgentServiceDeps) {
     broadcastFn: (msg: ServerMessage) => void,
   ) {
     try {
+      // --- @ mention detection (short-circuits LLM classifier) ---
+      const mentionRegex = /@([\w][\w\s]*?[\w]|[\w]+)(?=[\s,.:!?]|$)/g;
+      const mentions: string[] = [];
+      let mentionMatch: RegExpExecArray | null;
+      while ((mentionMatch = mentionRegex.exec(content)) !== null) {
+        mentions.push(mentionMatch[1]);
+      }
+
+      if (mentions.length > 0) {
+        const entries = scratchpadService.read(workspaceId);
+        const recentEntries = entries.slice(-15).map(e => `[${e.authorName}] ${e.content}`).join('\n');
+
+        for (const mentionName of mentions) {
+          const target = agentRepo.findDynamicByName(mentionName);
+          if (!target || target.workspaceId !== workspaceId) continue;
+          // Wake agent if idle or done (done agents can be re-engaged for follow-up)
+          if (target.status !== 'idle' && target.status !== 'done') continue;
+
+          const injectedMessage = `[Team Chat] @${target.name} was mentioned by ${authorName}:\n"${content}"\n\nRecent team conversation:\n${recentEntries}\n\nIMPORTANT: Start by calling peek_conversation for "${authorName}" to see their recent findings. Then respond with your own work. Post your reply to the scratchpad using write_scratchpad, and @ mention anyone you need input from.`;
+
+          // Fire and forget — don't await, don't block
+          handleDynamicAgentMessage(playerId, target.agentId, injectedMessage, ws, broadcastFn)
+            .catch(err => log.error(`[mention] Failed to wake ${target.name}:`, err));
+        }
+        return; // Skip LLM classifier — explicit mentions don't need it
+      }
+
+      // --- LLM classifier (fallback when no @ mentions) ---
+
       // Find idle agents in this workspace (excluding the author)
       const allDynamic = agentRepo.getAllDynamic();
       const idleAgents = allDynamic.filter(
@@ -195,9 +273,14 @@ No other text.`,
           calledFinishTask = true;
           agentRepo.setStatus(targetAgent.agentId, 'done');
           broadcastFn({ type: 'agent:statusChanged', payload: { agentId: targetAgent.agentId, status: 'done' } });
+          checkWorkspaceCompletion(targetAgent.workspaceId, playerId, ws, broadcastFn);
         },
       });
-      const workerToolsFinal = { ...workerTools, ...workerScratchpadTools, ...workerEmbedTools, ...workerFinishTaskTools };
+      const workerPeekTools = createPeekConversationTool({
+        agentRepo,
+        workspaceId: targetAgent.workspaceId,
+      });
+      const workerToolsFinal = { ...workerTools, ...workerScratchpadTools, ...workerEmbedTools, ...workerFinishTaskTools, ...workerPeekTools };
 
       // Set to working
       agentRepo.setStatus(targetAgent.agentId, 'working');
@@ -205,6 +288,9 @@ No other text.`,
         type: 'agent:statusChanged',
         payload: { agentId: targetAgent.agentId, status: 'working' },
       });
+
+      // Track user message in chat history
+      agentRepo.appendChatHistory(targetAgent.agentId, 'user', taskDescription);
 
       // Stream the worker's response to the frontend
       const result = streamText({
@@ -224,13 +310,24 @@ No other text.`,
         });
       }
 
-      // Send complete message
-      playerService.send(ws, {
-        type: 'agent:chatMessage',
-        payload: { agentId: targetAgent.agentId, role: 'assistant', content: fullResponse },
-      });
+      // Log response
+      if (fullResponse) {
+        log.info(`[delegate] ${targetAgent.name} response (${fullResponse.length} chars): ${fullResponse.slice(0, 200)}${fullResponse.length > 200 ? '...' : ''}`);
+        agentRepo.appendChatHistory(targetAgent.agentId, 'assistant', fullResponse);
+      } else {
+        log.warn(`[delegate] ${targetAgent.name} produced empty text response (tool-only turn)`);
+      }
 
-      // If finish_task was called, status is already 'done'. Otherwise idle.
+      // Send complete message — skip if empty
+      if (fullResponse) {
+        playerService.send(ws, {
+          type: 'agent:chatMessage',
+          payload: { agentId: targetAgent.agentId, role: 'assistant', content: fullResponse },
+        });
+      }
+
+      // Workers go back to idle after delegation — they can be re-delegated to.
+      // Only the lead calls finish_task to signal overall completion.
       if (!calledFinishTask) {
         agentRepo.setStatus(targetAgent.agentId, 'idle');
         broadcastFn({
@@ -315,6 +412,9 @@ No other text.`,
       return;
     }
 
+    // Track user message in chat history
+    agentRepo.appendChatHistory(agentId, 'user', content);
+
     // Status -> thinking
     agentRepo.setStatus(agentId, 'thinking');
     broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'thinking' } });
@@ -372,9 +472,17 @@ No other text.`,
           calledFinishTask = true;
           agentRepo.setStatus(agentId, 'done');
           broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'done' } });
+          checkWorkspaceCompletion(dynamicAgent.workspaceId, playerId, ws, broadcastFn);
         },
       });
       tools = { ...tools, ...finishTaskTools };
+
+      // Peek conversation tool (all workspace agents)
+      const peekTools = createPeekConversationTool({
+        agentRepo,
+        workspaceId: dynamicAgent.workspaceId,
+      });
+      tools = { ...tools, ...peekTools };
 
       // Lead agents get delegate_task tool
       if (dynamicAgent.role === 'lead') {
@@ -452,23 +560,59 @@ No other text.`,
         });
       }
 
-      // Send complete message
-      playerService.send(ws, {
-        type: 'agent:chatMessage',
-        payload: { agentId, role: 'assistant', content: fullResponse },
-      });
+      // Log first 200 chars of response for debugging
+      if (fullResponse) {
+        log.info(`[agent] ${dynamicAgent.name} response (${fullResponse.length} chars): ${fullResponse.slice(0, 200)}${fullResponse.length > 200 ? '...' : ''}`);
+      } else {
+        log.warn(`[agent] ${dynamicAgent.name} produced empty text response (tool-only turn)`);
+      }
+
+      // Track assistant response in chat history
+      if (fullResponse) {
+        agentRepo.appendChatHistory(agentId, 'assistant', fullResponse);
+      }
+
+      // Send complete message — skip if empty (tool-only turns)
+      if (fullResponse) {
+        playerService.send(ws, {
+          type: 'agent:chatMessage',
+          payload: { agentId, role: 'assistant', content: fullResponse },
+        });
+      }
 
       // --- POST-STREAM: Nudge check ---
       if (calledFinishTask) {
         // Status already 'done' from callback — nothing to do
+      } else if (dynamicAgent.role === 'lead' && !isNudge) {
+        // Lead owns workspace completion. But only nudge if all workers have settled —
+        // async scratchpad chains may still be running.
+        agentRepo.setStatus(agentId, 'idle');
+        broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
+
+        const workspaceAgents = agentRepo.getByWorkspace(dynamicAgent.workspaceId);
+        const anyBusy = workspaceAgents.some(
+          a => a.agentId !== agentId && (a.status === 'working' || a.status === 'thinking'),
+        );
+
+        if (!anyBusy) {
+          log.info(`[nudge] Lead ${dynamicAgent.name} done, all workers settled — nudging to finish_task`);
+          await handleDynamicAgentMessage(
+            playerId, agentId,
+            '[System] All workers have finished. Call finish_task now with a summary of what the team accomplished.',
+            ws, broadcastFn, true,
+          );
+        } else {
+          log.info(`[nudge] Lead ${dynamicAgent.name} idle, workers still busy — will re-engage via scratchpad`);
+        }
+        return;
       } else if (!calledWriteScratchpad && !isNudge) {
-        // Agent stopped without ANY signal — nudge once
+        // Worker agents: nudge only if they didn't signal at all
         log.info(`[nudge] ${dynamicAgent.name} stopped without finish_task or write_scratchpad, nudging...`);
         agentRepo.setStatus(agentId, 'idle');
         broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
         await handleDynamicAgentMessage(
           playerId, agentId,
-          '[System] Please call finish_task with a brief summary of what you accomplished.',
+          '[System] Please call finish_task with a summary of what you accomplished.',
           ws, broadcastFn, true,
         );
         return;
@@ -479,6 +623,193 @@ No other text.`,
 
     } catch (err) {
       log.error(`Dynamic Agent ${agentId} error:`, err);
+
+      agentRepo.setStatus(agentId, 'error');
+      broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'error' } });
+
+      playerService.send(ws, {
+        type: 'agent:chatMessage',
+        payload: {
+          agentId,
+          role: 'assistant',
+          content: "Oops, I hit a snag! My circuits got a bit tangled. Could you try again?",
+        },
+      });
+
+      setTimeout(() => {
+        agentRepo.setStatus(agentId, 'idle');
+        broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
+      }, TIMEOUTS.AGENT_ERROR_RECOVERY_MS);
+    }
+  }
+
+  /**
+   * Handle a message sent to a static agent (e.g. receptionist).
+   * Extracted so checkWorkspaceCompletion can reuse it.
+   */
+  async function handleStaticAgentMessage(
+    playerId: string,
+    agentId: string,
+    content: string,
+    inputMode: 'voice' | 'text',
+    ws: WebSocket,
+    broadcastFn: (msg: ServerMessage) => void,
+  ) {
+    const agent = agentRepo.get(agentId);
+    if (!agent) return;
+
+    // Find or create conversation
+    let conv = conversationService.getConversationForPlayer(playerId, agentId);
+
+    if (!conv) {
+      conv = conversationService.createInMemory(playerId, agentId, '', ws);
+    }
+
+    // Add user message to display history
+    conversationService.addUserMessage(conv.id, content);
+
+    // Status -> thinking
+    agentRepo.setStatus(agentId, 'thinking');
+    broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'thinking' } });
+
+    try {
+      const model = getModel(agent.model);
+      const composioTools = await getComposioTools(playerId);
+      const mcpTools = await mcpManager.getAllTools();
+
+      // Receptionist gets setup_workspace tool
+      const setupTool = agentId === 'receptionist'
+        ? createSetupWorkspaceTool({
+            skillService,
+            playerId,
+            broadcastFn,
+            onWorkspaceBuilt: (agents, taskSummary) =>
+              handleWorkspaceBuilt(agents, taskSummary, playerId, ws, broadcastFn),
+            getDynamicAgentCount: () => agentRepo.getAllDynamic().length,
+          })
+        : {};
+
+      const tools = { ...composioTools, ...mcpTools, ...setupTool };
+      const hasTools = Object.keys(tools).length > 0;
+
+      // Build AI SDK messages
+      const aiMessages = [
+        ...conv.aiMessages,
+        { role: 'user' as const, content },
+      ];
+
+      const result = streamText({
+        model,
+        system: agent.systemPrompt,
+        messages: aiMessages,
+        ...(hasTools ? { tools, stopWhen: stepCountIs(25) } : {}),
+        onChunk: ({ chunk }) => {
+          if (chunk.type === 'tool-call') {
+            playerService.send(ws, {
+              type: 'agent:toolExecution',
+              payload: { agentId, toolName: chunk.toolName, status: 'started' },
+            });
+          }
+        },
+        onStepFinish: ({ toolCalls, toolResults }) => {
+          for (let i = 0; i < toolCalls.length; i++) {
+            const tc = toolCalls[i];
+            const tr = toolResults[i];
+            const failed = tr && typeof tr === 'object' && 'error' in tr;
+            const resultStr = tr != null
+              ? (typeof tr === 'string' ? tr : JSON.stringify(tr))
+              : undefined;
+            playerService.send(ws, {
+              type: 'agent:toolExecution',
+              payload: {
+                agentId,
+                toolName: tc.toolName,
+                status: failed ? 'failed' : 'completed',
+                result: resultStr,
+              },
+            });
+          }
+          if (fullResponse.length > 0) {
+            needsStepSeparator = true;
+          }
+        },
+      });
+
+      // Status -> working
+      agentRepo.setStatus(agentId, 'working');
+      broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'working' } });
+
+      // Stream text deltas to frontend
+      let fullResponse = '';
+      let needsStepSeparator = false;
+      for await (const delta of result.textStream) {
+        if (needsStepSeparator) {
+          fullResponse += '\n\n';
+          playerService.send(ws, {
+            type: 'agent:chatStream',
+            payload: { agentId, delta: '\n\n' },
+          });
+          needsStepSeparator = false;
+        }
+        fullResponse += delta;
+        playerService.send(ws, {
+          type: 'agent:chatStream',
+          payload: { agentId, delta },
+        });
+      }
+
+      // Store AI SDK response messages for multi-turn tool context
+      const response = await result.response;
+      conversationService.addAssistantMessage(conv.id, fullResponse);
+      conversationService.updateAiMessages(conv.id, [
+        ...conv.aiMessages,
+        { role: 'user' as const, content },
+        ...response.messages,
+      ]);
+
+      // Persist to DB (best-effort)
+      try {
+        await conversationService.persistToDb(conv.id);
+      } catch (err) {
+        log.error(`[agent] DB save failed for conversation ${conv.id}:`, err);
+      }
+
+      // Log first 200 chars of response for debugging
+      if (fullResponse) {
+        log.info(`[agent] ${agentId} response (${fullResponse.length} chars): ${fullResponse.slice(0, 200)}${fullResponse.length > 200 ? '...' : ''}`);
+      } else {
+        log.warn(`[agent] ${agentId} produced empty text response (tool-only turn)`);
+      }
+
+      // Send complete message (signals end of stream to frontend) — skip if empty
+      if (fullResponse) {
+        playerService.send(ws, {
+          type: 'agent:chatMessage',
+          payload: { agentId, role: 'assistant', content: fullResponse },
+        });
+      }
+
+      // TTS: synthesize and send audio (non-blocking, fail-soft) — voice input only
+      if (inputMode === 'voice' && fullResponse) {
+        const userSettings = await userRepo.getSettings(playerId);
+        synthesizeSpeech(fullResponse, userSettings.voiceId).then((tts) => {
+          if (tts) {
+            playerService.send(ws, {
+              type: 'agent:ttsAudio',
+              payload: { agentId, audioBase64: tts.audioBase64, mimeType: tts.mimeType },
+            });
+          }
+        }).catch((err) => {
+          log.error(`[TTS] failed for agent ${agentId}:`, err);
+        });
+      }
+
+      // Reset status
+      agentRepo.setStatus(agentId, 'idle');
+      broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
+
+    } catch (err) {
+      log.error(`Agent ${agentId} error:`, err);
 
       agentRepo.setStatus(agentId, 'error');
       broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'error' } });
@@ -559,174 +890,8 @@ No other text.`,
         return handleDynamicAgentMessage(playerId, agentId, content, ws, broadcastFn);
       }
 
-      // --- Static agent (Receptionist) ---
-      const agent = agentRepo.get(agentId);
-      if (!agent) return;
-
-      // Find or create conversation
-      let conv = conversationService.getConversationForPlayer(playerId, agentId);
-
-      if (!conv) {
-        conv = conversationService.createInMemory(playerId, agentId, conversationId, ws);
-      }
-
-      // Add user message to display history
-      conversationService.addUserMessage(conv.id, content);
-
-      // Status -> thinking
-      agentRepo.setStatus(agentId, 'thinking');
-      broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'thinking' } });
-
-      try {
-        const model = getModel(agent.model);
-        const composioTools = await getComposioTools(playerId);
-        const mcpTools = await mcpManager.getAllTools();
-
-        // Receptionist gets setup_workspace tool
-        const setupTool = agentId === 'receptionist'
-          ? createSetupWorkspaceTool({
-              skillService,
-              playerId,
-              broadcastFn,
-              onWorkspaceBuilt: (agents, taskSummary) =>
-                handleWorkspaceBuilt(agents, taskSummary, playerId, ws, broadcastFn),
-              getDynamicAgentCount: () => agentRepo.getAllDynamic().length,
-            })
-          : {};
-
-        const tools = { ...composioTools, ...mcpTools, ...setupTool };
-        const hasTools = Object.keys(tools).length > 0;
-
-        // Build AI SDK messages
-        const aiMessages = [
-          ...conv.aiMessages,
-          { role: 'user' as const, content },
-        ];
-
-        const result = streamText({
-          model,
-          system: agent.systemPrompt,
-          messages: aiMessages,
-          ...(hasTools ? { tools, stopWhen: stepCountIs(25) } : {}),
-          onChunk: ({ chunk }) => {
-            if (chunk.type === 'tool-call') {
-              playerService.send(ws, {
-                type: 'agent:toolExecution',
-                payload: { agentId, toolName: chunk.toolName, status: 'started' },
-              });
-            }
-          },
-          onStepFinish: ({ toolCalls, toolResults }) => {
-            for (let i = 0; i < toolCalls.length; i++) {
-              const tc = toolCalls[i];
-              const tr = toolResults[i];
-              const failed = tr && typeof tr === 'object' && 'error' in tr;
-              const resultStr = tr != null
-                ? (typeof tr === 'string' ? tr : JSON.stringify(tr))
-                : undefined;
-              playerService.send(ws, {
-                type: 'agent:toolExecution',
-                payload: {
-                  agentId,
-                  toolName: tc.toolName,
-                  status: failed ? 'failed' : 'completed',
-                  result: resultStr,
-                },
-              });
-            }
-            // Flag: next text delta needs a paragraph break to separate steps
-            if (fullResponse.length > 0) {
-              needsStepSeparator = true;
-            }
-          },
-        });
-
-        // Status -> working
-        agentRepo.setStatus(agentId, 'working');
-        broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'working' } });
-
-        // Stream text deltas to frontend
-        let fullResponse = '';
-        let needsStepSeparator = false;
-        for await (const delta of result.textStream) {
-          if (needsStepSeparator) {
-            fullResponse += '\n\n';
-            playerService.send(ws, {
-              type: 'agent:chatStream',
-              payload: { agentId, delta: '\n\n' },
-            });
-            needsStepSeparator = false;
-          }
-          fullResponse += delta;
-          playerService.send(ws, {
-            type: 'agent:chatStream',
-            payload: { agentId, delta },
-          });
-        }
-
-        // Store AI SDK response messages for multi-turn tool context
-        const response = await result.response;
-        conversationService.addAssistantMessage(conv.id, fullResponse);
-        conversationService.updateAiMessages(conv.id, [
-          ...conv.aiMessages,
-          { role: 'user' as const, content },
-          ...response.messages,
-        ]);
-
-        // Persist to DB (best-effort)
-        try {
-          await conversationService.persistToDb(conv.id);
-        } catch (err) {
-          log.error(`[agent] DB save failed for conversation ${conv.id}:`, err);
-        }
-
-        // Send complete message (signals end of stream to frontend)
-        playerService.send(ws, {
-          type: 'agent:chatMessage',
-          payload: { agentId, role: 'assistant', content: fullResponse },
-        });
-
-        // TTS: synthesize and send audio (non-blocking, fail-soft) — voice input only
-        if (inputMode === 'voice') {
-          // Look up user's voice preference
-          const userSettings = await userRepo.getSettings(playerId);
-          synthesizeSpeech(fullResponse, userSettings.voiceId).then((tts) => {
-            if (tts) {
-              playerService.send(ws, {
-                type: 'agent:ttsAudio',
-                payload: { agentId, audioBase64: tts.audioBase64, mimeType: tts.mimeType },
-              });
-            }
-          }).catch((err) => {
-            log.error(`[TTS] failed for agent ${agentId}:`, err);
-          });
-        }
-
-        // Reset status
-        agentRepo.setStatus(agentId, 'idle');
-        broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
-
-      } catch (err) {
-        log.error(`Agent ${agentId} error:`, err);
-
-        agentRepo.setStatus(agentId, 'error');
-        broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'error' } });
-
-        playerService.send(ws, {
-          type: 'agent:chatMessage',
-          payload: {
-            agentId,
-            role: 'assistant',
-            content: "Oops, I hit a snag! My circuits got a bit tangled. Could you try again?",
-          },
-        });
-
-        // Reset to idle after a short delay
-        setTimeout(() => {
-          agentRepo.setStatus(agentId, 'idle');
-          broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
-        }, TIMEOUTS.AGENT_ERROR_RECOVERY_MS);
-      }
+      // Static agent (Receptionist) — delegate to extracted helper
+      return handleStaticAgentMessage(playerId, agentId, content, inputMode, ws, broadcastFn);
     },
 
     stopInteraction(playerId: string, agentId: string) {
