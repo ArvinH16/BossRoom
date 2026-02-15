@@ -11,11 +11,19 @@ import { Player } from './Player';
 import { CameraRig } from './CameraRig';
 import { RemotePlayer } from './RemotePlayer';
 import { useWorldStore } from '@/stores/worldStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useBuildSequence } from '@/hooks/useBuildSequence';
+import { toDynamicAgentData } from '@/data/agents';
 import { LIGHTING, POST_PROCESSING } from '@/data/gameConfig';
 
 export function Scene() {
   const agents = useWorldStore((s) => s.agents);
   const remotePlayers = useWorldStore((s) => s.remotePlayers);
+  const dynamicAgents = useWorkspaceStore((s) => s.dynamicAgents);
+  const builtAgentIds = useWorkspaceStore((s) => s.builtAgentIds);
+
+  // Activate the build sequence timer
+  useBuildSequence();
 
   return (
     <>
@@ -53,9 +61,17 @@ export function Scene() {
         <Suspense fallback={null}>
           <Office />
 
+          {/* Static agents (Receptionist) from world store */}
           {agents.map((agent) => (
             <Agent key={agent.id} agent={agent} />
           ))}
+
+          {/* Dynamic agents — only rendered once their zone is built */}
+          {dynamicAgents
+            .filter((a) => builtAgentIds.has(a.agentId))
+            .map((a) => (
+              <Agent key={a.agentId} agent={toDynamicAgentData(a)} />
+            ))}
 
           {Object.values(remotePlayers).map((player) => (
             <RemotePlayer key={player.id} player={player} />

@@ -8,6 +8,7 @@ import { ChatPanel } from '../ui/ChatPanel';
 import { InteractionPrompt } from './InteractionPrompt';
 import { HUD } from '../ui/HUD';
 import { OnboardingOverlay } from '../ui/OnboardingOverlay';
+import { MissionControl } from '../ui/MissionControl';
 import { useAuthStore } from '@/stores/authStore';
 import { initWebSocket } from '@/lib/messageHandler';
 import { CAMERA, WORLD } from '@/data/gameConfig';
@@ -55,6 +56,7 @@ export function Game({ user }: GameProps) {
       <ChatPanel />
       <InteractionPrompt />
       <OnboardingOverlay />
+      <MissionControl />
     </div>
   );
 }

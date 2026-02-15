@@ -30,12 +30,8 @@ export function createConversationService(deps: {
   function getGreeting(agent: AgentDef, displayName: string | null): string {
     const name = displayName ?? 'there';
     switch (agent.id) {
-      case 'mailbot':
-        return `Hey ${name}! I'm Mailbot, your communications sidekick. Need to send an email, check your inbox, or draft something? I'm on it!`;
-      case 'taskmaster':
-        return `Attention, ${name}! Taskmaster reporting for duty. Give me your mission briefing — tasks to create, issues to track, deadlines to crush.`;
-      case 'clockwork':
-        return `Tick tock, ${name}! Clockwork here, at your service. Every second counts — let's make sure your schedule is perfectly synchronized!`;
+      case 'receptionist':
+        return `Welcome to BossRoom, ${name}! I'm your office concierge. Tell me what you need — a product launch? Sprint planning? Content creation? — and I'll build you a custom team of AI agents right here in your workspace.`;
       default:
         return `Hi ${name}! I'm ${agent.name}. How can I help you today?`;
     }

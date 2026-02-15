@@ -1,10 +1,11 @@
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
 import { DEFAULT_AVATAR_ID } from '@bossroom/shared-types';
-import { agents as defaultAgents } from '@/data/agents';
+import { agents as defaultAgents, toDynamicAgentData } from '@/data/agents';
 import type { AgentData } from '@/data/agents';
 
 export function initWebSocket(username: string, token: string, tokenRefresher: () => Promise<string>, uid: string) {
@@ -18,19 +19,13 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
 
         // Map agents from world state, merging with default frontend data
         const agentStates = msg.payload.agents;
-        console.log('[WebSocket] Received world:state with agents:', agentStates);
-        console.log('[WebSocket] Default agents:', defaultAgents);
-        
         const mapped: AgentData[] = defaultAgents.map((def) => {
           const serverAgent = agentStates[def.id];
           return serverAgent
             ? { ...def, status: serverAgent.status }
             : def;
         });
-        
-        console.log('[WebSocket] Mapped agents:', mapped);
         worldStore.setAgents(mapped);
-        console.log('[WebSocket] Agents after setAgents:', useWorldStore.getState().agents);
 
         // Extract remote players (filter out self)
         const players = msg.payload.players;
@@ -56,12 +51,19 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         break;
       }
 
-      case 'agent:statusChanged':
-        useWorldStore.getState().updateAgentStatus(
-          msg.payload.agentId,
-          msg.payload.status,
-        );
+      case 'agent:statusChanged': {
+        const { agentId, status } = msg.payload;
+        // Update static agent status
+        useWorldStore.getState().updateAgentStatus(agentId, status);
+        // Also update dynamic agents in workspace store
+        const wsStore = useWorkspaceStore.getState();
+        const dynAgent = wsStore.dynamicAgents.find((a) => a.agentId === agentId);
+        if (dynAgent) {
+          // Update worldStore for dynamic agents too (add if missing)
+          useWorldStore.getState().updateAgentStatus(agentId, status);
+        }
         break;
+      }
 
       case 'agent:conversationHistory': {
         const { agentId, messages: history } = msg.payload;
@@ -106,6 +108,47 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
           msg.payload.result,
         );
         break;
+
+      // --- Dynamic workspace events ---
+
+      case 'workspace:build': {
+        const { agents: dynamicAgents, taskSummary } = msg.payload;
+        // Start the build sequence
+        useWorkspaceStore.getState().startBuild(dynamicAgents, taskSummary);
+
+        // Add dynamic agents to world store for status tracking
+        const worldStore = useWorldStore.getState();
+        const currentAgents = worldStore.agents;
+        const newAgents = dynamicAgents.map((a) => toDynamicAgentData(a));
+        worldStore.setAgents([...currentAgents, ...newAgents]);
+        break;
+      }
+
+      case 'agent:delegatedTask': {
+        const { fromAgentId, toAgentName, task } = msg.payload;
+        // Show delegation in lead agent's chat as a special message
+        useChatStore.getState().addMessage(fromAgentId, {
+          role: 'agent',
+          content: `*Delegating to ${toAgentName}:* ${task}`,
+        });
+        break;
+      }
+
+      case 'agent:skills':
+        // Skills loaded for an agent — could be stored if needed
+        break;
+
+      case 'agent:skillCreated': {
+        const { agentId, skill } = msg.payload;
+        // Show skill creation in chat
+        useChatStore.getState().addMessage(agentId, {
+          role: 'agent',
+          content: `*New skill created:* ${skill.name} — ${skill.description}`,
+        });
+        break;
+      }
+
+      // --- Player events ---
 
       case 'player:joined': {
         const jp = msg.payload;

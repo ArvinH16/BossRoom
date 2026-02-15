@@ -1,4 +1,4 @@
-import type { AgentStatus, AgentZone } from '@bossroom/shared-types';
+import type { AgentStatus, AgentZone, DynamicAgent } from '@bossroom/shared-types';
 import { AGENT_DEFS } from '@bossroom/shared-utils';
 
 export interface AgentData {
@@ -34,8 +34,17 @@ export const zoneColors: Record<string, string> = {
   communications: '#4A90D9',
   'project-ops': '#D94A4A',
   calendar: '#4AD97A',
+  command: '#FFD700',
 };
 
+export const zoneDisplayNames: Record<string, string> = {
+  communications: 'COMMS',
+  'project-ops': 'PROJECT OPS',
+  calendar: 'CALENDAR',
+  command: 'RECEPTION',
+};
+
+/** Map AGENT_DEFS (now only Receptionist) to frontend AgentData. */
 export const agents: AgentData[] = AGENT_DEFS.map((def) => ({
   id: def.id,
   name: def.name,
@@ -48,3 +57,22 @@ export const agents: AgentData[] = AGENT_DEFS.map((def) => ({
   suggestedPrompts: def.suggestedPrompts,
   status: 'idle' as AgentStatus,
 }));
+
+/**
+ * Convert a DynamicAgent (from workspace:build) to frontend AgentData.
+ * Uses a generic model with color tinting.
+ */
+export function toDynamicAgentData(agent: DynamicAgent): AgentData {
+  return {
+    id: agent.agentId,
+    name: agent.name,
+    description: `${agent.zoneName} agent`,
+    personality: agent.personality,
+    color: agent.color,
+    position: agent.position,
+    zone: 'command' as AgentZone, // dynamic agents don't have a fixed zone
+    modelUrl: '/models/characters/agent-taskmaster.glb', // generic model, tinted by color
+    suggestedPrompts: [],
+    status: 'idle' as AgentStatus,
+  };
+}
