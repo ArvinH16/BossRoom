@@ -40,6 +40,7 @@ Thumbs.db
 
 .nx/cache
 .nx/workspace-data
+.context/
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
@@ -54,7 +55,7 @@ next-env.d.ts
 # Terraform
 terraform/.terraform/
 terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
+terraform/terraform.tfstate*.backup
 terraform/*.tfvars
 !terraform/terraform.tfvars.example
 terraform-outputs.json
