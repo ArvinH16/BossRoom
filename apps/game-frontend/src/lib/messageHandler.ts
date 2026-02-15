@@ -1,6 +1,5 @@
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
-import { useToolStore } from '@/stores/toolStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
 import { agents as defaultAgents } from '@/data/agents';
@@ -69,16 +68,13 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         useChatStore.getState().appendStream(msg.payload.agentId, msg.payload.delta);
         break;
 
-      case 'agent:toolExecution': {
-        useToolStore.getState().addToolExecution({
-          id: crypto.randomUUID(),
-          agentId: msg.payload.agentId,
-          toolName: msg.payload.toolName,
-          status: msg.payload.status,
-          result: msg.payload.result,
-        });
+      case 'agent:toolExecution':
+        useChatStore.getState().addToolExecution(
+          msg.payload.agentId,
+          msg.payload.toolName,
+          msg.payload.status,
+        );
         break;
-      }
 
       case 'player:left':
         if (msg.payload.playerId === '__self__') {

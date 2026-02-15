@@ -9,7 +9,6 @@ import { Scene } from './Scene';
 import { ChatPanel } from '../ui/ChatPanel';
 import { InteractionPrompt } from './InteractionPrompt';
 import { HUD } from '../ui/HUD';
-import { ToolExecutionToasts } from '../ui/ToolExecutionToasts';
 import { OnboardingOverlay } from '../ui/OnboardingOverlay';
 import { useAuthStore } from '@/stores/authStore';
 import { initWebSocket } from '@/lib/messageHandler';
@@ -64,7 +63,6 @@ export function Game({ user }: GameProps) {
       </KeyboardControls>
       <HUD />
       <ChatPanel />
-      <ToolExecutionToasts />
       <InteractionPrompt />
       <OnboardingOverlay />
     </div>

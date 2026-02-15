@@ -2,10 +2,10 @@ import { create } from 'zustand';
 import { gameSocket } from '@/lib/websocket';
 import { generateConversationId } from '@bossroom/shared-utils';
 
-export interface ChatMessage {
-  role: 'user' | 'agent';
-  content: string;
-}
+export type ChatMessage =
+  | { role: 'user'; content: string }
+  | { role: 'agent'; content: string }
+  | { role: 'tool'; toolName: string; status: 'started' | 'completed' | 'failed' };
 
 interface ChatState {
   activeAgent: string | null;
@@ -18,6 +18,7 @@ interface ChatState {
   closeChat: () => void;
   sendMessage: (agentId: string, content: string) => void;
   addMessage: (agentId: string, msg: ChatMessage) => void;
+  addToolExecution: (agentId: string, toolName: string, status: 'started' | 'completed' | 'failed') => void;
   appendStream: (agentId: string, delta: string) => void;
   finalizeStream: (agentId: string) => void;
   reset: () => void;
@@ -84,6 +85,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ...state.chatMessages,
           [agentId]: [...prev, msg],
         },
+      };
+    }),
+
+  addToolExecution: (agentId, toolName, status) =>
+    set((state) => {
+      const prev = state.chatMessages[agentId] ?? [];
+      if (status === 'started') {
+        return {
+          chatMessages: {
+            ...state.chatMessages,
+            [agentId]: [...prev, { role: 'tool' as const, toolName, status }],
+          },
+        };
+      }
+      // For completed/failed: update the last matching tool message in-place
+      const updated = [...prev];
+      for (let i = updated.length - 1; i >= 0; i--) {
+        const msg = updated[i];
+        if (msg.role === 'tool' && msg.toolName === toolName && msg.status === 'started') {
+          updated[i] = { ...msg, status };
+          break;
+        }
+      }
+      return {
+        chatMessages: { ...state.chatMessages, [agentId]: updated },
       };
     }),
 

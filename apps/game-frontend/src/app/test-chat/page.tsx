@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
-import { useToolStore } from '@/stores/toolStore';
 import { useAuthStore } from '@/stores/authStore';
 import { initWebSocket } from '@/lib/messageHandler';
 import { gameSocket } from '@/lib/websocket';
@@ -20,7 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Markdown } from '@/components/ui/Markdown';
 import { ThinkingIndicator } from '@/components/ui/ThinkingIndicator';
 import { AgentAvatar } from '@/components/ui/AgentAvatar';
-import { Send, LogOut, Wifi, WifiOff, Bot, Wrench } from 'lucide-react';
+import { Send, LogOut, Wifi, WifiOff, Bot } from 'lucide-react';
 
 function AgentColumn({ agentId }: { agentId: string }) {
   const [input, setInput] = useState('');
@@ -30,7 +29,6 @@ function AgentColumn({ agentId }: { agentId: string }) {
   const chatMessages = useChatStore((s) => s.chatMessages);
   const streamingText = useChatStore((s) => s.streamingText);
   const activeAgent = useChatStore((s) => s.activeAgent);
-  const toolExecutions = useToolStore((s) => s.toolExecutions);
   const openChat = useChatStore((s) => s.openChat);
   const sendMessage = useChatStore((s) => s.sendMessage);
 
@@ -39,7 +37,6 @@ function AgentColumn({ agentId }: { agentId: string }) {
   const messages = chatMessages[agentId] ?? [];
   const currentStream = streamingText[agentId] ?? '';
   const isActive = activeAgent === agentId;
-  const agentToolExecs = toolExecutions.filter((t) => t.agentId === agentId);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -138,52 +135,34 @@ function AgentColumn({ agentId }: { agentId: string }) {
             </div>
           )}
 
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`max-w-[90%] px-3 py-2 rounded-lg text-sm ${
-                msg.role === 'user'
-                  ? 'ml-auto bg-indigo-600/60 text-white whitespace-pre-wrap'
-                  : 'mr-auto bg-secondary text-foreground/80'
-              }`}
-            >
-              {msg.role === 'agent' ? (
-                <Markdown content={msg.content} />
-              ) : (
-                msg.content
-              )}
-            </div>
-          ))}
-
-          {/* Tool executions inline */}
-          {agentToolExecs.map((exec) => (
-            <div
-              key={exec.id}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs"
-            >
-              <Wrench className="size-3 text-amber-500 shrink-0" />
-              <span className="text-amber-400 font-medium">{exec.toolName}</span>
-              <Badge
-                variant="outline"
-                className="text-[10px] px-1 py-0"
-                style={{
-                  color:
-                    exec.status === 'completed'
-                      ? '#4AD97A'
-                      : exec.status === 'failed'
-                        ? '#D94A4A'
-                        : '#D9D94A',
-                }}
+          {messages.map((msg, i) =>
+            msg.role === 'tool' ? (
+              <p key={i} className={`text-[11px] leading-relaxed ${
+                msg.status === 'failed' ? 'text-red-400/70' : 'text-muted-foreground/60'
+              }`}>
+                {msg.status === 'started'
+                  ? `Running ${formatToolName(msg.toolName)}...`
+                  : msg.status === 'completed'
+                    ? formatToolName(msg.toolName)
+                    : `Failed: ${formatToolName(msg.toolName)}`}
+              </p>
+            ) : (
+              <div
+                key={i}
+                className={`max-w-[90%] px-3 py-2 rounded-lg text-sm ${
+                  msg.role === 'user'
+                    ? 'ml-auto bg-indigo-600/60 text-white whitespace-pre-wrap'
+                    : 'mr-auto bg-secondary text-foreground/80'
+                }`}
               >
-                {exec.status}
-              </Badge>
-              {exec.result && (
-                <span className="text-muted-foreground truncate">
-                  {exec.result}
-                </span>
-              )}
-            </div>
-          ))}
+                {msg.role === 'agent' ? (
+                  <Markdown content={msg.content} />
+                ) : (
+                  msg.content
+                )}
+              </div>
+            ),
+          )}
 
           {/* Streaming text */}
           {currentStream && (
@@ -235,6 +214,14 @@ function AgentColumn({ agentId }: { agentId: string }) {
       </div>
     </div>
   );
+}
+
+function formatToolName(raw: string): string {
+  const parts = raw.split('_');
+  const meaningful = parts.length > 1 ? parts.slice(1) : parts;
+  return meaningful
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
 }
 
 export default function TestChatPage() {

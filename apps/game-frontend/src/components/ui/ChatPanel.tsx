@@ -106,22 +106,26 @@ export function ChatPanel() {
                 ))}
               </div>
             )}
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${
-                  msg.role === 'user'
-                    ? 'ml-auto bg-indigo-600/60 text-white whitespace-pre-wrap'
-                    : 'mr-auto bg-white/10 text-white/80'
-                }`}
-              >
-                {msg.role === 'agent' ? (
-                  <Markdown content={msg.content} />
-                ) : (
-                  msg.content
-                )}
-              </div>
-            ))}
+            {messages.map((msg, i) =>
+              msg.role === 'tool' ? (
+                <ToolChip key={i} toolName={msg.toolName} status={msg.status} />
+              ) : (
+                <div
+                  key={i}
+                  className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${
+                    msg.role === 'user'
+                      ? 'ml-auto bg-indigo-600/60 text-white whitespace-pre-wrap'
+                      : 'mr-auto bg-white/10 text-white/80'
+                  }`}
+                >
+                  {msg.role === 'agent' ? (
+                    <Markdown content={msg.content} />
+                  ) : (
+                    msg.content
+                  )}
+                </div>
+              ),
+            )}
 
             {/* Streaming text */}
             {currentStream && (
@@ -173,5 +177,29 @@ export function ChatPanel() {
         </>
       )}
     </div>
+  );
+}
+
+function formatToolName(raw: string): string {
+  const parts = raw.split('_');
+  const meaningful = parts.length > 1 ? parts.slice(1) : parts;
+  return meaningful
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function ToolChip({ toolName, status }: { toolName: string; status: 'started' | 'completed' | 'failed' }) {
+  const label = status === 'started'
+    ? `Running ${formatToolName(toolName)}...`
+    : status === 'completed'
+      ? `${formatToolName(toolName)}`
+      : `Failed: ${formatToolName(toolName)}`;
+
+  return (
+    <p className={`text-[11px] leading-relaxed ${
+      status === 'failed' ? 'text-red-400/70' : 'text-white/50'
+    }`}>
+      {label}
+    </p>
   );
 }
