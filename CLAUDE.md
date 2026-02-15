@@ -27,8 +27,9 @@ scripts/              health-check.mjs, generate-env.mjs
 - **Voice — PeerJS proximity chat**: P2P audio between players via `peerjs` SDK. Uses Firebase UID as peer ID, default PeerJS Cloud server (no config needed). Push-to-talk with echo cancellation. Frontend hook: `useProximityVoice.ts`.
 - **Frontend hosting**: Cloudflare Pages with static export (`output: 'export'` in next.config.js). No API routes allowed.
 - **Single source of truth for types**: `AgentStatus`, `AgentSkill`, `ClientMessage`, `ServerMessage` all live in `libs/shared-types/`. Frontend and server import from `@bossroom/shared-types`.
-- **Agent definitions**: All agent configs (system prompts, models, zones, positions, personalities) live in `libs/shared-utils/src/lib/agent-defs.ts`. Currently all agents use `google/gemini-3-flash`.
-- **MCP**: `@ai-sdk/mcp` client framework in `apps/game-server/src/ai/mcp.ts`. Agents can connect to external MCP tool servers. No active connections configured yet.
+- **Agent definitions**: Pre-built agents (Receptionist + Shopkeeper) are defined in `libs/shared-utils/src/lib/agent-defs.ts`. All other agents are created dynamically at runtime by the Receptionist's `setup_workspace` tool and persisted to DB.
+- **MCP**: `@ai-sdk/mcp` client framework in `apps/game-server/src/ai/mcp.ts`. Visa Intelligent Commerce (VIC) MCP configured for the Shopkeeper agent.
+- **Visa MCP**: Optional Visa VIC integration in `apps/game-server/src/ai/visa.ts` for product search and payments. Env vars: `VISA_VIC_API_KEY`, `VISA_EXTERNAL_CLIENT_ID`, etc.
 
 ## External Services
 
@@ -40,6 +41,7 @@ scripts/              health-check.mjs, generate-env.mjs
 | **Deepgram** | Speech-to-text (STT) | WebSocket (`wss://api.deepgram.com/v1/listen`) | Token subprotocol | `DEEPGRAM_API_KEY` |
 | **Inworld** | Text-to-speech (TTS) | REST POST (`https://api.inworld.ai/tts/v1/voice`) | Basic auth | `INWORLD_API_KEY`, `INWORLD_VOICE_ID`, `INWORLD_TTS_MODEL_ID` |
 | **PeerJS** | P2P proximity voice chat | `peerjs` | Peer ID (Firebase UID) | None (uses PeerJS Cloud) |
+| **Visa VIC** | Intelligent Commerce (product search, payments) | MCP (`@visa/mcp-client`) | API key + client ID | `VISA_VIC_API_KEY`, `VISA_EXTERNAL_CLIENT_ID`, etc. |
 | **Cloud SQL** | PostgreSQL database | `pg` + Drizzle ORM | Connection string | `DATABASE_URL` |
 | **Google AI** | Direct Gemini access (fallback) | — | API key | `GOOGLE_AI_API_KEY` |
 
@@ -92,6 +94,7 @@ cd terraform && terraform apply
 - `DEEPGRAM_API_KEY` — Deepgram speech-to-text
 - `INWORLD_API_KEY`, `INWORLD_VOICE_ID`, `INWORLD_TTS_MODEL_ID` — Inworld TTS
 - `GOOGLE_AI_API_KEY` — Google AI API key
+- `VISA_VIC_API_KEY`, `VISA_VIC_API_KEY_SS`, `VISA_EXTERNAL_CLIENT_ID`, `VISA_EXTERNAL_APP_ID` — Visa VIC MCP (optional)
 
 ### Frontend (Cloudflare Pages)
 
@@ -107,7 +110,7 @@ cd terraform && terraform apply
 - Config: `apps/game-server/src/db/drizzle.config.ts`
 - Migrations output: `apps/game-server/drizzle/`
 - Client: `apps/game-server/src/db/client.ts`
-- Tables: `users` (with jsonb `settings`), `agentSkills`, `conversations` (unique per user+agent), `taskHistory`
+- Tables: `users` (with jsonb `settings`), `workspaces`, `workspaceAgents`, `skills`, `conversations` (unique per user+agent, with `workspaceId`), `taskHistory`, `scratchpadEntries`
 
 **Dev workflow:** Edit `schema.ts` then `npm run db:push` (syncs directly, no migration files).
 
@@ -122,8 +125,10 @@ The server is organized into domain modules under `apps/game-server/src/domains/
 | `agents/` | Agent lifecycle, AI streaming, tool execution, TTS integration |
 | `conversations/` | Per-user per-agent conversation persistence |
 | `players/` | Player state, position tracking, WebSocket management |
+| `scratchpad/` | Workspace scratchpad entries — persistent collaborative feed |
 | `skills/` | Dynamic agent skill creation and management |
 | `users/` | User DB operations (upsert on join, settings) |
+| `workspaces/` | DB-backed workspace CRUD (create, load, archive, agents) |
 
 ## File Conventions
 
@@ -151,6 +156,10 @@ The server is organized into domain modules under `apps/game-server/src/domains/
 | Tool | `toolStore.ts` | Tool execution status display |
 | Workspace | `workspaceStore.ts` | Dynamic workspace/task orchestration |
 | Onboarding | `onboardingStore.ts` | Onboarding UI state |
+| Scratchpad | `scratchpadStore.ts` | Workspace scratchpad entries and feed |
+| Music | `musicStore.ts` | Background music track selection and volume |
+| Embed | `embedStore.ts` | Embedded document/board panel state |
+| Product | `productStore.ts` | Shopkeeper product cards display |
 
 ### Frontend Hooks
 
@@ -179,6 +188,9 @@ The server is organized into domain modules under `apps/game-server/src/domains/
 - Composio client: `apps/game-server/src/ai/composio.ts` — tool integration
 - Composio OAuth routes: `apps/game-server/src/http/composio-auth.ts`
 - MCP manager: `apps/game-server/src/ai/mcp.ts` — external tool server connections
+- Visa VIC MCP: `apps/game-server/src/ai/visa.ts` — Visa Intelligent Commerce integration
+- Scratchpad service: `apps/game-server/src/domains/scratchpad/service.ts` — workspace scratchpad persistence
+- Workspace repository: `apps/game-server/src/domains/workspaces/repository.ts` — workspace DB CRUD
 
 ## WebSocket Protocol
 
@@ -187,11 +199,16 @@ Messages are typed in `libs/shared-types/src/lib/websocket.ts`:
 **Client → Server:**
 - `player:join` — join with username + Firebase token
 - `player:move` — position, rotation, animation update
-- `player:updateSettings` — avatar change
+- `player:updateSettings` — avatar / voice preference change
 - `agent:interact` — start interaction with agent
-- `agent:message` — send message to agent (with `inputMode: 'voice' | 'text'`)
+- `agent:message` — send message to agent (with `inputMode`, optional `purchaseMode`/`purchaseBudget`)
 - `agent:stopInteract` — end interaction with agent
 - `voice:talking` — broadcast talking state for proximity voice
+- `workspace:userNote` — add user note to workspace scratchpad
+- `workspace:subscribe` — subscribe to workspace snapshot + scratchpad
+- `workspace:archive` — archive a workspace (soft-delete)
+- `conversations:reset` — reset conversations for given agent IDs (legacy)
+- `shop:purchase` — direct product purchase (bypasses LLM)
 
 **Server → Client:**
 - `world:state` — full world snapshot on join
@@ -206,9 +223,16 @@ Messages are typed in `libs/shared-types/src/lib/websocket.ts`:
 - `agent:conversationHistory` — replay past messages on reconnect
 - `agent:ttsAudio` — base64 MP3 audio from Inworld TTS
 - `workspace:build` — dynamic agent workspace created
+- `workspace:snapshot` — full workspace state (agents, scratchpad, status)
+- `workspace:list` — list of user's active workspaces
+- `workspace:scratchpadEntry` — new scratchpad entry
+- `workspace:scratchpadHistory` — batch scratchpad entries
+- `workspace:embedPanel` — embedded document/board panel
 - `agent:skills` — list of agent skills
 - `agent:skillCreated` — new skill created
 - `agent:delegatedTask` — agent-to-agent task delegation
+- `agent:productCards` — shopkeeper product card display
+- `shop:purchaseResult` — purchase outcome
 - `voice:playerTalking` — broadcast player talking state for proximity voice
 
 ## Common Gotchas

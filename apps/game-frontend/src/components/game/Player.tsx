@@ -141,6 +141,15 @@ export function Player() {
         openChat('receptionist');
       }
 
+      // / — focus Team Feed input (Minecraft-style)
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+        const feedInput = document.getElementById('team-feed-input');
+        if (feedInput) {
+          e.preventDefault();
+          feedInput.focus();
+        }
+      }
+
       // Ctrl+1-9 or Cmd+1-9: switch workspace tabs
       if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
         e.preventDefault();

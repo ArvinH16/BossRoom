@@ -238,10 +238,12 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         // Set scratchpad
         useScratchpadStore.getState().setEntries(workspaceId, scratchpadEntries);
 
-        // Auto-switch to lead agent of the workspace
+        // Auto-switch to lead agent and refetch its conversation
         if (snapshotAgents.length > 0) {
           const leadAgent = snapshotAgents.find(a => a.role === 'lead') ?? snapshotAgents[0];
           useChatStore.setState({ activeAgent: leadAgent.agentId });
+          // Trigger agent:interact to get fresh conversation history from server
+          gameSocket.send({ type: 'agent:interact', payload: { agentId: leadAgent.agentId } });
         }
 
         // Clear loading state

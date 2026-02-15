@@ -168,11 +168,15 @@ export function ScratchpadFeed() {
         <div className="px-2 py-2 border-t border-white/10">
           <div className="flex gap-1.5">
             <input
+              id="team-feed-input"
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              placeholder="Broadcast to team..."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSubmit();
+                if (e.key === 'Escape') (e.target as HTMLInputElement).blur();
+              }}
+              placeholder="Broadcast to team…  (/)"
               className="flex-1 px-2 py-1 rounded-md bg-white/5 border border-white/10 text-white text-[11px] placeholder:text-white/30 focus:outline-none focus:border-white/30"
             />
             <button

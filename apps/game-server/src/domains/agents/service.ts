@@ -913,14 +913,24 @@ No other text.`,
 
       if (!agent && !dynamicAgent) return;
 
-      // Dynamic agents: don't create a conversation or send a greeting.
-      // Their chat is populated by delegation streams (agent:chatStream / agent:chatMessage).
-      // Interacting just opens the panel on the frontend — no server-side conversation needed.
+      // Dynamic agents: send their in-memory chatHistory so the frontend is up to date.
       if (dynamicAgent) {
         // Only set to listening if the agent isn't busy (delegation may be in progress)
         const currentStatus = agentRepo.getStatus(agentId);
         if (currentStatus === 'idle') {
           agentRepo.setStatus(agentId, 'listening');
+        }
+
+        // Send chat history so switching workspaces always shows the latest state
+        const chatHistory = dynamicAgent.chatHistory;
+        if (chatHistory.length > 0) {
+          playerService.send(ws, {
+            type: 'agent:conversationHistory',
+            payload: {
+              agentId,
+              messages: chatHistory as Array<{ role: 'user' | 'assistant'; content: string }>,
+            },
+          });
         }
         return;
       }
