@@ -88,7 +88,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       };
     }),
 
-  addToolExecution: (agentId, toolName, status, result?) =>
+  addToolExecution: (agentId, toolName, status, result) =>
     set((state) => {
       const prev = state.chatMessages[agentId] ?? [];
       if (status === 'started') {
