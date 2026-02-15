@@ -13,6 +13,8 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('player:updateSettings'), payload: z.object({ avatarId: z.string().optional(), voiceId: z.string().optional() }) }),
   z.object({ type: z.literal('voice:talking'), payload: z.object({ isTalking: z.boolean(), targetPlayerId: z.string().nullable() }) }),
   z.object({ type: z.literal('workspace:userNote'), payload: z.object({ workspaceId: z.string(), content: z.string() }) }),
+  z.object({ type: z.literal('workspace:subscribe'), payload: z.object({ workspaceId: z.string() }) }),
+  z.object({ type: z.literal('workspace:archive'), payload: z.object({ workspaceId: z.string() }) }),
   z.object({ type: z.literal('conversations:reset'), payload: z.object({ agentIds: z.array(z.string()) }) }),
   // Direct purchase (bypasses LLM)
   z.object({ type: z.literal('shop:purchase'), payload: z.object({
@@ -127,6 +129,29 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
     currency: z.string().optional(),
     merchantName: z.string().optional(),
     error: z.string().optional(),
+  }) }),
+  z.object({ type: z.literal('workspace:snapshot'), payload: z.object({
+    workspaceId: z.string(),
+    taskSummary: z.string(),
+    status: z.string(),
+    agents: z.array(z.object({
+      agentId: z.string(), workspaceId: z.string(), name: z.string(), color: z.string(),
+      zoneName: z.string(), personality: z.string(), role: z.string(), status: z.string(),
+      position: z.tuple([z.number(), z.number(), z.number()]),
+      chatHistory: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string() })),
+      skills: z.array(skillSummarySchema),
+    })),
+    scratchpadEntries: z.array(z.object({
+      id: z.string(), authorType: z.enum(['agent', 'user']),
+      authorName: z.string(), authorColor: z.string(),
+      content: z.string(), timestamp: z.number(),
+    })),
+  }) }),
+  z.object({ type: z.literal('workspace:list'), payload: z.object({
+    workspaces: z.array(z.object({
+      id: z.string(), taskSummary: z.string(), status: z.string(),
+      createdAt: z.string(), agentNames: z.array(z.string()),
+    })),
   }) }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;

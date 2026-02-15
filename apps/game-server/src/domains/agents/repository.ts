@@ -2,6 +2,8 @@ import type { AgentStatus, DynamicAgent, Skill } from '@bossroom/shared-types';
 import { AGENT_DEFS, type AgentDef } from '@bossroom/shared-utils';
 import { compileSystemPrompt } from './promptCompiler.js';
 import { log } from '../../logger.js';
+import type { WorkspaceRepository } from '../workspaces/repository.js';
+import type { SkillService } from '../skills/service.js';
 
 /** Static agent with status tracking. */
 type AgentWithStatus = AgentDef & { status: AgentStatus };
@@ -25,7 +27,8 @@ export interface RegisteredDynamicAgent {
   chatHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
-export function createAgentRepository() {
+export function createAgentRepository(deps: { workspaceRepo: WorkspaceRepository; skillService: SkillService }) {
+  const { workspaceRepo, skillService } = deps;
   const agents = new Map<string, AgentWithStatus>();
   const dynamicAgents = new Map<string, RegisteredDynamicAgent>();
 
@@ -59,6 +62,16 @@ export function createAgentRepository() {
       const dynamic = dynamicAgents.get(id);
       if (dynamic) {
         dynamic.status = status;
+        // Write-through to DB (fire-and-forget)
+        void workspaceRepo.updateAgentStatus(id, status).catch(err =>
+          log.error(`[agent-repo] DB status update failed for ${id}:`, err)
+        );
+        // Flush chat history when agent finishes
+        if (status === 'done') {
+          void workspaceRepo.updateAgentChatHistory(id, dynamic.chatHistory).catch(err =>
+            log.error(`[agent-repo] DB chat flush failed for ${id}:`, err)
+          );
+        }
       }
     },
 
@@ -109,6 +122,26 @@ export function createAgentRepository() {
 
       dynamicAgents.set(agent.agentId, registered);
       log.info(`[agent-repo] Registered dynamic agent: ${agent.name} (${agent.agentId}, ${agent.role})`);
+
+      // Write-through to DB (fire-and-forget)
+      void workspaceRepo.upsertWorkspaceAgent({
+        agentId: registered.agentId,
+        workspaceId: registered.workspaceId,
+        name: registered.name,
+        color: registered.color,
+        zoneName: registered.zoneName,
+        personality: registered.personality,
+        role: registered.role,
+        systemPrompt: registered.systemPrompt,
+        status: registered.status,
+        position: registered.position,
+        chatHistory: registered.chatHistory,
+        initialTask: registered.initialTask ?? null,
+        teamMembers: registered.teamMembers,
+      }).catch(err =>
+        log.error(`[agent-repo] DB upsert failed for ${registered.agentId}:`, err)
+      );
+
       return registered;
     },
 
@@ -152,6 +185,10 @@ export function createAgentRepository() {
       if (!agent) return;
       agent.chatHistory.push({ role, content });
       if (agent.chatHistory.length > 50) agent.chatHistory.shift();
+      // Write-through to DB (fire-and-forget)
+      void workspaceRepo.updateAgentChatHistory(agentId, agent.chatHistory).catch(err =>
+        log.error(`[agent-repo] DB chat history update failed for ${agentId}:`, err)
+      );
     },
 
     /** Get the last N messages from an agent's chat history. */
@@ -159,6 +196,48 @@ export function createAgentRepository() {
       const agent = dynamicAgents.get(agentId);
       if (!agent) return [];
       return agent.chatHistory.slice(-lastN);
+    },
+
+    /** Load agents from DB for a workspace (rehydration). Idempotent — skips already-loaded agents. */
+    async loadFromDb(workspaceId: string): Promise<RegisteredDynamicAgent[]> {
+      const rows = await workspaceRepo.getWorkspaceAgents(workspaceId);
+      const loaded: RegisteredDynamicAgent[] = [];
+      for (const row of rows) {
+        if (dynamicAgents.has(row.agentId)) {
+          loaded.push(dynamicAgents.get(row.agentId)!);
+          continue;
+        }
+        const skills = skillService.getSkillsForAgent(row.agentId);
+        const registered: RegisteredDynamicAgent = {
+          agentId: row.agentId,
+          workspaceId: row.workspaceId,
+          name: row.name,
+          color: row.color,
+          zoneName: row.zoneName,
+          personality: row.personality,
+          role: row.role as 'lead' | 'worker',
+          systemPrompt: row.systemPrompt,
+          model: 'gemini',
+          status: 'idle', // Always start as idle on rehydration
+          position: row.position as [number, number, number],
+          skills,
+          teamMembers: (row.teamMembers ?? []) as string[],
+          initialTask: row.initialTask ?? undefined,
+          chatHistory: (row.chatHistory ?? []) as Array<{ role: 'user' | 'assistant'; content: string }>,
+        };
+        dynamicAgents.set(row.agentId, registered);
+        loaded.push(registered);
+        log.info(`[agent-repo] Rehydrated agent: ${registered.name} (${registered.agentId})`);
+      }
+      return loaded;
+    },
+
+    /** Load all agents for all active workspaces of a user. */
+    async loadAllForUser(userId: string): Promise<void> {
+      const workspaceList = await workspaceRepo.getActiveWorkspaces(userId);
+      for (const ws of workspaceList) {
+        await this.loadFromDb(ws.id);
+      }
     },
   };
 }

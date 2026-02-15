@@ -136,9 +136,28 @@ export function Player() {
       }
 
       if (e.code === 'KeyR' && !chatPanelOpen) {
-        // Open receptionist with a fresh task (additive — keeps existing agents)
-        useChatStore.getState().newTask();
+        // Open receptionist with a new conversation (additive — keeps existing workspaces)
+        useChatStore.getState().newConversation();
         openChat('receptionist');
+      }
+
+      // Ctrl+1-9: switch workspace tabs
+      if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
+        e.preventDefault();
+        const index = parseInt(e.key) - 1;
+        const tabs = useChatStore.getState().workspaceTabs;
+        if (index < tabs.length) {
+          useChatStore.getState().switchWorkspace(tabs[index].id);
+          if (!useChatStore.getState().chatPanelOpen) {
+            openChat('receptionist');
+          }
+        } else if (index === tabs.length) {
+          // Ctrl+N where N = tabs.length+1 = new conversation tab
+          useChatStore.getState().switchWorkspace(null);
+          if (!useChatStore.getState().chatPanelOpen) {
+            openChat('receptionist');
+          }
+        }
       }
     }
 

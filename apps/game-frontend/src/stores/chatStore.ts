@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import { gameSocket } from '@/lib/websocket';
 import { generateConversationId } from '@bossroom/shared-utils';
 import { useVoiceStore } from '@/stores/voiceStore';
+import { useEmbedStore } from '@/stores/embedStore';
+import { useScratchpadStore } from '@/stores/scratchpadStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useWorldStore } from '@/stores/worldStore';
 
 export interface ProductCard {
   name: string;
@@ -25,11 +29,11 @@ export type ChatMessage =
 /** Detect markdown links or raw URLs in agent text. */
 const LINK_REGEX = /https?:\/\/[^\s)]+|\[.+?\]\(.+?\)/;
 
-/** Archived receptionist task (read-only snapshot). */
-export interface ArchivedTask {
-  id: string;
-  label: string;
-  messages: ChatMessage[];
+/** Workspace tab backed by server DB. */
+export interface WorkspaceTab {
+  id: string;           // workspaceId ('ws-XXXXXXXX')
+  taskSummary: string;
+  status: string;       // 'active' | 'completed'
   agentIds: string[];
 }
 
@@ -44,12 +48,10 @@ interface ChatState {
   /** Agent IDs whose latest turn contains a link the user hasn't seen yet. */
   agentsWithLinks: Set<string>;
 
-  /** Receptionist task tabs */
-  archivedTasks: ArchivedTask[];
-  activeTaskId: string | null;        // null = current live conversation
-  currentTaskId: string;              // ID of the live task
-  currentTaskAgentIds: string[];      // dynamic agent IDs spawned by this task
-  taskCounter: number;
+  /** Workspace tabs (DB-backed) */
+  workspaceTabs: WorkspaceTab[];
+  activeWorkspaceId: string | null;  // null = receptionist new-conversation mode
+  isLoadingWorkspace: boolean;
 
   openChat: (agentId: string) => void;
   interactAgent: (agentId: string) => void;
@@ -60,12 +62,13 @@ interface ChatState {
   appendStream: (agentId: string, delta: string) => void;
   finalizeStream: (agentId: string) => void;
 
-  /** Task management (receptionist only) */
+  /** Workspace management (receptionist only) */
   registerTaskAgents: (agentIds: string[]) => void;
-  newTask: () => void;
-  switchTask: (taskId: string | null) => void;
-  closeTask: (taskId: string) => void;
-  closeCurrentTask: () => void;
+  setWorkspaceTabs: (tabs: WorkspaceTab[]) => void;
+  switchWorkspace: (workspaceId: string | null) => void;
+  newConversation: () => void;
+  archiveWorkspace: (workspaceId: string) => void;
+  setLoadingWorkspace: (loading: boolean) => void;
 
   reset: () => void;
 }
@@ -79,11 +82,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   lastWalkAwayAgent: null,
   agentsWithLinks: new Set<string>(),
 
-  archivedTasks: [],
-  activeTaskId: null,
-  currentTaskId: 'task-1',
-  currentTaskAgentIds: [],
-  taskCounter: 1,
+  workspaceTabs: [],
+  activeWorkspaceId: null,
+  isLoadingWorkspace: false,
 
   openChat: (agentId) => {
     useVoiceStore.getState().stopTTS();
@@ -225,99 +226,111 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return next;
     }),
 
-  /** Called when workspace:build fires — associates agent IDs with the current task. */
+  /** Called when workspace:build fires — associates agent IDs with the active workspace. */
   registerTaskAgents: (agentIds) => {
-    set((state) => ({
-      currentTaskAgentIds: [...state.currentTaskAgentIds, ...agentIds],
-    }));
+    set((state) => {
+      const activeId = state.activeWorkspaceId;
+      if (!activeId) return {};
+      return {
+        workspaceTabs: state.workspaceTabs.map(tab =>
+          tab.id === activeId
+            ? { ...tab, agentIds: [...new Set([...tab.agentIds, ...agentIds])] }
+            : tab,
+        ),
+      };
+    });
   },
 
-  newTask: () => {
-    const state = get();
-    const currentMessages = state.chatMessages['receptionist'] ?? [];
+  setWorkspaceTabs: (tabs) => {
+    set({ workspaceTabs: tabs });
+  },
 
-    // Archive current conversation if it has messages
-    const archived = [...state.archivedTasks];
-    if (currentMessages.length > 0) {
-      archived.push({
-        id: state.currentTaskId,
-        label: `Task ${state.taskCounter}`,
-        messages: currentMessages,
-        agentIds: state.currentTaskAgentIds,
-      });
+  switchWorkspace: (workspaceId) => {
+    if (workspaceId === null) {
+      // Switch to receptionist new-conversation mode
+      set({ activeWorkspaceId: null, isLoadingWorkspace: false, activeAgent: 'receptionist' });
+      return;
+    }
+    set({ activeWorkspaceId: workspaceId, isLoadingWorkspace: true });
+    // Request full workspace snapshot from server
+    gameSocket.send({
+      type: 'workspace:subscribe',
+      payload: { workspaceId },
+    });
+  },
+
+  newConversation: () => {
+    const state = get();
+    // Reset receptionist conversation on server so old AI context is cleared
+    gameSocket.send({
+      type: 'conversations:reset',
+      payload: { agentIds: ['receptionist'] },
+    });
+    set({
+      activeWorkspaceId: null,
+      activeAgent: 'receptionist',
+      chatMessages: {
+        ...state.chatMessages,
+        receptionist: [],
+      },
+      streamingText: { ...state.streamingText, receptionist: '' },
+      conversationIds: {
+        ...state.conversationIds,
+        receptionist: generateConversationId(),
+      },
+    });
+  },
+
+  archiveWorkspace: (workspaceId) => {
+    const state = get();
+    const tab = state.workspaceTabs.find(t => t.id === workspaceId);
+    const agentIds = tab?.agentIds ?? [];
+
+    // Send archive request to server
+    gameSocket.send({
+      type: 'workspace:archive',
+      payload: { workspaceId },
+    });
+
+    // Clean up related stores
+    useEmbedStore.getState().removeEmbedsByAgentIds(agentIds);
+    if (state.activeWorkspaceId === workspaceId) {
+      useScratchpadStore.getState().clearWorkspace();
+    }
+    useWorkspaceStore.getState().removeAgents(agentIds);
+    useWorldStore.getState().removeAgents(agentIds);
+
+    // Remove from tabs
+    const remaining = state.workspaceTabs.filter(t => t.id !== workspaceId);
+
+    // Clear chat messages for archived workspace's agents
+    const cleaned = { ...state.chatMessages };
+    const cleanedStreaming = { ...state.streamingText };
+    for (const id of agentIds) {
+      delete cleaned[id];
+      delete cleanedStreaming[id];
     }
 
-    const newCounter = state.taskCounter + 1;
-    const newTaskId = `task-${newCounter}`;
+    // If this was the active workspace, switch to most recent or null
+    const nextActive = state.activeWorkspaceId === workspaceId
+      ? (remaining.length > 0 ? remaining[0].id : null)
+      : state.activeWorkspaceId;
 
     set({
-      archivedTasks: archived,
-      currentTaskId: newTaskId,
-      taskCounter: newCounter,
-      activeTaskId: null, // switch to the new live task
-      currentTaskAgentIds: [],
-      chatMessages: {
-        ...state.chatMessages,
-        receptionist: [],
-      },
-      streamingText: { ...state.streamingText, receptionist: '' },
-      conversationIds: {
-        ...state.conversationIds,
-        receptionist: generateConversationId(),
-      },
+      workspaceTabs: remaining,
+      activeWorkspaceId: nextActive,
+      chatMessages: cleaned,
+      streamingText: cleanedStreaming,
     });
+
+    // If switching to another workspace, subscribe to it
+    if (nextActive && state.activeWorkspaceId === workspaceId) {
+      get().switchWorkspace(nextActive);
+    }
   },
 
-  switchTask: (taskId) => {
-    set({ activeTaskId: taskId });
-  },
-
-  closeTask: (taskId) => {
-    const state = get();
-    const task = state.archivedTasks.find((t) => t.id === taskId);
-    // Tell server to delete these conversations from memory + DB
-    const agentIdsToReset = ['receptionist', ...(task?.agentIds ?? [])];
-    gameSocket.send({
-      type: 'conversations:reset',
-      payload: { agentIds: agentIdsToReset },
-    });
-    const remaining = state.archivedTasks.filter((t) => t.id !== taskId);
-    const newCounter = remaining.length + 1;
-    set({
-      archivedTasks: remaining,
-      activeTaskId: state.activeTaskId === taskId ? null : state.activeTaskId,
-      taskCounter: newCounter,
-      currentTaskId: `task-${newCounter}`,
-    });
-    return task?.agentIds ?? [];
-  },
-
-  /** Close the current live task — clears receptionist chat and agents. */
-  closeCurrentTask: () => {
-    const state = get();
-    // Tell server to delete these conversations from memory + DB
-    const agentIdsToReset = ['receptionist', ...state.currentTaskAgentIds];
-    gameSocket.send({
-      type: 'conversations:reset',
-      payload: { agentIds: agentIdsToReset },
-    });
-
-    const newCounter = state.archivedTasks.length + 1;
-    set({
-      currentTaskId: `task-${newCounter}`,
-      taskCounter: newCounter,
-      currentTaskAgentIds: [],
-      activeTaskId: null,
-      chatMessages: {
-        ...state.chatMessages,
-        receptionist: [],
-      },
-      streamingText: { ...state.streamingText, receptionist: '' },
-      conversationIds: {
-        ...state.conversationIds,
-        receptionist: generateConversationId(),
-      },
-    });
+  setLoadingWorkspace: (loading) => {
+    set({ isLoadingWorkspace: loading });
   },
 
   reset: () =>
@@ -329,10 +342,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       conversationIds: {},
       lastWalkAwayAgent: null,
       agentsWithLinks: new Set<string>(),
-      archivedTasks: [],
-      activeTaskId: null,
-      currentTaskId: 'task-1',
-      currentTaskAgentIds: [],
-      taskCounter: 1,
+      workspaceTabs: [],
+      activeWorkspaceId: null,
+      isLoadingWorkspace: false,
     }),
 }));

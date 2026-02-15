@@ -25,7 +25,7 @@ export function createConversationService(deps: {
 }) {
   const { conversationRepo, agentRepo } = deps;
   const conversations = new Map<string, Conversation>();
-  const playerConversations = new Map<string, string>(); // "playerId:agentId" → convId
+  const playerConversations = new Map<string, string>(); // "playerId:agentId:workspaceId" → convId
 
   function getGreeting(agent: AgentDef, displayName: string | null): string {
     const name = displayName ?? 'there';
@@ -43,8 +43,9 @@ export function createConversationService(deps: {
       agentId: string,
       ws: WebSocket,
       displayName: string | null,
+      workspaceId: string = 'global',
     ): Promise<StartOrRestoreResult> {
-      const convKey = `${playerId}:${agentId}`;
+      const convKey = `${playerId}:${agentId}:${workspaceId}`;
       const convId = playerConversations.get(convKey);
       let conv = convId ? conversations.get(convId) : undefined;
 
@@ -60,7 +61,7 @@ export function createConversationService(deps: {
 
       // Try DB
       try {
-        const existing = await conversationRepo.findByUserAndAgent(playerId, agentId);
+        const existing = await conversationRepo.findByUserAndAgent(playerId, agentId, workspaceId);
         if (existing) {
           conv = {
             id: existing.id,
@@ -107,6 +108,7 @@ export function createConversationService(deps: {
           id,
           userId: playerId,
           agentId,
+          workspaceId,
           messages: conv.messages,
           aiMessages: conv.aiMessages,
         });
@@ -118,8 +120,8 @@ export function createConversationService(deps: {
     },
 
     /** Create conversation in-memory only (for handleMessage when no prior interaction) */
-    createInMemory(playerId: string, agentId: string, conversationId: string, ws: WebSocket): Conversation {
-      const convKey = `${playerId}:${agentId}`;
+    createInMemory(playerId: string, agentId: string, conversationId: string, ws: WebSocket, workspaceId: string = 'global'): Conversation {
+      const convKey = `${playerId}:${agentId}:${workspaceId}`;
       const existing = playerConversations.get(convKey);
       if (existing) {
         const conv = conversations.get(existing);
@@ -164,8 +166,8 @@ export function createConversationService(deps: {
       return conversations.get(convId);
     },
 
-    getConversationForPlayer(playerId: string, agentId: string): Conversation | undefined {
-      const convKey = `${playerId}:${agentId}`;
+    getConversationForPlayer(playerId: string, agentId: string, workspaceId: string = 'global'): Conversation | undefined {
+      const convKey = `${playerId}:${agentId}:${workspaceId}`;
       const convId = playerConversations.get(convKey);
       return convId ? conversations.get(convId) : undefined;
     },
@@ -190,9 +192,9 @@ export function createConversationService(deps: {
       return agentIds;
     },
 
-    async resetConversations(playerId: string, agentIds: string[]): Promise<void> {
+    async resetConversations(playerId: string, agentIds: string[], workspaceId: string = 'global'): Promise<void> {
       for (const agentId of agentIds) {
-        const convKey = `${playerId}:${agentId}`;
+        const convKey = `${playerId}:${agentId}:${workspaceId}`;
         const convId = playerConversations.get(convKey);
         if (convId) {
           conversations.delete(convId);

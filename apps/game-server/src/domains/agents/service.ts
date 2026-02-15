@@ -13,6 +13,7 @@ import type { PlayerService } from '../players/service.js';
 import type { SkillService } from '../skills/service.js';
 import type { ScratchpadService } from '../scratchpad/service.js';
 import type { UserRepository } from '../users/repository.js';
+import type { WorkspaceRepository } from '../workspaces/repository.js';
 import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools, createEmbedTools, createFinishTaskTool, createPeekConversationTool } from './skillTools.js';
 import { createPaymentTools } from './paymentTools.js';
 
@@ -23,10 +24,11 @@ interface AgentServiceDeps {
   skillService: SkillService;
   scratchpadService: ScratchpadService;
   userRepo: UserRepository;
+  workspaceRepo: WorkspaceRepository;
 }
 
 export function createAgentService(deps: AgentServiceDeps) {
-  const { agentRepo, conversationService, playerService, skillService, scratchpadService, userRepo } = deps;
+  const { agentRepo, conversationService, playerService, skillService, scratchpadService, userRepo, workspaceRepo } = deps;
 
   /** Guard against duplicate workspace completion triggers. */
   const completedWorkspaces = new Set<string>();
@@ -56,6 +58,10 @@ export function createAgentService(deps: AgentServiceDeps) {
     }
 
     completedWorkspaces.add(workspaceId);
+    // Persist workspace status to DB
+    void workspaceRepo.updateWorkspaceStatus(workspaceId, 'completed').catch(err =>
+      log.error(`[workspace] DB status update failed for ${workspaceId}:`, err)
+    );
     log.info(`[workspace] Lead "${leadAgent.name}" done in ${workspaceId}, triggering receptionist summary`);
 
     // Gather scratchpad
@@ -718,6 +724,7 @@ No other text.`,
             onWorkspaceBuilt: (agents, taskSummary) =>
               handleWorkspaceBuilt(agents, taskSummary, playerId, ws, broadcastFn),
             getDynamicAgentCount: () => agentRepo.getAllDynamic().length,
+            workspaceRepo,
           })
         : {};
 
@@ -877,6 +884,11 @@ No other text.`,
   return {
     getAgentStates() {
       return agentRepo.getAll();
+    },
+
+    /** Check if an agent is a dynamic (workspace) agent. */
+    isDynamicAgent(agentId: string): boolean {
+      return !!agentRepo.getDynamic(agentId);
     },
 
     async handleInteraction(playerId: string, agentId: string, ws: WebSocket, displayName: string | null) {
