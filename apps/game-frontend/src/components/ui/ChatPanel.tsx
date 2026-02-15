@@ -173,7 +173,7 @@ export function ChatPanel() {
           </div>
 
           {/* Task tabs (receptionist only) */}
-          {isReceptionist && (archivedTasks.length > 0) && (
+          {isReceptionist && (
             <TaskTabs />
           )}
 
