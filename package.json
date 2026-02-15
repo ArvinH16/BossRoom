@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "dev": "npx nx run-many -t serve -p game-frontend,game-server",
-    "dev:frontend": "npx nx serve game-frontend",
-    "dev:server": "npx nx serve game-server",
+    "dev": "npx nx run-many -t dev -p @org/game-frontend,@org/game-server",
+    "dev:frontend": "npx nx dev @org/game-frontend",
+    "dev:server": "npx nx dev @org/game-server",
     "build": "npx nx run-many -t build",
     "lint": "npx nx run-many -t lint",
     "db:push": "npx drizzle-kit push --config=apps/game-server/src/db/drizzle.config.ts",

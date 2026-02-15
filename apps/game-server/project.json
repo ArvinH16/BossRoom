@@ -75,6 +75,18 @@
       ],
       "executor": "nx:noop"
     },
+    "dev": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": [
+        "build"
+      ],
+      "options": {
+        "buildTarget": "@org/game-server:build:development",
+        "runBuildTargetDependencies": false
+      }
+    },
     "serve": {
       "continuous": true,
       "executor": "@nx/js:node",

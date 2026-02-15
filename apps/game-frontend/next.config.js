@@ -11,6 +11,8 @@ const nextConfig = {
   // Use this to set Nx-specific options
   // See: https://nx.dev/recipes/next/next-config-setup
   nx: {},
+  // Override PORT env so frontend doesn't conflict with game server
+  devIndicators: false,
 };
 
 const plugins = [
