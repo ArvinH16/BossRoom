@@ -1,37 +1,19 @@
-/** NPC agent: voxel character + floating name label + status orb + sparkles + click-to-chat. */
+/** NPC agent: Kenney character model + floating name label + status orb + sparkles + click-to-chat. */
 'use client';
 
-import { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
 import { Billboard, Text, Sparkles } from '@react-three/drei';
 import { RigidBody } from '@react-three/rapier';
-import type { Group } from 'three';
-import { VoxelCharacter } from './VoxelCharacter';
+import { CharacterModel } from './CharacterModel';
 import { useGameStore } from '@/stores/gameStore';
 import { statusColors, type AgentData } from '@/data/agents';
-import { ANIMATION } from '@/data/gameConfig';
 
 interface AgentProps {
   agent: AgentData;
 }
 
 export function Agent({ agent }: AgentProps) {
-  const groupRef = useRef<Group>(null);
   const openChat = useGameStore((s) => s.openChat);
   const isActive = agent.status !== 'idle';
-
-  useFrame(() => {
-    if (groupRef.current) {
-      // Faster sway when working, normal when idle
-      const speed =
-        agent.status === 'working'
-          ? ANIMATION.swaySpeed * 3
-          : agent.status === 'thinking'
-            ? ANIMATION.swaySpeed * 1.5
-            : ANIMATION.swaySpeed;
-      groupRef.current.rotation.y = Math.sin(Date.now() * speed) * ANIMATION.swayAmplitude;
-    }
-  });
 
   return (
     <group position={agent.position}>
@@ -43,7 +25,6 @@ export function Agent({ agent }: AgentProps) {
       </RigidBody>
 
       <group
-        ref={groupRef}
         onClick={(e) => {
           e.stopPropagation();
           openChat(agent.id);
@@ -55,11 +36,11 @@ export function Agent({ agent }: AgentProps) {
           document.body.style.cursor = 'default';
         }}
       >
-        <VoxelCharacter color={agent.color} idle={agent.status === 'idle'} />
+        <CharacterModel url={agent.modelUrl} animation="idle" />
       </group>
 
       {/* Floating name label */}
-      <Billboard position={[0, 2, 0]}>
+      <Billboard position={[0, 2.2, 0]}>
         <Text
           fontSize={0.25}
           color="#ffffff"
@@ -74,7 +55,7 @@ export function Agent({ agent }: AgentProps) {
 
       {/* Status label when active */}
       {isActive && (
-        <Billboard position={[0, 2.6, 0]}>
+        <Billboard position={[0, 2.8, 0]}>
           <Text
             fontSize={0.15}
             color={statusColors[agent.status]}
@@ -95,7 +76,7 @@ export function Agent({ agent }: AgentProps) {
       )}
 
       {/* Status orb */}
-      <mesh position={[0, 2.35, 0]}>
+      <mesh position={[0, 2.55, 0]}>
         <sphereGeometry args={[0.08, 8, 8]} />
         <meshStandardMaterial
           color={statusColors[agent.status]}

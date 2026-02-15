@@ -1,13 +1,26 @@
-/** Player character: ecctrl third-person controller + proximity detection for agent interaction. */
+/** Player character: ecctrl controller + Kenney character with animation state machine. */
 'use client';
 
 import { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import Ecctrl from 'ecctrl';
-import { VoxelCharacter } from './VoxelCharacter';
+import Ecctrl, { EcctrlAnimation } from 'ecctrl';
 import { useGameStore } from '@/stores/gameStore';
 import { PLAYER, CAMERA, INTERACTION } from '@/data/gameConfig';
 import type { Vector3 } from 'three';
+
+const animationSet = {
+  idle: 'idle',
+  walk: 'walk',
+  run: 'sprint',
+  jump: 'jump',
+  jumpIdle: 'fall',
+  jumpLand: 'idle',
+  fall: 'fall',
+  action1: 'emote-yes',
+  action2: 'interact-right',
+  action3: 'pick-up',
+  action4: 'emote-no',
+};
 
 export function Player() {
   const ecctrlRef = useRef<{ group: { translation(): Vector3 } | null }>(null);
@@ -61,8 +74,14 @@ export function Player() {
       maxVelLimit={PLAYER.maxSpeed}
       capsuleHalfHeight={PLAYER.capsuleHalfHeight}
       capsuleRadius={PLAYER.capsuleRadius}
+      animated
     >
-      <VoxelCharacter color={PLAYER.color} idle={false} />
+      <EcctrlAnimation
+        characterURL={PLAYER.modelUrl}
+        animationSet={animationSet}
+      >
+        <group scale={2.2} />
+      </EcctrlAnimation>
     </Ecctrl>
   );
 }

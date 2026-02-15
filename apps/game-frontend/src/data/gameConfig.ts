@@ -1,7 +1,7 @@
-/** Game-wide constants for the 3D voxel office world. */
+/** Game-wide constants for the 3D office world. */
 
 export const PLAYER = {
-  color: '#FFD700',
+  modelUrl: '/models/characters/player.glb',
   capsuleHalfHeight: 0.5,
   capsuleRadius: 0.3,
   maxSpeed: 3,
@@ -23,17 +23,6 @@ export const WORLD = {
   floorSize: 50,
   wallHeight: 3,
   background: '#0a0a1a',
-} as const;
-
-export const ANIMATION = {
-  /** Idle bob frequency (radians per ms). */
-  bobSpeed: 0.002,
-  /** Idle bob amplitude (units). */
-  bobAmplitude: 0.05,
-  /** Agent idle sway frequency. */
-  swaySpeed: 0.001,
-  /** Agent idle sway amplitude (radians). */
-  swayAmplitude: 0.1,
 } as const;
 
 export const LIGHTING = {

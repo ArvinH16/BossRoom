@@ -6,6 +6,7 @@ export interface AgentData {
   color: string;
   position: [number, number, number];
   zone: string;
+  modelUrl: string;
   suggestedPrompts: string[];
   status: 'idle' | 'listening' | 'thinking' | 'working' | 'error';
 }
@@ -33,6 +34,7 @@ export const agents: AgentData[] = [
     color: '#4A90D9',
     position: [-6, 0, -6],
     zone: 'communications',
+    modelUrl: '/models/characters/agent-mailbot.glb',
     suggestedPrompts: [
       'Check my messages',
       'Send an update to the team',
@@ -48,6 +50,7 @@ export const agents: AgentData[] = [
     color: '#D94A4A',
     position: [6, 0, -6],
     zone: 'project-ops',
+    modelUrl: '/models/characters/agent-taskmaster.glb',
     suggestedPrompts: [
       "What's on my plate today?",
       'Create a new task',
@@ -63,6 +66,7 @@ export const agents: AgentData[] = [
     color: '#4AD97A',
     position: [0, 0, -10],
     zone: 'calendar',
+    modelUrl: '/models/characters/agent-clockwork.glb',
     suggestedPrompts: [
       "What's on my schedule?",
       'Book a meeting',

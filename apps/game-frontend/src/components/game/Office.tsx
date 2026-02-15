@@ -1,72 +1,92 @@
-/** Procedural office environment: floor, grid, zone plates, desks, walls. */
+/** Procedural office environment: floor, grid, zone plates, furniture workstations, walls. */
 'use client';
 
 import { RigidBody } from '@react-three/rapier';
-import { Grid } from '@react-three/drei';
+import { Grid, useGLTF } from '@react-three/drei';
 import { agents, zoneColors } from '@/data/agents';
 import { WORLD } from '@/data/gameConfig';
-
-function Desk({ position }: { position: [number, number, number] }) {
-  const [x, , z] = position;
-  return (
-    <group position={[x, 0, z - 1.5]}>
-      {/* Tabletop */}
-      <mesh position={[0, 0.75, 0]} castShadow receiveShadow>
-        <boxGeometry args={[1.4, 0.08, 0.7]} />
-        <meshStandardMaterial color="#2a2a3e" flatShading />
-      </mesh>
-      {/* Legs */}
-      {(
-        [
-          [-0.6, 0.375, -0.25],
-          [0.6, 0.375, -0.25],
-          [-0.6, 0.375, 0.25],
-          [0.6, 0.375, 0.25],
-        ] as [number, number, number][]
-      ).map((pos, i) => (
-        <mesh key={i} position={pos} castShadow>
-          <boxGeometry args={[0.06, 0.75, 0.06]} />
-          <meshStandardMaterial color="#1a1a2e" flatShading />
-        </mesh>
-      ))}
-      {/* Monitor */}
-      <mesh position={[0, 1.1, -0.15]} castShadow>
-        <boxGeometry args={[0.6, 0.4, 0.04]} />
-        <meshStandardMaterial
-          color="#111122"
-          emissive="#2233aa"
-          emissiveIntensity={0.3}
-          flatShading
-        />
-      </mesh>
-      {/* Monitor stand */}
-      <mesh position={[0, 0.9, -0.15]}>
-        <boxGeometry args={[0.06, 0.2, 0.06]} />
-        <meshStandardMaterial color="#1a1a2e" flatShading />
-      </mesh>
-      {/* Chair */}
-      <group position={[0, 0, 0.8]}>
-        <mesh position={[0, 0.35, 0]}>
-          <boxGeometry args={[0.5, 0.06, 0.5]} />
-          <meshStandardMaterial color="#333355" flatShading />
-        </mesh>
-        <mesh position={[0, 0.6, -0.22]}>
-          <boxGeometry args={[0.5, 0.5, 0.06]} />
-          <meshStandardMaterial color="#333355" flatShading />
-        </mesh>
-      </group>
-    </group>
-  );
-}
+import { Workstation } from './Workstation';
 
 const halfFloor = WORLD.floorSize / 2;
 
-const walls: { pos: [number, number, number]; size: [number, number, number] }[] = [
-  { pos: [0, WORLD.wallHeight / 2, -halfFloor], size: [WORLD.floorSize, WORLD.wallHeight, 0.3] },
-  { pos: [0, WORLD.wallHeight / 2, halfFloor], size: [WORLD.floorSize, WORLD.wallHeight, 0.3] },
-  { pos: [-halfFloor, WORLD.wallHeight / 2, 0], size: [0.3, WORLD.wallHeight, WORLD.floorSize] },
-  { pos: [halfFloor, WORLD.wallHeight / 2, 0], size: [0.3, WORLD.wallHeight, WORLD.floorSize] },
+const walls: {
+  pos: [number, number, number];
+  size: [number, number, number];
+}[] = [
+  {
+    pos: [0, WORLD.wallHeight / 2, -halfFloor],
+    size: [WORLD.floorSize, WORLD.wallHeight, 0.3],
+  },
+  {
+    pos: [0, WORLD.wallHeight / 2, halfFloor],
+    size: [WORLD.floorSize, WORLD.wallHeight, 0.3],
+  },
+  {
+    pos: [-halfFloor, WORLD.wallHeight / 2, 0],
+    size: [0.3, WORLD.wallHeight, WORLD.floorSize],
+  },
+  {
+    pos: [halfFloor, WORLD.wallHeight / 2, 0],
+    size: [0.3, WORLD.wallHeight, WORLD.floorSize],
+  },
 ];
+
+const FURNITURE_SCALE = 2.2;
+
+function Decor() {
+  const bookcase = useGLTF('/models/furniture/bookcaseOpen.glb');
+  const plant = useGLTF('/models/furniture/pottedPlant.glb');
+  const lamp = useGLTF('/models/furniture/lampSquareFloor.glb');
+  const sofa = useGLTF('/models/furniture/loungeSofa.glb');
+  const coffeeTable = useGLTF('/models/furniture/tableCoffee.glb');
+
+  return (
+    <group>
+      {/* Bookcase near Taskmaster zone */}
+      <primitive
+        object={bookcase.scene.clone()}
+        scale={FURNITURE_SCALE}
+        position={[8.5, 0, -8]}
+        rotation={[0, -Math.PI / 2, 0]}
+        castShadow
+      />
+      {/* Plants scattered */}
+      <primitive
+        object={plant.scene.clone()}
+        scale={FURNITURE_SCALE}
+        position={[-3, 0, -3]}
+        castShadow
+      />
+      <primitive
+        object={plant.scene.clone()}
+        scale={FURNITURE_SCALE}
+        position={[3, 0, -3]}
+        castShadow
+      />
+      {/* Floor lamp */}
+      <primitive
+        object={lamp.scene.clone()}
+        scale={FURNITURE_SCALE}
+        position={[-8, 0, -8]}
+        castShadow
+      />
+      {/* Lounge area near spawn */}
+      <primitive
+        object={sofa.scene.clone()}
+        scale={FURNITURE_SCALE}
+        position={[0, 0, 2]}
+        rotation={[0, Math.PI, 0]}
+        castShadow
+      />
+      <primitive
+        object={coffeeTable.scene.clone()}
+        scale={FURNITURE_SCALE}
+        position={[0, 0, 1]}
+        castShadow
+      />
+    </group>
+  );
+}
 
 export function Office() {
   return (
@@ -112,10 +132,13 @@ export function Office() {
         </mesh>
       ))}
 
-      {/* Desks near each agent */}
+      {/* Workstations near each agent */}
       {agents.map((agent) => (
-        <Desk key={agent.id} position={agent.position} />
+        <Workstation key={agent.id} position={agent.position} />
       ))}
+
+      {/* Decorative furniture */}
+      <Decor />
 
       {/* Perimeter walls */}
       {walls.map((wall, i) => (
@@ -134,3 +157,9 @@ export function Office() {
     </group>
   );
 }
+
+useGLTF.preload('/models/furniture/bookcaseOpen.glb');
+useGLTF.preload('/models/furniture/pottedPlant.glb');
+useGLTF.preload('/models/furniture/lampSquareFloor.glb');
+useGLTF.preload('/models/furniture/loungeSofa.glb');
+useGLTF.preload('/models/furniture/tableCoffee.glb');
