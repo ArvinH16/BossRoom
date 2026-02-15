@@ -81,7 +81,7 @@ export function Player() {
   return (
     <Ecctrl
       ref={ecctrlRef as never}
-      position={[0, PLAYER.capsuleHalfHeight, 6]}
+      position={[0, 0, 6]}
       characterInitDir={Math.PI}
       camInitDir={{ x: 0, y: Math.PI }}
       camInitDis={CAMERA.initDis}
@@ -90,6 +90,7 @@ export function Player() {
       maxVelLimit={PLAYER.maxSpeed}
       capsuleHalfHeight={PLAYER.capsuleHalfHeight}
       capsuleRadius={PLAYER.capsuleRadius}
+      floatingDis={0}
       animated
     >
       <EcctrlAnimation
