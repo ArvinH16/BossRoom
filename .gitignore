@@ -62,3 +62,4 @@ terraform-outputs.json
 .env*.local
 apps/*/.env.local
 apps/*/.env.production
+.vercel
