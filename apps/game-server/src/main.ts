@@ -233,7 +233,21 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
     case 'conversations:reset': {
       const uid = players.getUidByWs(ws);
       if (!uid) return;
+      // Clean up conversations (memory + DB)
       await conversationModule.service.resetConversations(uid, msg.payload.agentIds);
+      // Clean up scratchpad + dynamic agents for any workspaces these agents belong to
+      const workspaceIds = new Set<string>();
+      for (const agentId of msg.payload.agentIds) {
+        const dynAgent = agentRepo.getDynamic(agentId);
+        if (dynAgent) workspaceIds.add(dynAgent.workspaceId);
+      }
+      for (const wsId of workspaceIds) {
+        scratchpadService.clear(wsId);
+        for (const a of agentRepo.getByWorkspace(wsId)) {
+          agentRepo.removeDynamic(a.agentId);
+        }
+        log.info(`[cleanup] Cleared workspace ${wsId}: scratchpad + dynamic agents`);
+      }
       log.info(`[conversations] reset ${msg.payload.agentIds.length} conversations for ${uid}`);
       return;
     }

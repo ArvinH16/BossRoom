@@ -131,6 +131,11 @@ export function createAgentRepository() {
       return Array.from(dynamicAgents.values());
     },
 
+    /** Remove a single dynamic agent by ID. */
+    removeDynamic(agentId: string): void {
+      dynamicAgents.delete(agentId);
+    },
+
     /** Clear all dynamic agents (workspace reset). */
     clearDynamic(): void {
       dynamicAgents.clear();
