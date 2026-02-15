@@ -32,13 +32,15 @@ export function Player() {
   const openChat = useChatStore((s) => s.openChat);
   const chatPanelOpen = useChatStore((s) => s.chatPanelOpen);
 
-  const voiceInput = useVoiceInput();
+  const { startRecording, stopRecording, transcript: voiceTranscript } = useVoiceInput();
+  const recordingRef = useRef(false);
+  const startPromiseRef = useRef<Promise<void> | null>(null);
 
   useNearestAgent(agents, ecctrlRef);
 
   useEffect(() => {
-    useVoiceStore.getState().setVoiceTranscript(voiceInput.transcript);
-  }, [voiceInput.transcript]);
+    useVoiceStore.getState().setVoiceTranscript(voiceTranscript);
+  }, [voiceTranscript]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -50,24 +52,44 @@ export function Player() {
         openChat(nearestAgent);
       }
 
-      if (e.code === 'KeyT' && !e.repeat && nearestAgent) {
-        // Open chat if not already open
+      if (e.code === 'KeyT' && !e.repeat) {
+        console.log('[DEBUG-FIX] T key pressed', { nearestAgent, recording: recordingRef.current, chatPanelOpen });
+        if (!nearestAgent) { console.log('[DEBUG-FIX] No nearestAgent, ignoring T'); return; }
+        if (recordingRef.current) { console.log('[DEBUG-FIX] Already recording, ignoring T'); return; }
         if (!chatPanelOpen) openChat(nearestAgent);
-        voiceInput.startRecording();
+        recordingRef.current = true;
         useVoiceStore.getState().setRecording(true);
+        console.log('[DEBUG-FIX] Starting recording for agent:', nearestAgent);
+        startPromiseRef.current = startRecording();
       }
     }
 
     function handleKeyUp(e: KeyboardEvent) {
-      if (e.code === 'KeyT' && voiceInput.isRecording) {
-        voiceInput.stopRecording().then((transcript) => {
+      if (e.code === 'KeyT' && recordingRef.current) {
+        console.log('[DEBUG-FIX] T key released, stopping recording');
+        recordingRef.current = false;
+        const doStop = async () => {
+          // Wait for startRecording to finish before stopping
+          if (startPromiseRef.current) {
+            console.log('[DEBUG-FIX] Waiting for startRecording promise to resolve...');
+            await startPromiseRef.current;
+            startPromiseRef.current = null;
+          }
+          console.log('[DEBUG-FIX] Calling stopRecording...');
+          const transcript = await stopRecording();
+          console.log('[DEBUG-FIX] stopRecording returned transcript:', JSON.stringify(transcript));
           useVoiceStore.getState().setRecording(false);
           useVoiceStore.getState().setVoiceTranscript('');
           const agent = useChatStore.getState().activeAgent;
+          console.log('[DEBUG-FIX] activeAgent:', agent, '| transcript.trim():', JSON.stringify(transcript.trim()));
           if (transcript.trim() && agent) {
+            console.log('[DEBUG-FIX] Sending message to agent:', agent, 'content:', transcript.trim());
             useChatStore.getState().sendMessage(agent, transcript.trim());
+          } else {
+            console.log('[DEBUG-FIX] NOT sending message - transcript empty or no agent');
           }
-        });
+        };
+        doStop();
       }
     }
 
@@ -77,7 +99,7 @@ export function Player() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [nearestAgent, chatPanelOpen, openChat, voiceInput]);
+  }, [nearestAgent, chatPanelOpen, openChat, startRecording, stopRecording]);
 
   return (
     <Ecctrl

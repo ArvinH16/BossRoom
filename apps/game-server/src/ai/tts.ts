@@ -8,12 +8,14 @@ interface TTSResult {
 
 export async function synthesizeSpeech(text: string): Promise<TTSResult | null> {
   const apiKey = env.INWORLD_API_KEY;
+  log.info(`[DEBUG-FIX] synthesizeSpeech called, text length=${text.length}, INWORLD_API_KEY=${apiKey ? 'SET' : 'NOT SET'}, voiceId=${env.INWORLD_VOICE_ID}, modelId=${env.INWORLD_TTS_MODEL_ID}`);
   if (!apiKey) {
     log.warn('[tts] INWORLD_API_KEY not configured, skipping TTS');
     return null;
   }
 
   try {
+    log.info('[DEBUG-FIX] Calling Inworld TTS API...');
     const res = await fetch('https://api.inworld.ai/tts/v1/voice', {
       method: 'POST',
       headers: {
@@ -27,20 +29,23 @@ export async function synthesizeSpeech(text: string): Promise<TTSResult | null> 
       }),
     });
 
+    log.info(`[DEBUG-FIX] Inworld TTS response: ${res.status} ${res.statusText}`);
     if (!res.ok) {
-      log.error(`[tts] Inworld TTS failed: ${res.status} ${res.statusText}`);
+      const errorBody = await res.text();
+      log.error(`[tts] Inworld TTS failed: ${res.status} ${res.statusText} body: ${errorBody}`);
       return null;
     }
 
     const data = await res.json() as { audioContent?: string };
     if (!data.audioContent) {
-      log.error('[tts] No audioContent in Inworld response');
+      log.error('[DEBUG-FIX] No audioContent in Inworld response, keys:', Object.keys(data));
       return null;
     }
 
+    log.info(`[DEBUG-FIX] TTS audioContent received, length=${data.audioContent.length}`);
     return { audioBase64: data.audioContent, mimeType: 'audio/wav' };
   } catch (err) {
-    log.error('[tts] TTS synthesis error:', err);
+    log.error('[DEBUG-FIX] TTS synthesis error:', err);
     return null;
   }
 }

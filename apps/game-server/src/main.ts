@@ -42,28 +42,9 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ error: 'Deepgram not configured' }));
       return;
     }
-    try {
-      const upstream = await fetch('https://api.deepgram.com/v1/auth/grant', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Token ${deepgramKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ time_to_live_in_seconds: 30 }),
-      });
-      if (!upstream.ok) {
-        res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ error: 'Deepgram token grant failed' }));
-        return;
-      }
-      const data = await upstream.json();
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify(data));
-    } catch (err) {
-      log.error('[deepgram] Token grant error:', err);
-      res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ error: 'Internal error' }));
-    }
+    // Return the API key directly as the access_token (hackathon shortcut)
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ access_token: deepgramKey }));
     return;
   }
 
@@ -120,6 +101,7 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
     case 'agent:interact':
       return handleAgentInteract(ws, msg.payload, { players, agents });
     case 'agent:message':
+      log.info('[DEBUG-FIX] agent:message received:', JSON.stringify(msg.payload));
       return handleAgentMessage(ws, msg.payload, { players, agents });
     case 'agent:stopInteract':
       return handleAgentStopInteract(ws, msg.payload, { players, agents });
