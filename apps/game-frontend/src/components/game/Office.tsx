@@ -292,22 +292,22 @@ export function Office() {
           return <AnimatedZone key={agent.agentId} agent={agent} />;
         })}
 
-      {/* ── Neon accent strips (glow with bloom) ── */}
-      <NeonStrip position={[0, 0.03, 10]} length={30} color="#6366f1" />
-      <NeonStrip position={[0, 0.03, -46]} length={30} color="#6366f1" />
+      {/* ── Neon accent strips — border the floor ── */}
+      <NeonStrip position={[0, 0.03, halfFloor]} length={WORLD.floorSize} color="#6366f1" />
+      <NeonStrip position={[0, 0.03, -halfFloor]} length={WORLD.floorSize} color="#6366f1" />
       <NeonStrip
-        position={[-15, 0.03, -18]}
-        length={56}
+        position={[-halfFloor, 0.03, 0]}
+        length={WORLD.floorSize}
         color="#6366f1"
         vertical
       />
       <NeonStrip
-        position={[15, 0.03, -18]}
-        length={56}
+        position={[halfFloor, 0.03, 0]}
+        length={WORLD.floorSize}
         color="#6366f1"
         vertical
       />
-      <NeonStrip position={[0, 0.03, -2]} length={30} color="#3730a3" />
+      <NeonStrip position={[0, 0.03, -2]} length={WORLD.floorSize} color="#3730a3" />
 
       {/* Perimeter walls */}
       {walls.map((wall, i) => (
