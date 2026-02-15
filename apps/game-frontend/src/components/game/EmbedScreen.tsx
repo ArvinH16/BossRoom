@@ -37,7 +37,7 @@ export function EmbedScreen() {
       >
         <div
           className="bg-gray-950/95 rounded-xl border border-white/15 overflow-hidden shadow-2xl backdrop-blur-sm origin-center"
-          style={{ width: '1280px', height: '800px', transform: 'scale(0.4)' }}
+          style={{ width: '1280px', height: '800px', transform: 'scale(0.8)' }}
         >
           {/* Header bar */}
           <div className="flex items-center justify-between px-5 py-2.5 bg-black/60 border-b border-white/10">
