@@ -1,13 +1,12 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import type { LanguageModel } from 'ai';
 import { type AgentModel, GATEWAY_MODEL_MAP } from '@bossroom/shared-types';
+import { env } from '../env.js';
 import { log } from '../logger.js';
 
-const ACCOUNT_ID = process.env['CF_AI_GATEWAY_ACCOUNT_ID'];
-const GATEWAY_ID = process.env['CF_AI_GATEWAY_ID'];
-const GATEWAY_BASE = `https://gateway.ai.cloudflare.com/v1/${ACCOUNT_ID}/${GATEWAY_ID}/compat`;
+const GATEWAY_BASE = `https://gateway.ai.cloudflare.com/v1/${env.CF_AI_GATEWAY_ACCOUNT_ID}/${env.CF_AI_GATEWAY_ID}/compat`;
 
-const PROVIDER_CONFIGS: Record<string, { name: string; envKey: string }> = {
+const PROVIDER_CONFIGS: Record<string, { name: string; envKey: 'ANTHROPIC_API_KEY' | 'OPENAI_API_KEY' | 'GOOGLE_AI_API_KEY' }> = {
   'anthropic': { name: 'cf-anthropic', envKey: 'ANTHROPIC_API_KEY' },
   'openai': { name: 'cf-openai', envKey: 'OPENAI_API_KEY' },
   'google-ai-studio': { name: 'cf-google', envKey: 'GOOGLE_AI_API_KEY' },
@@ -16,7 +15,7 @@ const PROVIDER_CONFIGS: Record<string, { name: string; envKey: string }> = {
 const providers: Record<string, ReturnType<typeof createOpenAICompatible>> = {};
 
 for (const [key, config] of Object.entries(PROVIDER_CONFIGS)) {
-  const apiKey = process.env[config.envKey];
+  const apiKey = env[config.envKey];
   if (apiKey) {
     providers[key] = createOpenAICompatible({
       name: config.name,

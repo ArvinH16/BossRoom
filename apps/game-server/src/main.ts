@@ -1,11 +1,12 @@
-import 'dotenv/config';
+import { env } from './env.js';
 import http from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
-import type {
-  ClientMessage,
-  ServerMessage,
-  PlayerState,
-  WorldState,
+import {
+  clientMessageSchema,
+  type ClientMessage,
+  type ServerMessage,
+  type PlayerState,
+  type WorldState,
 } from '@bossroom/shared-types';
 import { AgentManager } from './agents/AgentManager.js';
 import { handleComposioAuthRoutes } from './http/composio-auth.js';
@@ -14,7 +15,7 @@ import { verifyToken } from './auth/firebase-admin.js';
 import { db } from './db/client.js';
 import { users } from './db/schema.js';
 
-const PORT = parseInt(process.env['PORT'] || '8080', 10);
+const PORT = env.PORT;
 
 // --- In-memory state ---
 const players = new Map<string, PlayerState>();
@@ -39,8 +40,13 @@ const wss = new WebSocketServer({ server });
 wss.on('connection', (ws: WebSocket) => {
   ws.on('message', async (data: Buffer) => {
     try {
-      const msg: ClientMessage = JSON.parse(data.toString());
-      await handleMessage(ws, msg);
+      const raw = JSON.parse(data.toString());
+      const parsed = clientMessageSchema.safeParse(raw);
+      if (!parsed.success) {
+        log.warn('Invalid WS message:', parsed.error.issues);
+        return;
+      }
+      await handleMessage(ws, parsed.data);
     } catch (err) {
       log.error('Bad message:', err);
     }

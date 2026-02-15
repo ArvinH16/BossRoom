@@ -1,21 +1,12 @@
 import { initializeApp, cert, type ServiceAccount } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { env } from '../env.js';
 import { log } from '../logger.js';
 
-const projectId = process.env['FIREBASE_PROJECT_ID'];
-const clientEmail = process.env['FIREBASE_CLIENT_EMAIL'];
-const privateKey = process.env['FIREBASE_PRIVATE_KEY'];
-
-if (!projectId || !clientEmail || !privateKey) {
-  throw new Error(
-    'Missing Firebase Admin credentials. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in .env'
-  );
-}
-
 const serviceAccount: ServiceAccount = {
-  projectId,
-  clientEmail,
-  privateKey: privateKey.replace(/\\n/g, '\n'),
+  projectId: env.FIREBASE_PROJECT_ID,
+  clientEmail: env.FIREBASE_CLIENT_EMAIL,
+  privateKey: env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
 };
 
 initializeApp({ credential: cert(serviceAccount) });

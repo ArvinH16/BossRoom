@@ -2,7 +2,7 @@
  * WebSocket client for connecting to the BossRoom game server.
  * Handles connection, reconnection, and message routing to the Zustand store.
  */
-import type { ClientMessage, ServerMessage } from '@bossroom/shared-types';
+import { serverMessageSchema, type ClientMessage, type ServerMessage } from '@bossroom/shared-types';
 
 type MessageHandler = (msg: ServerMessage) => void;
 
@@ -75,8 +75,9 @@ class GameWebSocket {
 
     this.ws.onmessage = (event) => {
       try {
-        const msg: ServerMessage = JSON.parse(event.data as string);
-        this.handler?.(msg);
+        const parsed = serverMessageSchema.safeParse(JSON.parse(event.data as string));
+        if (!parsed.success) return;
+        this.handler?.(parsed.data);
       } catch {
         // ignore malformed messages
       }
