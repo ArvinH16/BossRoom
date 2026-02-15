@@ -1,4 +1,4 @@
-/** Floating todo-list style Mission Control board beyond the office boundary. */
+/** Floating todo-list board beyond the office boundary. */
 'use client';
 
 import { useRef, useMemo } from 'react';
@@ -276,7 +276,7 @@ export function MissionControlSky() {
         anchorX="left"
         anchorY="middle"
       >
-        Mission Control
+        Todo List
       </Text>
 
       {/* Phase badge (top right) */}

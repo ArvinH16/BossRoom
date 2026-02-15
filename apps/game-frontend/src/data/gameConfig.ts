@@ -22,7 +22,7 @@ export const INTERACTION = {
 } as const;
 
 export const WORLD = {
-  floorSize: 50,
+  floorSize: 100,
   wallHeight: 3,
   background: '#87ceeb',
 } as const;

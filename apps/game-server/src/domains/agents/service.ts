@@ -384,6 +384,7 @@ export function createAgentService(deps: AgentServiceDeps) {
               broadcastFn,
               onWorkspaceBuilt: (agents, taskSummary) =>
                 handleWorkspaceBuilt(agents, taskSummary, playerId, ws, broadcastFn),
+              getDynamicAgentCount: () => agentRepo.getAllDynamic().length,
             })
           : {};
 
