@@ -7,11 +7,13 @@ import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { Office } from './Office';
 import { Agent } from './Agent';
 import { Player } from './Player';
+import { RemotePlayer } from './RemotePlayer';
 import { useWorldStore } from '@/stores/worldStore';
 import { LIGHTING, POST_PROCESSING } from '@/data/gameConfig';
 
 export function Scene() {
   const agents = useWorldStore((s) => s.agents);
+  const remotePlayers = useWorldStore((s) => s.remotePlayers);
 
   return (
     <>
@@ -48,6 +50,10 @@ export function Scene() {
 
           {agents.map((agent) => (
             <Agent key={agent.id} agent={agent} />
+          ))}
+
+          {Object.values(remotePlayers).map((player) => (
+            <RemotePlayer key={player.id} player={player} />
           ))}
 
           <Player />

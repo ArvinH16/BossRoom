@@ -5,12 +5,12 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { CapsuleCollider, RigidBody, vec3 } from '@react-three/rapier';
+import { CapsuleCollider, RigidBody } from '@react-three/rapier';
 import { CharacterModel } from './CharacterModel';
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
+import { useBroadcastPosition } from '@/hooks/useBroadcastPosition';
 import { PLAYER, INTERACTION } from '@/data/gameConfig';
-import * as THREE from 'three';
 
 const MOVE_SPEED = 5;
 const SPAWN: [number, number, number] = [0, 2, 6];
@@ -26,6 +26,8 @@ export function Player() {
   const nearestAgent = useWorldStore((s) => s.nearestAgent);
   const openChat = useChatStore((s) => s.openChat);
   const chatPanelOpen = useChatStore((s) => s.chatPanelOpen);
+
+  useBroadcastPosition(rigidBodyRef, animation);
 
   // Keyboard input
   useEffect(() => {

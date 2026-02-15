@@ -27,6 +27,7 @@ export function Game({ user }: GameProps) {
             user.displayName ?? user.email,
             token,
             useAuthStore.getState().getToken,
+            user.uid,
           );
         }
       } catch {
