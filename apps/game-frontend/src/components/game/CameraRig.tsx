@@ -1,5 +1,5 @@
 /**
- * Camera rig with first/third-person toggle (` key).
+ * Camera rig with first/third-person toggle (V key).
  *
  * Third-person: Roblox-style follow cam — drag to orbit, scroll to zoom.
  * First-person: Pointer-locked FPS camera, WASD is camera-relative.
@@ -91,7 +91,7 @@ export function CameraRig() {
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code !== 'Backquote' && e.key !== '`') return;
+      if (e.key !== 'v' && e.key !== 'V') return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
 
