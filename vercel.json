@@ -1,6 +1,0 @@
-{
-  "buildCommand": "npx nx build game-frontend --configuration=production",
-  "outputDirectory": "apps/game-frontend/.next",
-  "framework": "nextjs",
-  "installCommand": "npm install"
-}

@@ -35,7 +35,7 @@ output "firebase_admin_credentials" {
   sensitive = true
 }
 
-output "vercel_url" {
-  description = "Vercel project URL"
-  value       = "https://${vercel_project.frontend.name}.vercel.app"
+output "cloudflare_url" {
+  description = "Cloudflare Pages project URL"
+  value       = "https://${cloudflare_pages_project.frontend.name}.pages.dev"
 }

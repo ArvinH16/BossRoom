@@ -10,9 +10,9 @@ terraform {
       source  = "hashicorp/google-beta"
       version = "~> 7.0"
     }
-    vercel = {
-      source  = "vercel/vercel"
-      version = "~> 4.0"
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.0"
     }
   }
 
@@ -31,8 +31,8 @@ provider "google-beta" {
   region  = var.region
 }
 
-provider "vercel" {
-  api_token = var.vercel_api_token
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
 }
 
 locals {
