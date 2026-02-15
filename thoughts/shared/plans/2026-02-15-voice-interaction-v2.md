@@ -122,8 +122,8 @@ DEEPGRAM_API_KEY=
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `npm run build` passes
-- [ ] `npm run lint` passes
+- [x] `npm run build` passes
+- [x] `npm run lint` passes
 - [ ] Existing text chat still works (no runtime regression)
 
 ---
@@ -495,8 +495,8 @@ Add `<PushToTalkOverlay />` after `<InteractionPrompt />` in the JSX (line 66):
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `npm run build` passes
-- [ ] `npm run lint` passes
+- [x] `npm run build` passes
+- [x] `npm run lint` passes
 
 #### Manual Verification:
 - [ ] Walk up to agent, see "Press E to chat or hold T to talk to [Agent]"
@@ -734,8 +734,8 @@ Add `<TTSAudioPlayer />` in the JSX:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `npm run build` passes
-- [ ] `npm run lint` passes
+- [x] `npm run build` passes
+- [x] `npm run lint` passes
 
 #### Manual Verification:
 - [ ] Send text message to agent → hear TTS audio play after response completes

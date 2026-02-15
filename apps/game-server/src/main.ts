@@ -32,8 +32,40 @@ const userRepo = userModule.repository;
 // --- HTTP + WebSocket Server ---
 const PORT = env.PORT;
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   if (handleComposioAuthRoutes(req, res)) return;
+
+  if (req.method === 'GET' && req.url === '/api/deepgram/token') {
+    const deepgramKey = env.DEEPGRAM_API_KEY;
+    if (!deepgramKey) {
+      res.writeHead(503, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ error: 'Deepgram not configured' }));
+      return;
+    }
+    try {
+      const upstream = await fetch('https://api.deepgram.com/v1/auth/grant', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${deepgramKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ time_to_live_in_seconds: 30 }),
+      });
+      if (!upstream.ok) {
+        res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ error: 'Deepgram token grant failed' }));
+        return;
+      }
+      const data = await upstream.json();
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(data));
+    } catch (err) {
+      log.error('[deepgram] Token grant error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ error: 'Internal error' }));
+    }
+    return;
+  }
 
   res.writeHead(200, {
     'Content-Type': 'text/plain',

@@ -20,6 +20,14 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   GOOGLE_AI_API_KEY: z.string().optional(),
   COMPOSIO_API_KEY: z.string().optional(),
+
+  // Voice: Deepgram STT (server-only token minting)
+  DEEPGRAM_API_KEY: z.string().optional(),
+
+  // Voice: Inworld TTS
+  INWORLD_API_KEY: z.string().optional(),
+  INWORLD_VOICE_ID: z.string().default('Ashley'),
+  INWORLD_TTS_MODEL_ID: z.string().default('inworld-tts-1.5-mini'),
 });
 
 export type Env = z.infer<typeof envSchema>;

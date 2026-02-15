@@ -5,6 +5,7 @@ import { TIMEOUTS } from '@bossroom/shared-utils';
 import { getModel } from '../../ai/gateway.js';
 import { getComposioTools } from '../../ai/composio.js';
 import { mcpManager } from '../../ai/mcp.js';
+import { synthesizeSpeech } from '../../ai/tts.js';
 import { log } from '../../logger.js';
 import type { AgentRepository } from './repository.js';
 import type { ConversationService } from '../conversations/service.js';
@@ -167,6 +168,18 @@ export function createAgentService(deps: AgentServiceDeps) {
         playerService.send(ws, {
           type: 'agent:chatMessage',
           payload: { agentId, role: 'assistant', content: fullResponse },
+        });
+
+        // TTS: synthesize and send audio (non-blocking, fail-soft)
+        synthesizeSpeech(fullResponse).then((tts) => {
+          if (tts) {
+            playerService.send(ws, {
+              type: 'agent:ttsAudio',
+              payload: { agentId, audioBase64: tts.audioBase64, mimeType: tts.mimeType },
+            });
+          }
+        }).catch((err) => {
+          log.error(`[tts] Failed for agent ${agentId}:`, err);
         });
 
         // Reset status

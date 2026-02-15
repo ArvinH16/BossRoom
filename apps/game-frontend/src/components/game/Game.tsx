@@ -8,6 +8,8 @@ import { Physics } from '@react-three/rapier';
 import { Scene } from './Scene';
 import { ChatPanel } from '../ui/ChatPanel';
 import { InteractionPrompt } from './InteractionPrompt';
+import { PushToTalkOverlay } from '../ui/PushToTalkOverlay';
+import { TTSAudioPlayer } from '../ui/TTSAudioPlayer';
 import { HUD } from '../ui/HUD';
 import { OnboardingOverlay } from '../ui/OnboardingOverlay';
 import { useAuthStore } from '@/stores/authStore';
@@ -64,6 +66,8 @@ export function Game({ user }: GameProps) {
       <HUD />
       <ChatPanel />
       <InteractionPrompt />
+      <PushToTalkOverlay />
+      <TTSAudioPlayer />
       <OnboardingOverlay />
     </div>
   );

@@ -25,6 +25,10 @@ export function InteractionPrompt() {
       <kbd className="px-2 py-0.5 mx-1 rounded bg-white/15 border border-white/20 text-xs font-mono">
         E
       </kbd>{' '}
+      to chat or hold{' '}
+      <kbd className="px-2 py-0.5 mx-1 rounded bg-white/15 border border-white/20 text-xs font-mono">
+        T
+      </kbd>{' '}
       to talk to{' '}
       <span style={{ color: agent.color }}>{agent.name}</span>
     </div>

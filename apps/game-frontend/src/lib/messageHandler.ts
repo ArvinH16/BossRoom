@@ -1,5 +1,6 @@
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
+import { useVoiceStore } from '@/stores/voiceStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
 import { agents as defaultAgents } from '@/data/agents';
@@ -75,6 +76,13 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
           msg.payload.status,
           msg.payload.result,
         );
+        break;
+
+      case 'agent:ttsAudio':
+        useVoiceStore.getState().enqueueTTS({
+          audioBase64: msg.payload.audioBase64,
+          mimeType: msg.payload.mimeType,
+        });
         break;
 
       case 'player:left':
