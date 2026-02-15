@@ -14,25 +14,53 @@ import { db } from './db/client.js';
 import { users } from './db/schema.js';
 
 const PORT = parseInt(process.env['PORT'] || '8080', 10);
+const ALLOWED_ORIGIN = process.env['ALLOWED_ORIGIN'] || '*';
+const PING_INTERVAL_MS = 30_000; // 30s keepalive for Cloud Run
 
 // --- In-memory state ---
 const players = new Map<string, PlayerState>();
 const connections = new Map<string, WebSocket>();
 const wsToUid = new Map<WebSocket, string>();
+const alive = new WeakSet<WebSocket>();
 
 const agentManager = new AgentManager();
 
-const server = http.createServer((_req, res) => {
-  res.writeHead(200, {
-    'Content-Type': 'text/plain',
-    'Access-Control-Allow-Origin': '*',
-  });
+const server = http.createServer((req, res) => {
+  // CORS headers for cross-origin requests from Vercel
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('BossRoom Game Server');
 });
 
 const wss = new WebSocketServer({ server });
 
+// Keepalive: ping every 30s to prevent Cloud Run idle timeout (default 5min)
+const pingTimer = setInterval(() => {
+  for (const ws of wss.clients) {
+    if (!alive.has(ws)) {
+      ws.terminate();
+      continue;
+    }
+    alive.delete(ws);
+    ws.ping();
+  }
+}, PING_INTERVAL_MS);
+
+wss.on('close', () => clearInterval(pingTimer));
+
 wss.on('connection', (ws: WebSocket) => {
+  alive.add(ws);
+  ws.on('pong', () => alive.add(ws));
+
   ws.on('message', async (data: Buffer) => {
     try {
       const msg: ClientMessage = JSON.parse(data.toString());

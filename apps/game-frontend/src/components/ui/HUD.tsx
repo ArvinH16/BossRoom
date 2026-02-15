@@ -26,14 +26,14 @@ export function HUD() {
         <h1 className="text-xl font-bold text-white tracking-tight">
           Boss<span className="text-indigo-400">Room</span>
         </h1>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 bg-black/40 rounded-full px-2.5 py-1">
           <div
             className={`w-2 h-2 rounded-full ${
-              connected ? 'bg-green-400' : 'bg-red-400 animate-pulse'
+              connected ? 'bg-green-400' : 'bg-yellow-400 animate-pulse'
             }`}
           />
-          <span className="text-[10px] text-white/40">
-            {connected ? 'Connected' : 'Connecting...'}
+          <span className="text-[10px] text-white/50">
+            {connected ? 'Online' : 'Offline'}
           </span>
         </div>
         {user && (
