@@ -113,13 +113,13 @@ export function SpeechBubble({ agentId }: SpeechBubbleProps) {
 
   return (
     <group ref={groupRef} visible={false}>
-      <Billboard position={[0, 3.5, 0]}>
+      <Billboard position={[0, 2.8, 0]}>
         <group>
           {/* Background box */}
           <RoundedBox args={[3.5, 1.0, 0.05]} radius={0.12} smoothness={4}>
             <meshStandardMaterial
               ref={bgRef}
-              color="#1a1a2e"
+              color="#ffffff"
               transparent
               opacity={0}
             />
@@ -130,7 +130,7 @@ export function SpeechBubble({ agentId }: SpeechBubbleProps) {
             ref={textRef}
             position={[0, 0, 0.03]}
             fontSize={0.14}
-            color="#ffffff"
+            color="#111111"
             anchorX="center"
             anchorY="middle"
             maxWidth={3.2}
@@ -144,7 +144,7 @@ export function SpeechBubble({ agentId }: SpeechBubbleProps) {
             <coneGeometry args={[0.12, 0.18, 3]} />
             <meshStandardMaterial
               ref={tailRef}
-              color="#1a1a2e"
+              color="#ffffff"
               transparent
               opacity={0}
             />
