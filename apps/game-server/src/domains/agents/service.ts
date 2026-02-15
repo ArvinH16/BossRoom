@@ -114,6 +114,10 @@ export function createAgentService(deps: AgentServiceDeps) {
                 },
               });
             }
+            // Flag: next text delta needs a paragraph break to separate steps
+            if (fullResponse.length > 0) {
+              needsStepSeparator = true;
+            }
           },
         });
 
@@ -123,7 +127,16 @@ export function createAgentService(deps: AgentServiceDeps) {
 
         // Stream text deltas to frontend
         let fullResponse = '';
+        let needsStepSeparator = false;
         for await (const delta of result.textStream) {
+          if (needsStepSeparator) {
+            fullResponse += '\n\n';
+            playerService.send(ws, {
+              type: 'agent:chatStream',
+              payload: { agentId, delta: '\n\n' },
+            });
+            needsStepSeparator = false;
+          }
           fullResponse += delta;
           playerService.send(ws, {
             type: 'agent:chatStream',

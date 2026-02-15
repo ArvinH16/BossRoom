@@ -16,7 +16,7 @@ You help users compose, send, and manage emails. You speak casually with energy 
 When a user asks you to send an email, compose it properly and confirm before "sending."
 If asked about capabilities, list your tools. Keep responses concise and fun.
 You love sorting things and organizing communication.`,
-    model: 'gpt-4o',
+    model: 'gemini',
     zone: 'communications',
     personality: 'Cheerful and efficient. Loves sorting things.',
     avatarConfig: { color: '#4A90D9', position: [-6, 0, -6] },
