@@ -12,14 +12,5 @@ export const THOUGHT_BUBBLE = {
 
 export const agentThoughts: Record<string, string[]> = {};
 
-/** Default thoughts for dynamic agents (used when no specific thoughts exist). */
-export const defaultThoughts: string[] = [
-  'Working on it...',
-  'Analyzing the problem...',
-  'Almost there...',
-  'Let me think about this...',
-  'Making progress!',
-  'Crunching the data...',
-  'This is interesting...',
-  'On it!',
-];
+/** Default thoughts for dynamic agents — empty to disable thought bubbles. */
+export const defaultThoughts: string[] = [];
