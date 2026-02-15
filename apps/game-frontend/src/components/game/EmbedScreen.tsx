@@ -41,8 +41,19 @@ export function EmbedScreen() {
         >
           {/* Header bar */}
           <div className="flex items-center justify-between px-5 py-2.5 bg-black/60 border-b border-white/10">
+            {/* Expand to sidebar (left) */}
+            <button
+              onClick={openPanel}
+              className="p-2 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors shrink-0"
+              title="Expand to sidebar"
+            >
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="2" y="2" width="12" height="12" rx="2" />
+                <path d="M9 2v12M13 6l-2-2-2 2M13 10l-2 2-2-2" />
+              </svg>
+            </button>
             {/* Tabs */}
-            <div className="flex items-center gap-2 flex-1 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-2 flex-1 overflow-x-auto scrollbar-none mx-3">
               {embeds.map((embed) => (
                 <button
                   key={embed.id}
@@ -57,7 +68,7 @@ export function EmbedScreen() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-1 ml-3 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
               {/* Open in new tab */}
               {activeEmbed && (
                 <a
@@ -73,15 +84,14 @@ export function EmbedScreen() {
                   </svg>
                 </a>
               )}
-              {/* Expand to sidebar */}
+              {/* Close */}
               <button
-                onClick={openPanel}
+                onClick={() => useEmbedStore.getState().clearAll()}
                 className="p-2 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors"
-                title="Expand to sidebar"
+                title="Close"
               >
                 <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <rect x="2" y="2" width="12" height="12" rx="2" />
-                  <path d="M9 2v12M13 6l-2-2-2 2M13 10l-2 2-2-2" />
+                  <path d="M4 4l8 8M12 4l-8 8" />
                 </svg>
               </button>
             </div>
