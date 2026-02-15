@@ -2,6 +2,7 @@
 'use client';
 
 import { Grid, useGLTF } from '@react-three/drei';
+import { RigidBody } from '@react-three/rapier';
 import { agents, zoneColors } from '@/data/agents';
 import { WORLD } from '@/data/gameConfig';
 import { Workstation } from './Workstation';
@@ -90,11 +91,13 @@ function Decor() {
 export function Office() {
   return (
     <group>
-      {/* Floor */}
-      <mesh position={[0, -0.1, 0]} receiveShadow>
-        <boxGeometry args={[WORLD.floorSize, 0.2, WORLD.floorSize]} />
-        <meshStandardMaterial color="#1a1a2e" flatShading />
-      </mesh>
+      {/* Floor with collision */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <mesh position={[0, -0.1, 0]} receiveShadow>
+          <boxGeometry args={[WORLD.floorSize, 0.2, WORLD.floorSize]} />
+          <meshStandardMaterial color="#1a1a2e" flatShading />
+        </mesh>
+      </RigidBody>
 
       {/* Grid overlay */}
       <Grid

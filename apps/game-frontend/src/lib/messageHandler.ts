@@ -16,13 +16,19 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
 
         // Map agents from world state, merging with default frontend data
         const agentStates = msg.payload.agents;
+        console.log('[WebSocket] Received world:state with agents:', agentStates);
+        console.log('[WebSocket] Default agents:', defaultAgents);
+        
         const mapped: AgentData[] = defaultAgents.map((def) => {
           const serverAgent = agentStates[def.id];
           return serverAgent
             ? { ...def, status: serverAgent.status }
             : def;
         });
+        
+        console.log('[WebSocket] Mapped agents:', mapped);
         worldStore.setAgents(mapped);
+        console.log('[WebSocket] Agents after setAgents:', useWorldStore.getState().agents);
         break;
       }
 

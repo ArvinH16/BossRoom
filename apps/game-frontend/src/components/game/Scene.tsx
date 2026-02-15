@@ -1,6 +1,8 @@
 /** Scene composition: lighting, fog, office environment, agents, player, post-processing. */
 'use client';
 
+import { Suspense } from 'react';
+import { Physics } from '@react-three/rapier';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { Office } from './Office';
 import { Agent } from './Agent';
@@ -40,13 +42,17 @@ export function Scene() {
         args={[LIGHTING.fog.color, LIGHTING.fog.near, LIGHTING.fog.far]}
       />
 
-      <Office />
+      <Physics gravity={[0, -30, 0]}>
+        <Suspense fallback={null}>
+          <Office />
 
-      {agents.map((agent) => (
-        <Agent key={agent.id} agent={agent} />
-      ))}
+          {agents.map((agent) => (
+            <Agent key={agent.id} agent={agent} />
+          ))}
 
-      <Player />
+          <Player />
+        </Suspense>
+      </Physics>
 
       <EffectComposer>
         <Bloom
