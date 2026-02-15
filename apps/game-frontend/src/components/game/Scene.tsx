@@ -1,3 +1,4 @@
+/** Scene composition: lighting, fog, office environment, agents, player, post-processing. */
 'use client';
 
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
@@ -5,17 +6,20 @@ import { Office } from './Office';
 import { Agent } from './Agent';
 import { Player } from './Player';
 import { useGameStore } from '@/stores/gameStore';
+import { LIGHTING, POST_PROCESSING } from '@/data/gameConfig';
 
 export function Scene() {
   const agents = useGameStore((s) => s.agents);
 
   return (
     <>
-      {/* Lighting */}
-      <ambientLight intensity={0.3} color="#6366f1" />
+      <ambientLight
+        intensity={LIGHTING.ambient.intensity}
+        color={LIGHTING.ambient.color}
+      />
       <directionalLight
-        position={[10, 15, 10]}
-        intensity={0.8}
+        position={LIGHTING.directional.position}
+        intensity={LIGHTING.directional.intensity}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -25,30 +29,36 @@ export function Scene() {
         shadow-camera-top={20}
         shadow-camera-bottom={-20}
       />
-      <pointLight position={[0, 5, 0]} intensity={0.4} color="#8b5cf6" />
+      <pointLight
+        position={LIGHTING.point.position}
+        intensity={LIGHTING.point.intensity}
+        color={LIGHTING.point.color}
+      />
 
-      {/* Fog */}
-      <fog attach="fog" args={['#0a0a1a', 10, 50]} />
+      <fog
+        attach="fog"
+        args={[LIGHTING.fog.color, LIGHTING.fog.near, LIGHTING.fog.far]}
+      />
 
-      {/* Environment */}
       <Office />
 
-      {/* Agents */}
       {agents.map((agent) => (
         <Agent key={agent.id} agent={agent} />
       ))}
 
-      {/* Player */}
       <Player />
 
-      {/* Post-processing */}
       <EffectComposer>
         <Bloom
-          luminanceThreshold={0.6}
-          luminanceSmoothing={0.9}
-          intensity={0.8}
+          luminanceThreshold={POST_PROCESSING.bloom.threshold}
+          luminanceSmoothing={POST_PROCESSING.bloom.smoothing}
+          intensity={POST_PROCESSING.bloom.intensity}
         />
-        <Vignette eskil={false} offset={0.1} darkness={0.8} />
+        <Vignette
+          eskil={false}
+          offset={POST_PROCESSING.vignette.offset}
+          darkness={POST_PROCESSING.vignette.darkness}
+        />
       </EffectComposer>
     </>
   );

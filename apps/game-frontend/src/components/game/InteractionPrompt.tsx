@@ -1,3 +1,4 @@
+/** "Press E to talk to [Agent]" overlay shown when player is near an NPC. */
 'use client';
 
 import { useGameStore } from '@/stores/gameStore';

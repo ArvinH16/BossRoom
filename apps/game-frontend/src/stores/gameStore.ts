@@ -1,3 +1,4 @@
+/** Global game state: agents, interaction proximity, chat messages. */
 import { create } from 'zustand';
 import { agents as defaultAgents, type AgentData } from '@/data/agents';
 

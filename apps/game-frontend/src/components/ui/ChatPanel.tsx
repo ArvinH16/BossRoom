@@ -1,3 +1,4 @@
+/** Slide-in right panel for chatting with an agent: messages, suggested prompts, text input. */
 'use client';
 
 import { useState, useEffect, useRef } from 'react';

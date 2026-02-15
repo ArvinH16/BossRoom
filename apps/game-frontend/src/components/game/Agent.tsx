@@ -1,3 +1,4 @@
+/** NPC agent: voxel character + floating name label + status orb + click-to-chat. */
 'use client';
 
 import { useRef } from 'react';
@@ -8,6 +9,7 @@ import type { Group } from 'three';
 import { VoxelCharacter } from './VoxelCharacter';
 import { useGameStore } from '@/stores/gameStore';
 import { statusColors, type AgentData } from '@/data/agents';
+import { ANIMATION } from '@/data/gameConfig';
 
 interface AgentProps {
   agent: AgentData;
@@ -20,7 +22,7 @@ export function Agent({ agent }: AgentProps) {
   useFrame(() => {
     if (groupRef.current) {
       groupRef.current.rotation.y =
-        Math.sin(Date.now() * 0.001) * 0.1;
+        Math.sin(Date.now() * ANIMATION.swaySpeed) * ANIMATION.swayAmplitude;
     }
   });
 
@@ -49,7 +51,6 @@ export function Agent({ agent }: AgentProps) {
         <VoxelCharacter color={agent.color} />
       </group>
 
-      {/* Name label */}
       <Billboard position={[0, 2, 0]}>
         <Text
           fontSize={0.25}
@@ -63,7 +64,6 @@ export function Agent({ agent }: AgentProps) {
         </Text>
       </Billboard>
 
-      {/* Status orb */}
       <mesh position={[0, 2.35, 0]}>
         <sphereGeometry args={[0.08, 8, 8]} />
         <meshStandardMaterial

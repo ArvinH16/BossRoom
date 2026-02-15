@@ -1,3 +1,4 @@
+/** Canvas root: R3F canvas, physics, keyboard controls, and HTML overlay wiring. */
 'use client';
 
 import { Suspense } from 'react';
@@ -7,6 +8,7 @@ import { Physics } from '@react-three/rapier';
 import { Scene } from './Scene';
 import { ChatPanel } from '../ui/ChatPanel';
 import { InteractionPrompt } from './InteractionPrompt';
+import { CAMERA, WORLD } from '@/data/gameConfig';
 
 const keyboardMap = [
   { name: 'forward', keys: ['KeyW', 'ArrowUp'] },
@@ -23,8 +25,8 @@ export function Game() {
       <KeyboardControls map={keyboardMap}>
         <Canvas
           shadows
-          camera={{ fov: 50 }}
-          style={{ background: '#0a0a1a' }}
+          camera={{ fov: CAMERA.fov }}
+          style={{ background: WORLD.background }}
         >
           <Suspense fallback={null}>
             <Physics gravity={[0, -9.81, 0]}>

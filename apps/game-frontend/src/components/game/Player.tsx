@@ -1,3 +1,4 @@
+/** Player character: ecctrl third-person controller + proximity detection for agent interaction. */
 'use client';
 
 import { useRef, useEffect } from 'react';
@@ -5,6 +6,7 @@ import { useFrame } from '@react-three/fiber';
 import Ecctrl from 'ecctrl';
 import { VoxelCharacter } from './VoxelCharacter';
 import { useGameStore } from '@/stores/gameStore';
+import { PLAYER, CAMERA, INTERACTION } from '@/data/gameConfig';
 import type { Vector3 } from 'three';
 
 export function Player() {
@@ -28,7 +30,7 @@ export function Player() {
       const dx = pos.x - agent.position[0];
       const dz = pos.z - agent.position[2];
       const dist = Math.sqrt(dx * dx + dz * dz);
-      if (dist < 3 && dist < closestDist) {
+      if (dist < INTERACTION.proximityRadius && dist < closestDist) {
         closest = agent.id;
         closestDist = dist;
       }
@@ -53,14 +55,14 @@ export function Player() {
   return (
     <Ecctrl
       ref={ecctrlRef as never}
-      camInitDis={-8}
-      camMinDis={-5}
-      camMaxDis={-12}
-      maxVelLimit={3}
-      capsuleHalfHeight={0.5}
-      capsuleRadius={0.3}
+      camInitDis={CAMERA.initDis}
+      camMinDis={CAMERA.minDis}
+      camMaxDis={CAMERA.maxDis}
+      maxVelLimit={PLAYER.maxSpeed}
+      capsuleHalfHeight={PLAYER.capsuleHalfHeight}
+      capsuleRadius={PLAYER.capsuleRadius}
     >
-      <VoxelCharacter color="#FFD700" idle={false} />
+      <VoxelCharacter color={PLAYER.color} idle={false} />
     </Ecctrl>
   );
 }

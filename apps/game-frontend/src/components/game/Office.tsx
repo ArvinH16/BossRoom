@@ -1,8 +1,10 @@
+/** Procedural office environment: floor, grid, zone plates, desks, walls. */
 'use client';
 
 import { RigidBody } from '@react-three/rapier';
 import { Grid } from '@react-three/drei';
 import { agents, zoneColors } from '@/data/agents';
+import { WORLD } from '@/data/gameConfig';
 
 function Desk({ position }: { position: [number, number, number] }) {
   const [x, , z] = position;
@@ -14,17 +16,15 @@ function Desk({ position }: { position: [number, number, number] }) {
         <meshStandardMaterial color="#2a2a3e" flatShading />
       </mesh>
       {/* Legs */}
-      {[
-        [-0.6, 0.375, -0.25],
-        [0.6, 0.375, -0.25],
-        [-0.6, 0.375, 0.25],
-        [0.6, 0.375, 0.25],
-      ].map((pos, i) => (
-        <mesh
-          key={i}
-          position={pos as [number, number, number]}
-          castShadow
-        >
+      {(
+        [
+          [-0.6, 0.375, -0.25],
+          [0.6, 0.375, -0.25],
+          [-0.6, 0.375, 0.25],
+          [0.6, 0.375, 0.25],
+        ] as [number, number, number][]
+      ).map((pos, i) => (
+        <mesh key={i} position={pos} castShadow>
           <boxGeometry args={[0.06, 0.75, 0.06]} />
           <meshStandardMaterial color="#1a1a2e" flatShading />
         </mesh>
@@ -59,13 +59,22 @@ function Desk({ position }: { position: [number, number, number] }) {
   );
 }
 
+const halfFloor = WORLD.floorSize / 2;
+
+const walls: { pos: [number, number, number]; size: [number, number, number] }[] = [
+  { pos: [0, WORLD.wallHeight / 2, -halfFloor], size: [WORLD.floorSize, WORLD.wallHeight, 0.3] },
+  { pos: [0, WORLD.wallHeight / 2, halfFloor], size: [WORLD.floorSize, WORLD.wallHeight, 0.3] },
+  { pos: [-halfFloor, WORLD.wallHeight / 2, 0], size: [0.3, WORLD.wallHeight, WORLD.floorSize] },
+  { pos: [halfFloor, WORLD.wallHeight / 2, 0], size: [0.3, WORLD.wallHeight, WORLD.floorSize] },
+];
+
 export function Office() {
   return (
     <group>
       {/* Floor */}
       <RigidBody type="fixed" colliders="cuboid">
         <mesh position={[0, -0.1, 0]} receiveShadow>
-          <boxGeometry args={[50, 0.2, 50]} />
+          <boxGeometry args={[WORLD.floorSize, 0.2, WORLD.floorSize]} />
           <meshStandardMaterial color="#1a1a2e" flatShading />
         </mesh>
       </RigidBody>
@@ -73,7 +82,7 @@ export function Office() {
       {/* Grid overlay */}
       <Grid
         position={[0, 0.01, 0]}
-        args={[50, 50]}
+        args={[WORLD.floorSize, WORLD.floorSize]}
         cellSize={1}
         cellThickness={0.5}
         cellColor="#2a2a4e"
@@ -109,12 +118,7 @@ export function Office() {
       ))}
 
       {/* Perimeter walls */}
-      {[
-        { pos: [0, 1.5, -25] as [number, number, number], size: [50, 3, 0.3] as [number, number, number] },
-        { pos: [0, 1.5, 25] as [number, number, number], size: [50, 3, 0.3] as [number, number, number] },
-        { pos: [-25, 1.5, 0] as [number, number, number], size: [0.3, 3, 50] as [number, number, number] },
-        { pos: [25, 1.5, 0] as [number, number, number], size: [0.3, 3, 50] as [number, number, number] },
-      ].map((wall, i) => (
+      {walls.map((wall, i) => (
         <RigidBody key={i} type="fixed" colliders="cuboid">
           <mesh position={wall.pos}>
             <boxGeometry args={wall.size} />
