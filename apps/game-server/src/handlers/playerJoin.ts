@@ -69,10 +69,10 @@ export async function handlePlayerJoin(
   };
   players.addPlayer(uid, player, ws);
 
-  // Include avatarPreference for the joining player so their UI shows the right dropdown state
+  // Include avatarPreference and voiceId for the joining player so their UI shows the right dropdown state
   const worldPlayers = players.getWorldPlayers();
   if (worldPlayers[uid]) {
-    worldPlayers[uid] = { ...worldPlayers[uid], avatarPreference: preference };
+    worldPlayers[uid] = { ...worldPlayers[uid], avatarPreference: preference, voiceId: settings.voiceId };
   }
 
   const worldState: WorldState = {

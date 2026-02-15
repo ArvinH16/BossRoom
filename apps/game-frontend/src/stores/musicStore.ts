@@ -20,7 +20,7 @@ interface MusicState {
 }
 
 export const useMusicStore = create<MusicState>((set) => ({
-  trackId: readLS(LS_TRACK_KEY, MUSIC.tracks[0].id),
+  trackId: readLS(LS_TRACK_KEY, 'nature'),
   volume:
     Number(readLS(LS_VOLUME_KEY, String(MUSIC.defaultVolume))) ||
     MUSIC.defaultVolume,

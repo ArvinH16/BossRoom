@@ -28,7 +28,10 @@ export const VALID_AVATAR_IDS = [
 
 export const avatarIdSchema = z.enum(VALID_AVATAR_IDS);
 
+export const VOICE_OPTIONS = ['Dominus', 'Pixie', 'Snik', 'Loretta'] as const;
+
 export const userSettingsSchema = z.object({
   avatarId: z.string().optional(),
+  voiceId: z.string().optional(),
 });
 export type UserSettings = z.infer<typeof userSettingsSchema>;

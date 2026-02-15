@@ -10,7 +10,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('agent:interact'), payload: z.object({ agentId: z.string() }) }),
   z.object({ type: z.literal('agent:message'), payload: z.object({ agentId: z.string(), conversationId: z.string(), content: z.string(), inputMode: z.enum(['voice', 'text']).default('text') }) }),
   z.object({ type: z.literal('agent:stopInteract'), payload: z.object({ agentId: z.string() }) }),
-  z.object({ type: z.literal('player:updateSettings'), payload: z.object({ avatarId: z.string() }) }),
+  z.object({ type: z.literal('player:updateSettings'), payload: z.object({ avatarId: z.string().optional(), voiceId: z.string().optional() }) }),
   z.object({ type: z.literal('voice:talking'), payload: z.object({ isTalking: z.boolean(), targetPlayerId: z.string().nullable() }) }),
   z.object({ type: z.literal('workspace:userNote'), payload: z.object({ workspaceId: z.string(), content: z.string() }) }),
   z.object({ type: z.literal('conversations:reset'), payload: z.object({ agentIds: z.array(z.string()) }) }),
@@ -29,6 +29,8 @@ export const playerStateSchema = z.object({
   avatarId: z.string(),
   /** Raw user preference (e.g. 'random'). Only sent to the player themselves. */
   avatarPreference: z.string().optional(),
+  /** User's voice preference for TTS. Only sent to the player themselves. */
+  voiceId: z.string().optional(),
 });
 export type PlayerState = z.infer<typeof playerStateSchema>;
 

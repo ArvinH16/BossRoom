@@ -30,6 +30,7 @@ const agentModule = createAgentModule({
   playerService: playerModule.service,
   skillService: skillModule.skillService,
   scratchpadService,
+  userRepo: userModule.repository,
 });
 
 const players = playerModule.service;

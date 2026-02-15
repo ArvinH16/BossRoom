@@ -6,9 +6,10 @@ interface TTSResult {
   mimeType: string;
 }
 
-export async function synthesizeSpeech(text: string): Promise<TTSResult | null> {
+export async function synthesizeSpeech(text: string, voiceId?: string): Promise<TTSResult | null> {
   const apiKey = env.INWORLD_API_KEY;
-  log.info(`[DEBUG-FIX] synthesizeSpeech called, text length=${text.length}, INWORLD_API_KEY=${apiKey ? 'SET' : 'NOT SET'}, voiceId=${env.INWORLD_VOICE_ID}, modelId=${env.INWORLD_TTS_MODEL_ID}`);
+  const effectiveVoiceId = voiceId ?? env.INWORLD_VOICE_ID;
+  log.info(`[DEBUG-FIX] synthesizeSpeech called, text length=${text.length}, INWORLD_API_KEY=${apiKey ? 'SET' : 'NOT SET'}, voiceId=${effectiveVoiceId} (passed: ${voiceId ?? 'default'}), modelId=${env.INWORLD_TTS_MODEL_ID}`);
   if (!apiKey) {
     log.warn('[tts] INWORLD_API_KEY not configured, skipping TTS');
     return null;
@@ -24,7 +25,7 @@ export async function synthesizeSpeech(text: string): Promise<TTSResult | null> 
       },
       body: JSON.stringify({
         text,
-        voiceId: env.INWORLD_VOICE_ID,
+        voiceId: effectiveVoiceId,
         modelId: env.INWORLD_TTS_MODEL_ID,
         audioConfig: {
           audioEncoding: 'MP3',

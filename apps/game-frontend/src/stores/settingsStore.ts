@@ -7,19 +7,21 @@ interface SettingsState {
   avatarPreference: string;
   /** The resolved avatar actually being rendered this session */
   avatarId: string;
-  settingsPanelOpen: boolean;
+  /** TTS voice preset */
+  voiceId: string;
 
   /** Called when server sends the player's saved setting + resolved avatar */
   setAvatarFromServer: (preference: string, resolvedAvatarId: string) => void;
   selectAvatar: (id: string) => void;
-  toggleSettingsPanel: () => void;
-  closeSettingsPanel: () => void;
+  /** Hydrate voice from server on join */
+  setVoiceFromServer: (voiceId: string) => void;
+  selectVoice: (id: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   avatarPreference: RANDOM_AVATAR_ID,
   avatarId: randomAvatarId(),
-  settingsPanelOpen: false,
+  voiceId: 'Dominus',
 
   setAvatarFromServer: (preference, resolvedAvatarId) => set({
     avatarPreference: preference,
@@ -32,7 +34,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     gameSocket.send({ type: 'player:updateSettings', payload: { avatarId: id } });
   },
 
-  toggleSettingsPanel: () => set((s) => ({ settingsPanelOpen: !s.settingsPanelOpen })),
+  setVoiceFromServer: (voiceId) => set({ voiceId }),
 
-  closeSettingsPanel: () => set({ settingsPanelOpen: false }),
+  selectVoice: (id) => {
+    set({ voiceId: id });
+    gameSocket.send({ type: 'player:updateSettings', payload: { voiceId: id } });
+  },
 }));

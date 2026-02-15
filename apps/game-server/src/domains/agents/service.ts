@@ -12,6 +12,7 @@ import type { ConversationService } from '../conversations/service.js';
 import type { PlayerService } from '../players/service.js';
 import type { SkillService } from '../skills/service.js';
 import type { ScratchpadService } from '../scratchpad/service.js';
+import type { UserRepository } from '../users/repository.js';
 import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools, createEmbedTools, createFinishTaskTool } from './skillTools.js';
 
 interface AgentServiceDeps {
@@ -20,10 +21,11 @@ interface AgentServiceDeps {
   playerService: PlayerService;
   skillService: SkillService;
   scratchpadService: ScratchpadService;
+  userRepo: UserRepository;
 }
 
 export function createAgentService(deps: AgentServiceDeps) {
-  const { agentRepo, conversationService, playerService, skillService, scratchpadService } = deps;
+  const { agentRepo, conversationService, playerService, skillService, scratchpadService, userRepo } = deps;
 
   /**
    * Scratchpad watcher: when an agent (or user) writes to the scratchpad,
@@ -686,7 +688,9 @@ No other text.`,
 
         // TTS: synthesize and send audio (non-blocking, fail-soft) — voice input only
         if (inputMode === 'voice') {
-          synthesizeSpeech(fullResponse).then((tts) => {
+          // Look up user's voice preference
+          const userSettings = await userRepo.getSettings(playerId);
+          synthesizeSpeech(fullResponse, userSettings.voiceId).then((tts) => {
             if (tts) {
               playerService.send(ws, {
                 type: 'agent:ttsAudio',

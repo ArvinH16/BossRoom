@@ -15,38 +15,13 @@ import { PunchHint } from './PunchHint';
 import { MissionControl } from '../ui/MissionControl';
 import { ScratchpadFeed } from '../ui/ScratchpadFeed';
 import { BackgroundMusic } from '../ui/BackgroundMusic';
+import { GameToolbar } from '../ui/GameToolbar';
 import { useAuthStore } from '@/stores/authStore';
-import { useMusicStore } from '@/stores/musicStore';
 import { initWebSocket } from '@/lib/messageHandler';
 import { CAMERA, WORLD } from '@/data/gameConfig';
 
 interface GameProps {
   user: { uid: string; displayName: string | null; email: string };
-}
-
-function MusicToggle() {
-  const isPlaying = useMusicStore((s) => s.isPlaying);
-  const togglePlay = useMusicStore((s) => s.togglePlay);
-
-  return (
-    <div className="fixed bottom-4 left-4 z-40 pointer-events-auto">
-      <button
-        onClick={togglePlay}
-        className={`bg-black/50 backdrop-blur-sm rounded-full p-2 hover:bg-black/70 transition-all cursor-pointer ${
-          isPlaying ? 'opacity-100' : 'opacity-40'
-        }`}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="white"
-          className="w-5 h-5"
-        >
-          <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-        </svg>
-      </button>
-    </div>
-  );
 }
 
 export function Game({ user }: GameProps) {
@@ -95,7 +70,7 @@ export function Game({ user }: GameProps) {
       <MissionControl />
       <ScratchpadFeed />
       <BackgroundMusic />
-      <MusicToggle />
+      <GameToolbar />
     </div>
   );
 }

@@ -46,13 +46,16 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         }
         worldStore.setRemotePlayers(remotePlayers);
 
-        // Initialize local user's avatar from server
+        // Initialize local user's avatar and voice from server
         const selfPlayer = players[uid];
         if (selfPlayer) {
           useSettingsStore.getState().setAvatarFromServer(
             selfPlayer.avatarPreference ?? selfPlayer.avatarId ?? RANDOM_AVATAR_ID,
             selfPlayer.avatarId,
           );
+          if (selfPlayer.voiceId) {
+            useSettingsStore.getState().setVoiceFromServer(selfPlayer.voiceId);
+          }
         }
         break;
       }
