@@ -18,7 +18,7 @@ export function EmbedScreen() {
   // Gentle hover animation
   useFrame((_, delta) => {
     if (groupRef.current) {
-      groupRef.current.position.y = 2.2 + Math.sin(Date.now() * 0.001) * 0.05;
+      groupRef.current.position.y = 0.8 + Math.sin(Date.now() * 0.001) * 0.03;
     }
   });
 
@@ -28,7 +28,7 @@ export function EmbedScreen() {
   if (embeds.length === 0 || panelOpen) return null;
 
   return (
-    <group ref={groupRef} position={[0, 3.5, -2]}>
+    <group ref={groupRef} position={[0, 0.8, -2]}>
       <Html
         transform
         distanceFactor={6}
