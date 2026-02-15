@@ -4,10 +4,92 @@
 import { useState, useEffect, useRef } from 'react';
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
+import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { Markdown } from '@/components/ui/Markdown';
 import { ThinkingIndicator } from '@/components/ui/ThinkingIndicator';
 import { AgentAvatar } from '@/components/ui/AgentAvatar';
 import { AgentStatusBadge } from '@/components/ui/AgentStatusBadge';
+
+function TaskTabs() {
+  const archivedTasks = useChatStore((s) => s.archivedTasks);
+  const activeTaskId = useChatStore((s) => s.activeTaskId);
+  const taskCounter = useChatStore((s) => s.taskCounter);
+  const switchTask = useChatStore((s) => s.switchTask);
+  const newTask = useChatStore((s) => s.newTask);
+  const closeTask = useChatStore((s) => s.closeTask);
+  const resetWorkspace = useWorkspaceStore((s) => s.reset);
+
+  const [confirmingClose, setConfirmingClose] = useState<string | null>(null);
+
+  function handleNewTask() {
+    resetWorkspace();
+    newTask();
+  }
+
+  function handleCloseTask(e: React.MouseEvent, taskId: string) {
+    e.stopPropagation();
+    if (confirmingClose === taskId) {
+      closeTask(taskId);
+      setConfirmingClose(null);
+    } else {
+      setConfirmingClose(taskId);
+      // Auto-dismiss confirmation after 3s
+      setTimeout(() => setConfirmingClose((cur) => cur === taskId ? null : cur), 3000);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1 px-3 py-2 border-b border-white/10 overflow-x-auto scrollbar-none">
+      {archivedTasks.map((task) => (
+        <button
+          key={task.id}
+          onClick={() => switchTask(task.id)}
+          className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs whitespace-nowrap transition-colors shrink-0
+            ${activeTaskId === task.id
+              ? 'bg-white/15 text-white'
+              : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
+            }`}
+        >
+          <span>{task.label}</span>
+          <span
+            onClick={(e) => handleCloseTask(e, task.id)}
+            className={`ml-0.5 leading-none transition-colors rounded-sm px-0.5
+              ${confirmingClose === task.id
+                ? 'text-red-400 bg-red-400/20'
+                : 'text-white/30 hover:text-white/60 opacity-0 group-hover:opacity-100'
+              }`}
+            title={confirmingClose === task.id ? 'Click again to delete' : 'Close task'}
+          >
+            &times;
+          </span>
+        </button>
+      ))}
+
+      {/* Current live task tab */}
+      <button
+        onClick={() => switchTask(null)}
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs whitespace-nowrap transition-colors shrink-0
+          ${activeTaskId === null
+            ? 'bg-white/15 text-white'
+            : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
+          }`}
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+        Task {taskCounter}
+      </button>
+
+      {/* New task button */}
+      <button
+        onClick={handleNewTask}
+        className="flex items-center px-2 py-1 rounded-md text-xs text-white/40 hover:text-white/70
+          hover:bg-white/10 transition-colors shrink-0"
+        title="New task"
+      >
+        +
+      </button>
+    </div>
+  );
+}
 
 export function ChatPanel() {
   const [input, setInput] = useState('');
@@ -20,10 +102,24 @@ export function ChatPanel() {
   const streamingText = useChatStore((s) => s.streamingText);
   const closeChat = useChatStore((s) => s.closeChat);
   const sendMessage = useChatStore((s) => s.sendMessage);
+  const archivedTasks = useChatStore((s) => s.archivedTasks);
+  const activeTaskId = useChatStore((s) => s.activeTaskId);
 
   const agent = agents.find((a) => a.id === activeAgent);
-  const messages = activeAgent ? (chatMessages[activeAgent] ?? []) : [];
-  const currentStream = activeAgent ? (streamingText[activeAgent] ?? '') : '';
+
+  // Determine which messages to show
+  const isReceptionist = activeAgent === 'receptionist';
+  const isViewingArchive = isReceptionist && activeTaskId !== null;
+  const archivedTask = isViewingArchive
+    ? archivedTasks.find((t) => t.id === activeTaskId)
+    : null;
+
+  const messages = isViewingArchive
+    ? (archivedTask?.messages ?? [])
+    : activeAgent ? (chatMessages[activeAgent] ?? []) : [];
+  const currentStream = isViewingArchive
+    ? ''
+    : activeAgent ? (streamingText[activeAgent] ?? '') : '';
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -40,7 +136,7 @@ export function ChatPanel() {
   }, [chatPanelOpen, closeChat]);
 
   function handleSend() {
-    if (!input.trim() || !activeAgent) return;
+    if (!input.trim() || !activeAgent || isViewingArchive) return;
     sendMessage(activeAgent, input.trim());
     setInput('');
   }
@@ -76,6 +172,11 @@ export function ChatPanel() {
             </div>
           </div>
 
+          {/* Task tabs (receptionist only) */}
+          {isReceptionist && (archivedTasks.length > 0) && (
+            <TaskTabs />
+          )}
+
           {/* Agent info */}
           <div className="px-4 py-3 border-b border-white/5">
             <p className="text-white/60 text-xs">{agent.description}</p>
@@ -83,6 +184,15 @@ export function ChatPanel() {
               &ldquo;{agent.personality}&rdquo;
             </p>
           </div>
+
+          {/* Archive banner */}
+          {isViewingArchive && archivedTask && (
+            <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20">
+              <p className="text-amber-400/80 text-xs">
+                Viewing {archivedTask.label} (read-only)
+              </p>
+            </div>
+          )}
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3 min-w-0">
@@ -107,7 +217,7 @@ export function ChatPanel() {
                     <button
                       key={prompt}
                       onClick={() => {
-                        if (activeAgent) sendMessage(activeAgent, prompt);
+                        if (activeAgent && !isViewingArchive) sendMessage(activeAgent, prompt);
                       }}
                       className="block w-full text-left px-3 py-2 rounded-lg
                         bg-white/5 hover:bg-white/10 border border-white/10
@@ -149,7 +259,7 @@ export function ChatPanel() {
             )}
 
             {/* Thinking indicator */}
-            {agent.status === 'thinking' && !currentStream && (
+            {agent.status === 'thinking' && !currentStream && !isViewingArchive && (
               <div className="max-w-prose mr-auto px-3 py-2 rounded-lg text-sm bg-white/10 text-white/40">
                 <ThinkingIndicator />
               </div>
@@ -160,32 +270,38 @@ export function ChatPanel() {
 
           {/* Input */}
           <div className="p-3 border-t border-white/10">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.stopPropagation();
-                    handleSend();
-                  }
-                }}
-                placeholder={`Message ${agent.name}...`}
-                className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10
-                  text-white text-sm placeholder:text-white/30
-                  focus:outline-none focus:border-white/30"
-              />
-              <button
-                onClick={handleSend}
-                disabled={agent.status === 'thinking' || agent.status === 'working'}
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  text-white text-sm font-medium transition-colors"
-              >
-                Send
-              </button>
-            </div>
+            {isViewingArchive ? (
+              <p className="text-white/30 text-xs text-center py-2">
+                Switch to the current task to send messages
+              </p>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.stopPropagation();
+                      handleSend();
+                    }
+                  }}
+                  placeholder={`Message ${agent.name}...`}
+                  className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10
+                    text-white text-sm placeholder:text-white/30
+                    focus:outline-none focus:border-white/30"
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={agent.status === 'thinking' || agent.status === 'working'}
+                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                    text-white text-sm font-medium transition-colors"
+                >
+                  Send
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}

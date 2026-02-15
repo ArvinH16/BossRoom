@@ -7,12 +7,25 @@ export type ChatMessage =
   | { role: 'agent'; content: string }
   | { role: 'tool'; toolName: string; status: 'started' | 'completed' | 'failed'; result?: string };
 
+/** Archived receptionist task (read-only snapshot). */
+export interface ArchivedTask {
+  id: string;
+  label: string;
+  messages: ChatMessage[];
+}
+
 interface ChatState {
   activeAgent: string | null;
   chatPanelOpen: boolean;
   chatMessages: Record<string, ChatMessage[]>;
   streamingText: Record<string, string>;
   conversationIds: Record<string, string>;
+
+  /** Receptionist task tabs */
+  archivedTasks: ArchivedTask[];
+  activeTaskId: string | null;        // null = current live conversation
+  currentTaskId: string;              // ID of the live task
+  taskCounter: number;
 
   openChat: (agentId: string) => void;
   closeChat: () => void;
@@ -21,6 +34,12 @@ interface ChatState {
   addToolExecution: (agentId: string, toolName: string, status: 'started' | 'completed' | 'failed', result?: string) => void;
   appendStream: (agentId: string, delta: string) => void;
   finalizeStream: (agentId: string) => void;
+
+  /** Task management (receptionist only) */
+  newTask: () => void;
+  switchTask: (taskId: string | null) => void;
+  closeTask: (taskId: string) => void;
+
   reset: () => void;
 }
 
@@ -30,6 +49,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   chatMessages: {},
   streamingText: {},
   conversationIds: {},
+
+  archivedTasks: [],
+  activeTaskId: null,
+  currentTaskId: 'task-1',
+  taskCounter: 1,
 
   openChat: (agentId) => {
     set({ activeAgent: agentId, chatPanelOpen: true });
@@ -134,6 +158,58 @@ export const useChatStore = create<ChatState>((set, get) => ({
       };
     }),
 
+  newTask: () => {
+    const state = get();
+    const currentMessages = state.chatMessages['receptionist'] ?? [];
+
+    // Archive current conversation if it has messages
+    const archived = [...state.archivedTasks];
+    if (currentMessages.length > 0) {
+      archived.push({
+        id: state.currentTaskId,
+        label: `Task ${state.taskCounter}`,
+        messages: currentMessages,
+      });
+    }
+
+    const newCounter = state.taskCounter + 1;
+    const newTaskId = `task-${newCounter}`;
+
+    set({
+      archivedTasks: archived,
+      currentTaskId: newTaskId,
+      taskCounter: newCounter,
+      activeTaskId: null, // switch to the new live task
+      chatMessages: {
+        ...state.chatMessages,
+        receptionist: [],
+      },
+      streamingText: { ...state.streamingText, receptionist: '' },
+      conversationIds: {
+        ...state.conversationIds,
+        receptionist: generateConversationId(),
+      },
+    });
+
+    // Re-trigger interact so server creates a fresh conversation
+    gameSocket.send({
+      type: 'agent:interact',
+      payload: { agentId: 'receptionist' },
+    });
+  },
+
+  switchTask: (taskId) => {
+    set({ activeTaskId: taskId });
+  },
+
+  closeTask: (taskId) => {
+    set((state) => ({
+      archivedTasks: state.archivedTasks.filter((t) => t.id !== taskId),
+      // If we were viewing the deleted task, switch to current
+      activeTaskId: state.activeTaskId === taskId ? null : state.activeTaskId,
+    }));
+  },
+
   reset: () =>
     set({
       activeAgent: null,
@@ -141,5 +217,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       chatMessages: {},
       streamingText: {},
       conversationIds: {},
+      archivedTasks: [],
+      activeTaskId: null,
+      currentTaskId: 'task-1',
+      taskCounter: 1,
     }),
 }));
