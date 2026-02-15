@@ -36,18 +36,18 @@ export function EmbedScreen() {
         style={{ pointerEvents: 'auto' }}
       >
         <div
-          className="bg-gray-950/95 rounded-xl border border-white/15 overflow-hidden shadow-2xl backdrop-blur-sm"
-          style={{ width: '520px', height: '380px' }}
+          className="bg-gray-950/95 rounded-xl border border-white/15 overflow-hidden shadow-2xl backdrop-blur-sm origin-center"
+          style={{ width: '1280px', height: '800px', transform: 'scale(0.4)' }}
         >
           {/* Header bar */}
-          <div className="flex items-center justify-between px-3 py-1.5 bg-black/60 border-b border-white/10">
+          <div className="flex items-center justify-between px-5 py-2.5 bg-black/60 border-b border-white/10">
             {/* Tabs */}
-            <div className="flex items-center gap-1 flex-1 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-2 flex-1 overflow-x-auto scrollbar-none">
               {embeds.map((embed) => (
                 <button
                   key={embed.id}
                   onClick={() => setActiveEmbed(embed.id)}
-                  className={`px-2 py-0.5 rounded text-[10px] whitespace-nowrap transition-colors ${
+                  className={`px-3 py-1 rounded text-sm whitespace-nowrap transition-colors ${
                     activeEmbedId === embed.id
                       ? 'bg-white/15 text-white'
                       : 'text-white/40 hover:text-white/60'
@@ -57,17 +57,17 @@ export function EmbedScreen() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-0.5 ml-2 shrink-0">
+            <div className="flex items-center gap-1 ml-3 shrink-0">
               {/* Open in new tab */}
               {activeEmbed && (
                 <a
                   href={activeEmbed.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                  className="p-2 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors"
                   title="Open in new tab"
                 >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M7 3H4a1 1 0 00-1 1v8a1 1 0 001 1h8a1 1 0 001-1V9" />
                     <path d="M10 3h3v3M13 3L7 9" />
                   </svg>
@@ -76,10 +76,10 @@ export function EmbedScreen() {
               {/* Expand to sidebar */}
               <button
                 onClick={openPanel}
-                className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                className="p-2 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors"
                 title="Expand to sidebar"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <rect x="2" y="2" width="12" height="12" rx="2" />
                   <path d="M9 2v12M13 6l-2-2-2 2M13 10l-2 2-2-2" />
                 </svg>
@@ -88,7 +88,7 @@ export function EmbedScreen() {
           </div>
 
           {/* Iframe */}
-          <div className="w-full bg-white" style={{ height: 'calc(100% - 32px)' }}>
+          <div className="w-full bg-white" style={{ height: 'calc(100% - 44px)' }}>
             {activeEmbed ? (
               <iframe
                 key={activeEmbed.id}
