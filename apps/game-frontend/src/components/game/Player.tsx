@@ -19,6 +19,7 @@ import { useProximityVoice } from '@/hooks/useProximityVoice';
 import { playerSpatialAudio } from '@/lib/playerSpatialAudio';
 import { INTERACTION, SPATIAL_AUDIO, PUNCH } from '@/data/gameConfig';
 import { getAvatarModelUrl } from '@/data/avatars';
+import { cameraYawRef, isFirstPersonRef } from './CameraRig';
 
 const MOVE_SPEED = 5;
 const SPAWN: [number, number, number] = [0, 2, 6];
@@ -197,23 +198,43 @@ export function Player() {
       moveX /= len;
       moveZ /= len;
 
+      if (isFirstPersonRef.current) {
+        // Rotate input into world space using camera yaw
+        // Forward (-sin(y), -cos(y)) and right (cos(y), -sin(y))
+        const cosY = Math.cos(cameraYawRef.current);
+        const sinY = Math.sin(cameraYawRef.current);
+        const rotX = moveX * cosY + moveZ * sinY;
+        const rotZ = -moveX * sinY + moveZ * cosY;
+        moveX = rotX;
+        moveZ = rotZ;
+      }
+
       rb.setLinvel({ x: moveX * MOVE_SPEED, y: 0, z: moveZ * MOVE_SPEED }, true);
       setAnimation('walk');
 
-      // Face movement direction
-      const targetAngle = Math.atan2(moveX, moveZ);
-      // Smooth rotation with angle wrapping
-      let delta = targetAngle - facingAngle.current;
-      while (delta > Math.PI) delta -= 2 * Math.PI;
-      while (delta < -Math.PI) delta += 2 * Math.PI;
-      facingAngle.current += delta * ROTATION_LERP;
+      if (isFirstPersonRef.current) {
+        // In first person, always face camera direction
+        facingAngle.current = cameraYawRef.current + Math.PI;
+      } else {
+        // Face movement direction
+        const targetAngle = Math.atan2(moveX, moveZ);
+        let delta = targetAngle - facingAngle.current;
+        while (delta > Math.PI) delta -= 2 * Math.PI;
+        while (delta < -Math.PI) delta += 2 * Math.PI;
+        facingAngle.current += delta * ROTATION_LERP;
+      }
     } else {
       rb.setLinvel({ x: 0, y: rb.linvel().y, z: 0 }, true);
       setAnimation('idle');
+
+      if (isFirstPersonRef.current) {
+        facingAngle.current = cameraYawRef.current + Math.PI;
+      }
     }
 
-    // Apply visual rotation to model group
+    // Apply visual rotation + visibility to model group
     if (modelGroupRef.current) {
+      modelGroupRef.current.visible = !isFirstPersonRef.current;
       modelGroupRef.current.rotation.y = facingAngle.current;
     }
 
