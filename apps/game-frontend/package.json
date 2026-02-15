@@ -13,6 +13,7 @@
     "@tanstack/react-query-devtools": "^5.91.3",
     "ecctrl": "^1.0.97",
     "next": "~16.0.1",
+    "peerjs": "^1.5.5",
     "radix-ui": "^1.4.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

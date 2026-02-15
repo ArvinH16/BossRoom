@@ -208,6 +208,12 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
           msg.payload.avatarId,
         );
         break;
+
+      case 'voice:playerTalking': {
+        const { playerId, isTalking } = msg.payload;
+        useWorldStore.getState().setPlayerTalking(playerId, isTalking);
+        break;
+      }
     }
   });
 

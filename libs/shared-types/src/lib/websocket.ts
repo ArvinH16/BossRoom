@@ -11,6 +11,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('agent:message'), payload: z.object({ agentId: z.string(), conversationId: z.string(), content: z.string(), inputMode: z.enum(['voice', 'text']).default('text') }) }),
   z.object({ type: z.literal('agent:stopInteract'), payload: z.object({ agentId: z.string() }) }),
   z.object({ type: z.literal('player:updateSettings'), payload: z.object({ avatarId: z.string() }) }),
+  z.object({ type: z.literal('voice:talking'), payload: z.object({ isTalking: z.boolean(), targetPlayerId: z.string().nullable() }) }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 
@@ -54,5 +55,6 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('agent:skills'), payload: z.object({ agentId: z.string(), skills: z.array(skillSummarySchema) }) }),
   z.object({ type: z.literal('agent:skillCreated'), payload: z.object({ agentId: z.string(), skill: skillSummarySchema }) }),
   z.object({ type: z.literal('agent:delegatedTask'), payload: z.object({ fromAgentId: z.string(), toAgentId: z.string(), toAgentName: z.string(), task: z.string() }) }),
+  z.object({ type: z.literal('voice:playerTalking'), payload: z.object({ playerId: z.string(), isTalking: z.boolean() }) }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;

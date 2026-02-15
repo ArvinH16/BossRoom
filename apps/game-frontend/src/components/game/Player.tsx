@@ -15,6 +15,8 @@ import { useVoiceStore } from '@/stores/voiceStore';
 import { useAgentBehaviorStore } from '@/stores/agentBehaviorStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useBroadcastPosition } from '@/hooks/useBroadcastPosition';
+import { useProximityVoice } from '@/hooks/useProximityVoice';
+import { playerSpatialAudio } from '@/lib/playerSpatialAudio';
 import { INTERACTION, SPATIAL_AUDIO } from '@/data/gameConfig';
 import { getAvatarModelUrl } from '@/data/avatars';
 
@@ -33,7 +35,9 @@ export function Player() {
   const [animation, setAnimation] = useState('idle');
 
   const agents = useWorldStore((s) => s.agents);
+  const remotePlayers = useWorldStore((s) => s.remotePlayers);
   const setNearestAgent = useWorldStore((s) => s.setNearestAgent);
+  const setNearestTarget = useWorldStore((s) => s.setNearestTarget);
   const nearestAgent = useWorldStore((s) => s.nearestAgent);
   const openChat = useChatStore((s) => s.openChat);
   const chatPanelOpen = useChatStore((s) => s.chatPanelOpen);
@@ -43,6 +47,8 @@ export function Player() {
   const { startRecording, stopRecording, transcript: voiceTranscript } = useVoiceInput();
   const recordingRef = useRef(false);
   const startPromiseRef = useRef<Promise<void> | null>(null);
+  const targetTypeRef = useRef<'agent' | 'player' | null>(null);
+  const { startPlayerVoice, stopPlayerVoice } = useProximityVoice();
 
   useBroadcastPosition(rigidBodyRef, animation, facingAngle);
 
@@ -70,13 +76,23 @@ export function Player() {
       }
 
       if (e.code === 'KeyT' && !e.repeat) {
-        if (!nearestAgent) return;
-        if (recordingRef.current) return;
-        if (!chatPanelOpen) openChat(nearestAgent);
-        useVoiceStore.getState().stopTTS();
-        recordingRef.current = true;
-        useVoiceStore.getState().setRecording(true);
-        startPromiseRef.current = startRecording();
+        const target = useWorldStore.getState().nearestTarget;
+        if (!target) return;
+
+        targetTypeRef.current = target.type; // Lock in the target type
+
+        if (target.type === 'agent') {
+          // Existing agent voice flow (unchanged)
+          if (recordingRef.current) return;
+          if (!chatPanelOpen) openChat(target.id);
+          useVoiceStore.getState().stopTTS();
+          recordingRef.current = true;
+          useVoiceStore.getState().setRecording(true);
+          startPromiseRef.current = startRecording();
+        } else {
+          // Player voice flow (new)
+          startPlayerVoice(target.id);
+        }
       }
 
       if (e.code === 'KeyR' && !chatPanelOpen) {
@@ -94,22 +110,29 @@ export function Player() {
       const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
       if (isTyping) return;
 
-      if (e.code === 'KeyT' && recordingRef.current) {
-        recordingRef.current = false;
-        const doStop = async () => {
-          if (startPromiseRef.current) {
-            await startPromiseRef.current;
-            startPromiseRef.current = null;
-          }
-          const transcript = await stopRecording();
-          useVoiceStore.getState().setRecording(false);
-          useVoiceStore.getState().setVoiceTranscript('');
-          const agent = useChatStore.getState().activeAgent;
-          if (transcript.trim() && agent) {
-            useChatStore.getState().sendMessage(agent, transcript.trim(), 'voice');
-          }
-        };
-        doStop();
+      if (e.code === 'KeyT') {
+        if (targetTypeRef.current === 'agent' && recordingRef.current) {
+          // Existing agent flow (unchanged)
+          recordingRef.current = false;
+          const doStop = async () => {
+            if (startPromiseRef.current) {
+              await startPromiseRef.current;
+              startPromiseRef.current = null;
+            }
+            const transcript = await stopRecording();
+            useVoiceStore.getState().setRecording(false);
+            useVoiceStore.getState().setVoiceTranscript('');
+            const agent = useChatStore.getState().activeAgent;
+            if (transcript.trim() && agent) {
+              useChatStore.getState().sendMessage(agent, transcript.trim(), 'voice');
+            }
+          };
+          doStop();
+        } else if (targetTypeRef.current === 'player') {
+          // Player voice flow
+          stopPlayerVoice();
+        }
+        targetTypeRef.current = null; // Reset for next press
       }
     }
 
@@ -119,7 +142,7 @@ export function Player() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [nearestAgent, chatPanelOpen, openChat, startRecording, stopRecording]);
+  }, [nearestAgent, chatPanelOpen, openChat, startRecording, stopRecording, startPlayerVoice, stopPlayerVoice]);
 
   useFrame(() => {
     if (!rigidBodyRef.current) return;
@@ -169,24 +192,57 @@ export function Player() {
     // Broadcast player position so agents can sense proximity
     setPlayerPosition([pos.x, pos.y, pos.z]);
 
-    // Find nearest agent
-    let closest: string | null = null;
-    let closestDist = Infinity;
+    // Find nearest target (agent or player) using facing direction
+    const forwardX = Math.sin(facingAngle.current);
+    const forwardZ = Math.cos(facingAngle.current);
+
+    let bestTarget: { type: 'agent' | 'player'; id: string } | null = null;
+    let bestScore = -Infinity;
+
+    // Score agents
     for (const agent of agents) {
-      const dx = pos.x - agent.position[0];
-      const dz = pos.z - agent.position[2];
+      const dx = agent.position[0] - pos.x;
+      const dz = agent.position[2] - pos.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
-      if (dist < INTERACTION.proximityRadius && dist < closestDist) {
-        closest = agent.id;
-        closestDist = dist;
+      if (dist >= INTERACTION.proximityRadius || dist < 0.01) continue;
+
+      const dirX = dx / dist;
+      const dirZ = dz / dist;
+      const dot = forwardX * dirX + forwardZ * dirZ;
+      if (dot < INTERACTION.facingThreshold) continue;
+      const score = dot * 2 + (1 - dist / INTERACTION.proximityRadius);
+      if (score > bestScore) {
+        bestScore = score;
+        bestTarget = { type: 'agent', id: agent.id };
       }
     }
-    setNearestAgent(closest);
+
+    // Score remote players
+    for (const player of Object.values(remotePlayers)) {
+      const dx = player.position[0] - pos.x;
+      const dz = player.position[2] - pos.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist >= INTERACTION.proximityRadius || dist < 0.01) continue;
+
+      const dirX = dx / dist;
+      const dirZ = dz / dist;
+      const dot = forwardX * dirX + forwardZ * dirZ;
+      if (dot < INTERACTION.facingThreshold) continue;
+      const score = dot * 2 + (1 - dist / INTERACTION.proximityRadius);
+      if (score > bestScore) {
+        bestScore = score;
+        bestTarget = { type: 'player', id: player.id };
+      }
+    }
+
+    setNearestTarget(bestTarget);
+    setNearestAgent(bestTarget?.type === 'agent' ? bestTarget.id : null);
 
     // Auto-reopen chat when returning to a walk-away agent
     const lastWalkAway = useChatStore.getState().lastWalkAwayAgent;
-    if (closest && closest === lastWalkAway && !useChatStore.getState().chatPanelOpen) {
-      useChatStore.getState().openChat(closest);
+    const nearestAgentId = bestTarget?.type === 'agent' ? bestTarget.id : null;
+    if (nearestAgentId && nearestAgentId === lastWalkAway && !useChatStore.getState().chatPanelOpen) {
+      useChatStore.getState().openChat(nearestAgentId);
     }
 
     // Auto-close chat when player walks too far from the active agent
@@ -202,6 +258,14 @@ export function Player() {
         }
       }
     }
+
+    // Update spatial audio listener for player voice chat
+    playerSpatialAudio.updateListenerPosition(pos.x, pos.y, pos.z);
+    playerSpatialAudio.updateListenerOrientation(
+      Math.sin(facingAngle.current),
+      0,
+      Math.cos(facingAngle.current),
+    );
   });
 
   return (

@@ -11,14 +11,23 @@ export interface RemotePlayer {
   avatarId: string;
 }
 
+export interface NearestTarget {
+  type: 'agent' | 'player';
+  id: string;
+}
+
 interface WorldState {
   connected: boolean;
   playerId: string | null;
   agents: AgentData[];
   nearestAgent: string | null;
+  nearestTarget: NearestTarget | null;
   remotePlayers: Record<string, RemotePlayer>;
+  talkingPlayers: Record<string, boolean>;
 
   setNearestAgent: (id: string | null) => void;
+  setNearestTarget: (target: NearestTarget | null) => void;
+  setPlayerTalking: (id: string, talking: boolean) => void;
   updateAgentStatus: (agentId: string, status: AgentStatus) => void;
   reset: () => void;
 
@@ -37,9 +46,23 @@ export const useWorldStore = create<WorldState>((set) => ({
   playerId: null,
   agents: defaultAgents,
   nearestAgent: null,
+  nearestTarget: null,
   remotePlayers: {},
+  talkingPlayers: {},
 
   setNearestAgent: (id) => set({ nearestAgent: id }),
+
+  setNearestTarget: (target) => set({ nearestTarget: target }),
+
+  setPlayerTalking: (id, talking) =>
+    set((state) => {
+      if (!talking) {
+        const next = { ...state.talkingPlayers };
+        delete next[id];
+        return { talkingPlayers: next };
+      }
+      return { talkingPlayers: { ...state.talkingPlayers, [id]: true } };
+    }),
 
   updateAgentStatus: (agentId, status) =>
     set((state) => ({
@@ -54,7 +77,9 @@ export const useWorldStore = create<WorldState>((set) => ({
       playerId: null,
       agents: defaultAgents,
       nearestAgent: null,
+      nearestTarget: null,
       remotePlayers: {},
+      talkingPlayers: {},
     }),
 
   setConnected: (connected, playerId) =>

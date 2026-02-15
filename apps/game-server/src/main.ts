@@ -145,6 +145,15 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
       return handleAgentMessage(ws, msg.payload, { players, agents });
     case 'agent:stopInteract':
       return handleAgentStopInteract(ws, msg.payload, { players, agents });
+    case 'voice:talking': {
+      const uid = players.getUidByWs(ws);
+      if (!uid) return;
+      players.broadcast(
+        { type: 'voice:playerTalking', payload: { playerId: uid, isTalking: msg.payload.isTalking } },
+        uid,
+      );
+      return;
+    }
   }
 }
 

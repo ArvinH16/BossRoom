@@ -8,6 +8,8 @@ import type { Group } from 'three';
 import { CharacterModel } from './CharacterModel';
 import { getAvatarModelUrl } from '@/data/avatars';
 import type { RemotePlayer as RemotePlayerData } from '@/stores/worldStore';
+import { useWorldStore } from '@/stores/worldStore';
+import { playerSpatialAudio } from '@/lib/playerSpatialAudio';
 
 interface RemotePlayerProps {
   player: RemotePlayerData;
@@ -17,6 +19,8 @@ export function RemotePlayer({ player }: RemotePlayerProps) {
   const groupRef = useRef<Group>(null);
   const targetPos = useRef(new Vector3(...player.position));
   const targetRot = useRef(player.rotation);
+  const talkingPlayers = useWorldStore((s) => s.talkingPlayers);
+  const isTalking = talkingPlayers[player.id] === true;
 
   // Update targets — use individual values to avoid array reference issues
   useEffect(() => {
@@ -36,6 +40,14 @@ export function RemotePlayer({ player }: RemotePlayerProps) {
     while (diff > Math.PI) diff -= 2 * Math.PI;
     while (diff < -Math.PI) diff += 2 * Math.PI;
     groupRef.current.rotation.y += diff * t;
+
+    // Update spatial audio for this player's voice
+    playerSpatialAudio.updatePeerPosition(
+      player.id,
+      groupRef.current.position.x,
+      groupRef.current.position.y,
+      groupRef.current.position.z,
+    );
   });
 
   return (
@@ -45,6 +57,18 @@ export function RemotePlayer({ player }: RemotePlayerProps) {
           <CharacterModel url={getAvatarModelUrl(player.avatarId)} animation={player.animation} />
         </Suspense>
       </group>
+      {isTalking && (
+        <Billboard position={[0, 2.6, 0]}>
+          <Text
+            fontSize={0.3}
+            color="#22d3ee"
+            anchorX="center"
+            anchorY="middle"
+          >
+            🔊
+          </Text>
+        </Billboard>
+      )}
       <Billboard position={[0, 2.2, 0]}>
         <Text
           fontSize={0.25}

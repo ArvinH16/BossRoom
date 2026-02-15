@@ -19,6 +19,14 @@ export const CAMERA = {
 export const INTERACTION = {
   /** Max distance (XZ plane) to trigger "Press E" prompt. */
   proximityRadius: 3,
+  /** Dot product threshold for facing direction (0 = front hemisphere, ~90° arc). */
+  facingThreshold: 0,
+} as const;
+
+export const VOICE_CHAT = {
+  spatialRefDistance: 1,
+  spatialMaxDistance: 8,
+  spatialRolloff: 2,
 } as const;
 
 export const SPATIAL_AUDIO = {
