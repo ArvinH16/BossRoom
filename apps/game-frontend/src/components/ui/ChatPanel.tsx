@@ -87,24 +87,37 @@ export function ChatPanel() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3 min-w-0">
             {messages.length === 0 && !currentStream && (
-              <div className="space-y-2">
-                <p className="text-white/30 text-xs text-center mb-4">
-                  Start a conversation
-                </p>
-                {agent.suggestedPrompts.map((prompt) => (
-                  <button
-                    key={prompt}
-                    onClick={() => {
-                      if (activeAgent) sendMessage(activeAgent, prompt);
-                    }}
-                    className="block w-full text-left px-3 py-2 rounded-lg
-                      bg-white/5 hover:bg-white/10 border border-white/10
-                      text-white/70 text-xs transition-colors"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
+              agent.status === 'working' || agent.status === 'thinking' ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-8">
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:0ms]" />
+                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:150ms]" />
+                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:300ms]" />
+                  </div>
+                  <p className="text-white/40 text-xs">
+                    {agent.name} is working on it...
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-white/30 text-xs text-center mb-4">
+                    Start a conversation
+                  </p>
+                  {agent.suggestedPrompts.map((prompt) => (
+                    <button
+                      key={prompt}
+                      onClick={() => {
+                        if (activeAgent) sendMessage(activeAgent, prompt);
+                      }}
+                      className="block w-full text-left px-3 py-2 rounded-lg
+                        bg-white/5 hover:bg-white/10 border border-white/10
+                        text-white/70 text-xs transition-colors"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              )
             )}
             {messages.map((msg, i) =>
               msg.role === 'tool' ? (
