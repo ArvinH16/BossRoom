@@ -12,6 +12,7 @@ const IFRAME_BLOCKED_DOMAINS = [
   'github.com',
   'mail.google.com',
   'accounts.google.com',
+  'connect.composio.dev',
   'notion.so',
   'slack.com',
   'discord.com',

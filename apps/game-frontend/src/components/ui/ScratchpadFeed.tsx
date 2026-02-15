@@ -136,6 +136,11 @@ export function ScratchpadFeed() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-2 space-y-1.5 max-h-[580px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/30">
+          {entries.length === 0 && (
+            <div className="flex items-center justify-center py-8 text-white/30 text-[11px]">
+              Your team's communications will show up here
+            </div>
+          )}
           {entries.map((entry) => (
             <div key={entry.id} className="animate-[fadeIn_0.3s_ease-out]">
               <div className="flex items-start gap-1.5">
