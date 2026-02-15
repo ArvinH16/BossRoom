@@ -2,7 +2,7 @@ import { WebSocket } from 'ws';
 import { verifyToken } from '../auth/firebase-admin.js';
 import { log } from '../logger.js';
 import type { PlayerState, WorldState } from '@bossroom/shared-types';
-import { randomAvatarId } from '@bossroom/shared-types';
+import { RANDOM_AVATAR_ID, randomAvatarId } from '@bossroom/shared-types';
 import type { PlayerService } from '../domains/players/service.js';
 import type { AgentService } from '../domains/agents/service.js';
 import type { UserRepository } from '../domains/users/repository.js';
@@ -61,7 +61,9 @@ export async function handlePlayerJoin(
     position: [0, 2, 5],
     rotation: 0,
     animation: 'idle',
-    avatarId: settings.avatarId ?? randomAvatarId(),
+    avatarId: !settings.avatarId || settings.avatarId === RANDOM_AVATAR_ID
+      ? randomAvatarId()
+      : settings.avatarId,
   };
   players.addPlayer(uid, player, ws);
 

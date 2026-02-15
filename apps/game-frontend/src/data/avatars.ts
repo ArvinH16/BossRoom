@@ -5,6 +5,7 @@ export interface AvatarOption {
 }
 
 export const AVATARS: AvatarOption[] = [
+  { id: 'random', label: 'Random', modelUrl: '/models/characters/player.glb' },
   { id: 'default', label: 'Default', modelUrl: '/models/characters/player.glb' },
   { id: 'female-a', label: 'Female A', modelUrl: '/models/characters/avatars/character-female-a.glb' },
   { id: 'female-b', label: 'Female B', modelUrl: '/models/characters/avatars/character-female-b.glb' },
@@ -21,6 +22,11 @@ export const AVATARS: AvatarOption[] = [
 ];
 
 export function getAvatarModelUrl(avatarId: string | undefined): string {
+  if (avatarId === 'random') {
+    // 'random' should be resolved to a concrete avatar before rendering;
+    // if it reaches here, fall back to default model
+    return AVATARS.find((a) => a.id === 'default')?.modelUrl ?? AVATARS[0].modelUrl;
+  }
   const avatar = AVATARS.find((a) => a.id === avatarId);
   return avatar?.modelUrl ?? AVATARS[0].modelUrl;
 }

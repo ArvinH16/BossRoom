@@ -31,7 +31,7 @@ export const LIGHTING = {
   ambient: { intensity: 0.6, color: '#ffffff' },
   directional: { intensity: 1.2, position: [10, 15, 10] as const },
   point: { intensity: 0.3, color: '#8b5cf6', position: [0, 5, 0] as const },
-  fog: { color: '#c8dff5', near: 25, far: 80 },
+  fog: { color: '#c8dff5', near: 50, far: 220 },
 } as const;
 
 export const AGENT_WANDER = {
