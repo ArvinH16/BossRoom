@@ -37,7 +37,7 @@ export function SettingsPanel() {
     <>
       {/* Backdrop — click outside to close */}
       <div
-        className="fixed inset-0 z-50"
+        className="fixed inset-0 z-50 pointer-events-auto"
         onClick={closeSettingsPanel}
       />
 
