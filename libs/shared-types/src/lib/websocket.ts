@@ -69,6 +69,17 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
       timestamp: z.number(),
     }),
   }) }),
+  z.object({ type: z.literal('workspace:scratchpadHistory'), payload: z.object({
+    workspaceId: z.string(),
+    entries: z.array(z.object({
+      id: z.string(),
+      authorType: z.enum(['agent', 'user']),
+      authorName: z.string(),
+      authorColor: z.string(),
+      content: z.string(),
+      timestamp: z.number(),
+    })),
+  }) }),
   z.object({ type: z.literal('workspace:embedPanel'), payload: z.object({
     workspaceId: z.string(),
     embed: z.object({

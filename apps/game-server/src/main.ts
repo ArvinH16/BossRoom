@@ -23,7 +23,7 @@ const userModule = createUserModule({ db });
 const agentRepo = createAgentRepository();
 const conversationModule = createConversationModule({ db, agentRepo });
 const skillModule = createSkillModule(db);
-const scratchpadService = createScratchpadService();
+const scratchpadService = createScratchpadService(db);
 const agentModule = createAgentModule({
   agentRepo,
   conversationService: conversationModule.service,
@@ -94,7 +94,19 @@ const pingTimer = setInterval(() => {
   }
 }, PING_INTERVAL_MS);
 
-wss.on('close', () => clearInterval(pingTimer));
+// Scratchpad cleanup: prune entries older than 24h every hour
+const SCRATCHPAD_PRUNE_INTERVAL_MS = 60 * 60 * 1000;
+const SCRATCHPAD_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const pruneTimer = setInterval(() => {
+  scratchpadService.pruneOld(SCRATCHPAD_MAX_AGE_MS).catch((err) => {
+    log.error('[scratchpad] Prune interval failed:', err);
+  });
+}, SCRATCHPAD_PRUNE_INTERVAL_MS);
+
+wss.on('close', () => {
+  clearInterval(pingTimer);
+  clearInterval(pruneTimer);
+});
 
 wss.on('connection', (ws: WebSocket) => {
   log.debug('[ws] new connection');
@@ -135,8 +147,32 @@ wss.on('connection', (ws: WebSocket) => {
 
 async function handleMessage(ws: WebSocket, msg: ClientMessage) {
   switch (msg.type) {
-    case 'player:join':
-      return handlePlayerJoin(ws, msg.payload, { players, agents, userRepo });
+    case 'player:join': {
+      await handlePlayerJoin(ws, msg.payload, { players, agents, userRepo });
+      // Send scratchpad history if a workspace is active
+      const allDynamic = agentRepo.getAllDynamic();
+      if (allDynamic.length > 0) {
+        const workspaceId = allDynamic[0].workspaceId;
+        const entries = await scratchpadService.loadWorkspace(workspaceId);
+        if (entries.length > 0) {
+          players.send(ws, {
+            type: 'workspace:scratchpadHistory',
+            payload: {
+              workspaceId,
+              entries: entries.map((e) => ({
+                id: e.id,
+                authorType: e.authorType,
+                authorName: e.authorName,
+                authorColor: e.authorColor,
+                content: e.content,
+                timestamp: e.timestamp,
+              })),
+            },
+          });
+        }
+      }
+      return;
+    }
     case 'player:move':
       return handlePlayerMove(ws, msg.payload, players);
     case 'player:updateSettings':

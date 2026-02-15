@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, jsonb, pgEnum, unique, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, jsonb, pgEnum, unique, boolean, index, bigint } from 'drizzle-orm/pg-core';
 import type { UserSettings } from '@bossroom/shared-types';
 
 export const agentModelEnum = pgEnum('agent_model', ['claude', 'gpt-4o', 'gemini']);
@@ -50,3 +50,16 @@ export const taskHistory = pgTable('task_history', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   completedAt: timestamp('completed_at'),
 });
+
+export const scratchpadEntries = pgTable('scratchpad_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  authorType: text('author_type').notNull(),
+  authorId: text('author_id').notNull(),
+  authorName: text('author_name').notNull(),
+  authorColor: text('author_color').notNull(),
+  content: text('content').notNull(),
+  timestamp: bigint('timestamp', { mode: 'number' }).notNull(),
+}, (table) => [
+  index('scratchpad_workspace_idx').on(table.workspaceId, table.timestamp),
+]);

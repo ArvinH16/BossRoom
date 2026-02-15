@@ -16,6 +16,7 @@ interface ScratchpadState {
   activeWorkspaceId: string | null;
 
   addEntry: (entry: ScratchpadFeedEntry) => void;
+  setEntries: (workspaceId: string, entries: ScratchpadFeedEntry[]) => void;
   setActiveWorkspace: (workspaceId: string) => void;
   clearWorkspace: () => void;
 }
@@ -30,6 +31,9 @@ export const useScratchpadStore = create<ScratchpadState>((set) => ({
       if (updated.length > 100) updated.shift();
       return { entries: updated };
     }),
+
+  setEntries: (workspaceId, entries) =>
+    set({ activeWorkspaceId: workspaceId, entries }),
 
   setActiveWorkspace: (workspaceId) =>
     set({ activeWorkspaceId: workspaceId }),

@@ -172,6 +172,12 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         break;
       }
 
+      case 'workspace:scratchpadHistory': {
+        const { workspaceId, entries } = msg.payload;
+        useScratchpadStore.getState().setEntries(workspaceId, entries);
+        break;
+      }
+
       case 'workspace:embedPanel': {
         useEmbedStore.getState().addEmbed(msg.payload.embed);
         break;
