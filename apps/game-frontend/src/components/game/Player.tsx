@@ -10,18 +10,13 @@ import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useNearestAgent } from '@/hooks/useNearestAgent';
 import { PLAYER, CAMERA } from '@/data/gameConfig';
-import type { Vector3 } from 'three';
 
 const MOVE_SPEED = PLAYER.maxSpeed;
 const SPRINT_MULT = 1.8;
-const CAMERA_DISTANCE = 10;
-const CAMERA_HEIGHT = 7;
-const CAMERA_LERP = 0.08;
-const ROTATION_LERP = 0.12;
 const SPAWN: [number, number, number] = [0, 0, 6];
 
 export function Player() {
-  const ecctrlRef = useRef<{ group: { translation(): Vector3 } | null }>(null);
+  const ecctrlRef = useRef(null);
   const agents = useWorldStore((s) => s.agents);
   const nearestAgent = useWorldStore((s) => s.nearestAgent);
   const openChat = useChatStore((s) => s.openChat);
@@ -47,12 +42,10 @@ export function Player() {
       position={SPAWN}
       maxVelLimit={MOVE_SPEED}
       sprintMult={SPRINT_MULT}
-      camInitDir={{ x: 0, y: 0, z: 1 }}
-      camMaxDis={CAMERA.maxDistance}
-      camMinDis={CAMERA.minDistance}
-      camInitDis={CAMERA.initialDistance}
-      camMoveSpeed={CAMERA.moveSpeed}
-      camZoomSpeed={CAMERA.zoomSpeed}
+      camInitDir={{ x: 0, y: 0 }}
+      camMaxDis={CAMERA.maxDis}
+      camMinDis={CAMERA.minDis}
+      camInitDis={CAMERA.initDis}
       turnSpeed={2.0}
       turnVelMultiplier={1.0}
       jumpVel={4.5}
@@ -71,7 +64,9 @@ export function Player() {
           jumpLand: 'Jump_Land',
           fall: 'Jump_Idle',
         }}
-      />
+      >
+        {null}
+      </EcctrlAnimation>
     </Ecctrl>
   );
 }
