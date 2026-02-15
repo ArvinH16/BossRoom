@@ -433,6 +433,7 @@ No other text.`,
     ws: WebSocket,
     broadcastFn: (msg: ServerMessage) => void,
     isNudge = false,
+    inputMode: 'voice' | 'text' = 'text',
   ) {
     const dynamicAgent = agentRepo.getDynamic(agentId);
     if (!dynamicAgent) {
@@ -605,6 +606,20 @@ No other text.`,
         playerService.send(ws, {
           type: 'agent:chatMessage',
           payload: { agentId, role: 'assistant', content: fullResponse },
+        });
+      }
+
+      // TTS: synthesize with hardcoded "Dominus" voice (non-blocking, fail-soft) — voice input only
+      if (inputMode === 'voice' && fullResponse) {
+        synthesizeSpeech(fullResponse, 'Dominus').then((tts) => {
+          if (tts) {
+            playerService.send(ws, {
+              type: 'agent:ttsAudio',
+              payload: { agentId, audioBase64: tts.audioBase64, mimeType: tts.mimeType },
+            });
+          }
+        }).catch((err) => {
+          log.error(`[TTS] failed for dynamic agent ${agentId}:`, err);
         });
       }
 
@@ -922,7 +937,7 @@ No other text.`,
       // Check if this is a dynamic agent
       const dynamicAgent = agentRepo.getDynamic(agentId);
       if (dynamicAgent) {
-        return handleDynamicAgentMessage(playerId, agentId, content, ws, broadcastFn);
+        return handleDynamicAgentMessage(playerId, agentId, content, ws, broadcastFn, false, inputMode);
       }
 
       // Static agent (Receptionist) — delegate to extracted helper
