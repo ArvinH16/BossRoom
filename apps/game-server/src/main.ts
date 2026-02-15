@@ -8,6 +8,7 @@ import type {
   WorldState,
 } from '@bossroom/shared-types';
 import { AgentManager } from './agents/AgentManager.js';
+import { handleComposioAuthRoutes } from './http/composio-auth.js';
 import { log } from './logger.js';
 import { verifyToken } from './auth/firebase-admin.js';
 import { db } from './db/client.js';
@@ -22,7 +23,10 @@ const wsToUid = new Map<WebSocket, string>();
 
 const agentManager = new AgentManager();
 
-const server = http.createServer((_req, res) => {
+const server = http.createServer((req, res) => {
+  // Try Composio auth routes first
+  if (handleComposioAuthRoutes(req, res)) return;
+
   res.writeHead(200, {
     'Content-Type': 'text/plain',
     'Access-Control-Allow-Origin': '*',

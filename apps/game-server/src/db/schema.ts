@@ -17,7 +17,6 @@ export const agentSkills = pgTable('agent_skills', {
   description: text('description').notNull(),
   systemPrompt: text('system_prompt').notNull(),
   model: agentModelEnum('model').notNull(),
-  composioTools: jsonb('composio_tools').$type<string[]>().notNull().default([]),
   zone: text('zone').notNull(),
   personality: text('personality').notNull(),
   avatarConfig: jsonb('avatar_config').$type<{ color: string; position: [number, number, number] }>().notNull(),

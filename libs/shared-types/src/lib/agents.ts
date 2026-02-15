@@ -16,7 +16,6 @@ export interface AgentSkill {
   description: string;
   systemPrompt: string;
   model: AgentModel;
-  composioTools: string[];
   zone: AgentZone;
   personality: string;
   avatarConfig: {

@@ -1,16 +1,18 @@
 /**
  * AgentManager: orchestrates agent interactions.
- * Routes messages to the AI Gateway (Claude/GPT-4o/Gemini),
- * streams responses back to the client, and handles tool execution via Composio.
+ * Routes messages through AI SDK streamText with multi-step tool calling,
+ * Composio tools, and MCP tool support.
  */
 import { WebSocket } from 'ws';
-import type OpenAI from 'openai';
+import { streamText, stepCountIs } from 'ai';
 import type {
   AgentSkill,
   AgentStatus,
   ServerMessage,
 } from '@bossroom/shared-types';
-import { createGatewayClient } from '../ai/gateway.js';
+import { getModel } from '../ai/gateway.js';
+import { getComposioTools } from '../ai/composio.js';
+import { mcpManager } from '../ai/mcp.js';
 import { log } from '../logger.js';
 
 // --- Agent definitions (in-memory, mirrors frontend data/agents.ts) ---
@@ -29,7 +31,6 @@ When a user asks you to send an email, compose it properly and confirm before "s
 If asked about capabilities, list your tools. Keep responses concise and fun.
 You love sorting things and organizing communication.`,
     model: 'gpt-4o',
-    composioTools: ['GMAIL_SEND_EMAIL', 'GMAIL_FETCH_EMAILS'],
     zone: 'communications',
     personality: 'Cheerful and efficient. Loves sorting things.',
     avatarConfig: { color: '#4A90D9', position: [-6, 0, -6] },
@@ -45,7 +46,6 @@ and use military/mission metaphors. You never miss a deadline.
 When asked to create a task, gather the details (title, description, priority) then confirm.
 Keep responses direct and action-oriented.`,
     model: 'claude',
-    composioTools: ['LINEAR_CREATE_ISSUE', 'LINEAR_LIST_ISSUES'],
     zone: 'project-ops',
     personality: 'Strict but fair. Never misses a deadline.',
     avatarConfig: { color: '#D94A4A', position: [6, 0, -6] },
@@ -61,7 +61,6 @@ You are obsessed with punctuality and always speak in time metaphors.
 "Every second counts!" "Let's make sure your calendar is ticking perfectly."
 When scheduling, always confirm the time, duration, and attendees.`,
     model: 'gemini',
-    composioTools: ['GOOGLECALENDAR_CREATE_EVENT', 'GOOGLECALENDAR_FIND_EVENTS'],
     zone: 'calendar',
     personality: 'Precise and punctual. Speaks in time metaphors.',
     avatarConfig: { color: '#4AD97A', position: [0, 0, -10] },
@@ -74,6 +73,8 @@ interface Conversation {
   playerId: string;
   agentId: string;
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  aiMessages: Array<any>;
   ws: WebSocket;
 }
 
@@ -97,7 +98,6 @@ export class AgentManager {
         description: agent.description,
         systemPrompt: agent.systemPrompt,
         model: agent.model,
-        composioTools: agent.composioTools,
         zone: agent.zone,
         personality: agent.personality,
         avatarConfig: agent.avatarConfig,
@@ -121,6 +121,7 @@ export class AgentManager {
         playerId,
         agentId,
         messages: [],
+        aiMessages: [],
         ws,
       });
       this.playerConversations.set(convKey, convId);
@@ -161,65 +162,89 @@ export class AgentManager {
 
     if (!conv) {
       convId = conversationId || `conv-${Date.now()}`;
-      conv = { id: convId, playerId, agentId, messages: [], ws };
+      conv = { id: convId, playerId, agentId, messages: [], aiMessages: [], ws };
       this.conversations.set(convId, conv);
       this.playerConversations.set(convKey, convId);
     }
 
-    // Add user message
+    // Add user message to display history
     conv.messages.push({ role: 'user', content });
 
-    // Update status -> thinking
+    // Status → thinking
     this.setAgentStatus(agentId, 'thinking');
-    broadcastFn({
-      type: 'agent:statusChanged',
-      payload: { agentId, status: 'thinking' },
-    });
+    broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'thinking' } });
 
     try {
-      // Build messages for the LLM
-      const llmMessages: OpenAI.ChatCompletionMessageParam[] = [
-        { role: 'system', content: agent.systemPrompt },
-        ...conv.messages.map((m) => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-        })),
+      const model = getModel(agent.model);
+      const composioTools = await getComposioTools(playerId);
+      const mcpTools = await mcpManager.getAllTools();
+      const tools = { ...composioTools, ...mcpTools };
+      const hasTools = Object.keys(tools).length > 0;
+
+      // Build AI SDK messages: use aiMessages for multi-turn tool context,
+      // append latest user message
+      const aiMessages = [
+        ...conv.aiMessages,
+        { role: 'user' as const, content },
       ];
 
-      // Call AI Gateway with streaming
-      const { client, model } = createGatewayClient(agent.model);
-
-      const stream = await client.chat.completions.create({
+      // streamText is synchronous — returns result object immediately
+      const result = streamText({
         model,
-        messages: llmMessages,
-        stream: true,
-        max_tokens: 1024,
+        system: agent.systemPrompt,
+        messages: aiMessages,
+        ...(hasTools ? { tools, stopWhen: stepCountIs(5) } : {}),
+        onChunk: ({ chunk }) => {
+          if (chunk.type === 'tool-call') {
+            this.sendToPlayer(ws, {
+              type: 'agent:toolExecution',
+              payload: { agentId, toolName: chunk.toolName, status: 'started' },
+            });
+          }
+        },
+        onStepFinish: ({ toolCalls, toolResults }) => {
+          for (let i = 0; i < toolCalls.length; i++) {
+            const tc = toolCalls[i];
+            const tr = toolResults[i];
+            const failed = tr && typeof tr === 'object' && 'error' in tr;
+            this.sendToPlayer(ws, {
+              type: 'agent:toolExecution',
+              payload: {
+                agentId,
+                toolName: tc.toolName,
+                status: failed ? 'failed' : 'completed',
+                result: failed ? String((tr as { error: unknown }).error) : undefined,
+              },
+            });
+          }
+        },
       });
 
-      // Update status -> working
+      // Status → working
       this.setAgentStatus(agentId, 'working');
-      broadcastFn({
-        type: 'agent:statusChanged',
-        payload: { agentId, status: 'working' },
-      });
+      broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'working' } });
 
+      // Stream text deltas to frontend
       let fullResponse = '';
-
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content;
-        if (delta) {
-          fullResponse += delta;
-          this.sendToPlayer(ws, {
-            type: 'agent:chatStream',
-            payload: { agentId, delta },
-          });
-        }
+      for await (const delta of result.textStream) {
+        fullResponse += delta;
+        this.sendToPlayer(ws, {
+          type: 'agent:chatStream',
+          payload: { agentId, delta },
+        });
       }
 
-      // Save assistant response to conversation history
+      // Store AI SDK response messages for multi-turn tool context
+      const response = await result.response;
+      conv.aiMessages.push(
+        { role: 'user' as const, content },
+        ...response.messages,
+      );
+
+      // Store display-friendly response
       conv.messages.push({ role: 'assistant', content: fullResponse });
 
-      // Send complete message (signals end of stream)
+      // Send complete message (signals end of stream to frontend)
       this.sendToPlayer(ws, {
         type: 'agent:chatMessage',
         payload: { agentId, role: 'assistant', content: fullResponse },
@@ -227,18 +252,13 @@ export class AgentManager {
 
       // Reset status
       this.setAgentStatus(agentId, 'idle');
-      broadcastFn({
-        type: 'agent:statusChanged',
-        payload: { agentId, status: 'idle' },
-      });
+      broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
+
     } catch (err) {
       log.error(`Agent ${agentId} error:`, err);
 
       this.setAgentStatus(agentId, 'error');
-      broadcastFn({
-        type: 'agent:statusChanged',
-        payload: { agentId, status: 'error' },
-      });
+      broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'error' } });
 
       this.sendToPlayer(ws, {
         type: 'agent:chatMessage',
@@ -252,10 +272,7 @@ export class AgentManager {
       // Reset to idle after a short delay
       setTimeout(() => {
         this.setAgentStatus(agentId, 'idle');
-        broadcastFn({
-          type: 'agent:statusChanged',
-          payload: { agentId, status: 'idle' },
-        });
+        broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
       }, 2000);
     }
   }

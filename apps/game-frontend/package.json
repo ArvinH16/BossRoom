@@ -9,6 +9,7 @@
     "@react-three/rapier": "^2.2.0",
     "ecctrl": "^1.0.97",
     "next": "~16.0.1",
+    "radix-ui": "^1.4.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.182.0",
