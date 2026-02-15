@@ -6,19 +6,19 @@ export interface AvatarOption {
 
 export const AVATARS: AvatarOption[] = [
   { id: 'random', label: 'Random', modelUrl: '/models/characters/player.glb' },
-  { id: 'default', label: 'Default', modelUrl: '/models/characters/player.glb' },
-  { id: 'female-a', label: 'Female A', modelUrl: '/models/characters/avatars/character-female-a.glb' },
-  { id: 'female-b', label: 'Female B', modelUrl: '/models/characters/avatars/character-female-b.glb' },
-  { id: 'female-c', label: 'Female C', modelUrl: '/models/characters/avatars/character-female-c.glb' },
-  { id: 'female-d', label: 'Female D', modelUrl: '/models/characters/avatars/character-female-d.glb' },
-  { id: 'female-e', label: 'Female E', modelUrl: '/models/characters/avatars/character-female-e.glb' },
-  { id: 'female-f', label: 'Female F', modelUrl: '/models/characters/avatars/character-female-f.glb' },
-  { id: 'male-a', label: 'Male A', modelUrl: '/models/characters/avatars/character-male-a.glb' },
-  { id: 'male-b', label: 'Male B', modelUrl: '/models/characters/avatars/character-male-b.glb' },
-  { id: 'male-c', label: 'Male C', modelUrl: '/models/characters/avatars/character-male-c.glb' },
-  { id: 'male-d', label: 'Male D', modelUrl: '/models/characters/avatars/character-male-d.glb' },
-  { id: 'male-e', label: 'Male E', modelUrl: '/models/characters/avatars/character-male-e.glb' },
-  { id: 'male-f', label: 'Male F', modelUrl: '/models/characters/avatars/character-male-f.glb' },
+  { id: 'default', label: 'Scout', modelUrl: '/models/characters/player.glb' },
+  { id: 'female-a', label: 'Luna', modelUrl: '/models/characters/avatars/character-female-a.glb' },
+  { id: 'female-b', label: 'Sage', modelUrl: '/models/characters/avatars/character-female-b.glb' },
+  { id: 'female-c', label: 'Nova', modelUrl: '/models/characters/avatars/character-female-c.glb' },
+  { id: 'female-d', label: 'Ruby', modelUrl: '/models/characters/avatars/character-female-d.glb' },
+  { id: 'female-e', label: 'Ivy', modelUrl: '/models/characters/avatars/character-female-e.glb' },
+  { id: 'female-f', label: 'Aria', modelUrl: '/models/characters/avatars/character-female-f.glb' },
+  { id: 'male-a', label: 'Max', modelUrl: '/models/characters/avatars/character-male-a.glb' },
+  { id: 'male-b', label: 'Kai', modelUrl: '/models/characters/avatars/character-male-b.glb' },
+  { id: 'male-c', label: 'Rex', modelUrl: '/models/characters/avatars/character-male-c.glb' },
+  { id: 'male-d', label: 'Leo', modelUrl: '/models/characters/avatars/character-male-d.glb' },
+  { id: 'male-e', label: 'Finn', modelUrl: '/models/characters/avatars/character-male-e.glb' },
+  { id: 'male-f', label: 'Atlas', modelUrl: '/models/characters/avatars/character-male-f.glb' },
 ];
 
 export function getAvatarModelUrl(avatarId: string | undefined): string {

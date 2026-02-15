@@ -18,6 +18,7 @@ interface WorkspaceState {
   markZoneBuilt: (agentId: string) => void;
   completeBuild: () => void;
   removeAgents: (agentIds: string[]) => void;
+  setWorkspaceState: (agents: DynamicAgent[], taskSummary: string) => void;
   reset: () => void;
 }
 
@@ -71,6 +72,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set((state) => ({
       dynamicAgents: state.dynamicAgents.filter((a) => !idsToRemove.has(a.agentId)),
     }));
+  },
+
+  /** Set workspace state directly (no build animation — used for tab switching). */
+  setWorkspaceState: (agents, taskSummary) => {
+    set({
+      phase: 'ready',
+      dynamicAgents: agents,
+      taskSummary,
+      buildQueue: [],
+      currentlyBuilding: null,
+      builtAgentIds: new Set(agents.map(a => a.agentId)),
+    });
   },
 
   reset: () =>

@@ -6,16 +6,19 @@ import { Canvas } from '@react-three/fiber';
 import { Scene } from './Scene';
 import { ChatPanel } from '../ui/ChatPanel';
 import { EmbedPanel } from '../ui/EmbedPanel';
+import { ProductCanvas } from '../ui/ProductCanvas';
 import { InteractionPrompt } from './InteractionPrompt';
 import { PushToTalkOverlay } from '../ui/PushToTalkOverlay';
 import { TTSAudioPlayer } from '../ui/TTSAudioPlayer';
 import { HUD } from '../ui/HUD';
 import { OnboardingOverlay } from '../ui/OnboardingOverlay';
 import { PunchHint } from './PunchHint';
+import { ViewHint } from './ViewHint';
 
 import { ScratchpadFeed } from '../ui/ScratchpadFeed';
 import { BackgroundMusic } from '../ui/BackgroundMusic';
 import { GameToolbar } from '../ui/GameToolbar';
+import { WorkspaceBar } from '../ui/WorkspaceBar';
 import { useAuthStore } from '@/stores/authStore';
 import { initWebSocket } from '@/lib/messageHandler';
 import { CAMERA, WORLD } from '@/data/gameConfig';
@@ -62,14 +65,17 @@ export function Game({ user }: GameProps) {
       <HUD />
       <ChatPanel />
       <EmbedPanel />
+      <ProductCanvas />
       <InteractionPrompt />
       <PunchHint />
+      <ViewHint />
       <PushToTalkOverlay />
       <TTSAudioPlayer />
       <OnboardingOverlay />
       <ScratchpadFeed />
       <BackgroundMusic />
       <GameToolbar />
+      <WorkspaceBar />
     </div>
   );
 }

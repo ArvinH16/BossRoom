@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useScratchpadStore } from '@/stores/scratchpadStore';
 import { useEmbedStore } from '@/stores/embedStore';
+import { useProductStore } from '@/stores/productStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
 import { RANDOM_AVATAR_ID } from '@bossroom/shared-types';
@@ -131,11 +132,120 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
 
         // Track which agents belong to the current task
         const newAgentIds = dynamicAgents.map((a) => a.agentId);
-        useChatStore.getState().registerTaskAgents(newAgentIds);
 
         // Set active workspace for scratchpad
         const workspaceId = dynamicAgents[0]?.workspaceId;
-        if (workspaceId) useScratchpadStore.getState().setActiveWorkspace(workspaceId);
+        if (workspaceId) {
+          useScratchpadStore.getState().setActiveWorkspace(workspaceId);
+          // Add/update workspace tab
+          useChatStore.setState((state) => {
+            const existing = state.workspaceTabs.find(t => t.id === workspaceId);
+            if (existing) return {};
+            return {
+              workspaceTabs: [...state.workspaceTabs, {
+                id: workspaceId,
+                taskSummary,
+                status: 'active',
+                agentIds: newAgentIds,
+              }],
+              activeWorkspaceId: workspaceId,
+            };
+          });
+        }
+
+        useChatStore.getState().registerTaskAgents(newAgentIds);
+        break;
+      }
+
+      case 'workspace:list': {
+        const { workspaces } = msg.payload;
+        const tabs = workspaces.map(w => ({
+          id: w.id,
+          taskSummary: w.taskSummary,
+          status: w.status,
+          agentIds: [] as string[],  // will be populated when subscribing
+        }));
+        useChatStore.getState().setWorkspaceTabs(tabs);
+        // Auto-subscribe to most recent active workspace
+        const activeWs = workspaces.find(w => w.status === 'active');
+        if (activeWs) {
+          useChatStore.getState().switchWorkspace(activeWs.id);
+        }
+        break;
+      }
+
+      case 'workspace:snapshot': {
+        const { workspaceId, taskSummary, status, agents: snapshotAgents, scratchpadEntries } = msg.payload;
+
+        // Build DynamicAgent array for workspaceStore
+        const dynamicAgentsFromSnapshot = snapshotAgents.map(a => ({
+          agentId: a.agentId, workspaceId, name: a.name, color: a.color,
+          zoneName: a.zoneName, personality: a.personality, role: a.role as 'lead' | 'worker',
+          skills: a.skills ?? [], position: a.position as [number, number, number],
+        }));
+
+        // Clear embeds from previous workspace
+        useEmbedStore.getState().clearAll();
+
+        // Set workspace directly (no build animation for existing workspaces)
+        useWorkspaceStore.getState().setWorkspaceState(dynamicAgentsFromSnapshot, taskSummary);
+
+        // Clear old dynamic agents from world, then add new ones
+        useWorldStore.getState().clearDynamicAgents();
+        useWorldStore.getState().addAgents(dynamicAgentsFromSnapshot.map(toDynamicAgentData));
+
+        // Set agent statuses
+        for (const a of snapshotAgents) {
+          useWorldStore.getState().updateAgentStatus(a.agentId, a.status as 'idle' | 'listening' | 'thinking' | 'working' | 'done' | 'error');
+        }
+
+        // Update workspace tab's agentIds
+        const snapAgentIds = snapshotAgents.map(a => a.agentId);
+        useChatStore.setState((state) => ({
+          workspaceTabs: state.workspaceTabs.map(tab =>
+            tab.id === workspaceId
+              ? { ...tab, agentIds: snapAgentIds, taskSummary, status }
+              : tab,
+          ),
+        }));
+
+        // Clear stale chat messages from previous workspace, then populate from snapshot
+        const chatState = useChatStore.getState();
+        const staleAgentIds = Object.keys(chatState.chatMessages).filter(
+          id => id !== 'receptionist' && !snapshotAgents.some(a => a.agentId === id)
+        );
+        if (staleAgentIds.length > 0) {
+          const cleaned = { ...chatState.chatMessages };
+          for (const id of staleAgentIds) delete cleaned[id];
+          useChatStore.setState({ chatMessages: cleaned });
+        }
+
+        // Populate chat histories from snapshot
+        for (const a of snapshotAgents) {
+          if (a.chatHistory?.length > 0) {
+            useChatStore.setState((state) => ({
+              chatMessages: {
+                ...state.chatMessages,
+                [a.agentId]: a.chatHistory.map(m => ({
+                  role: m.role === 'assistant' ? 'agent' as const : 'user' as const,
+                  content: m.content,
+                })),
+              },
+            }));
+          }
+        }
+
+        // Set scratchpad
+        useScratchpadStore.getState().setEntries(workspaceId, scratchpadEntries);
+
+        // Auto-switch to lead agent of the workspace
+        if (snapshotAgents.length > 0) {
+          const leadAgent = snapshotAgents.find(a => a.role === 'lead') ?? snapshotAgents[0];
+          useChatStore.setState({ activeAgent: leadAgent.agentId });
+        }
+
+        // Clear loading state
+        useChatStore.getState().setLoadingWorkspace(false);
         break;
       }
 
@@ -178,6 +288,37 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
 
       case 'workspace:embedPanel': {
         useEmbedStore.getState().addEmbed(msg.payload.embed);
+        break;
+      }
+
+      case 'agent:productCards': {
+        const { agentId, products } = msg.payload;
+        // Show in floating product canvas
+        useProductStore.getState().showProducts(agentId, products);
+        // Minimal chat history reference
+        useChatStore.getState().addMessage(agentId, {
+          role: 'agent',
+          content: `Showing ${products.length} products`,
+        });
+        break;
+      }
+
+      case 'shop:purchaseResult': {
+        const { success, orderId, productName, amount, error } = msg.payload;
+        const productStore = useProductStore.getState();
+        productStore.setPurchaseStatus(
+          success ? 'success' : 'error',
+          success
+            ? `${productName} for $${amount}${orderId ? ` — Order ${orderId}` : ''}`
+            : (error ?? 'Purchase failed'),
+        );
+        // Log in chat history
+        useChatStore.getState().addMessage('shopkeeper', {
+          role: 'agent',
+          content: success
+            ? `done! grabbed ${productName} for $${amount} — order ${orderId ?? 'confirmed'}`
+            : `purchase failed: ${error ?? 'unknown error'}`,
+        });
         break;
       }
 

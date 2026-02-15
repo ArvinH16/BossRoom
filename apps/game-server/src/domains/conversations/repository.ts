@@ -4,11 +4,12 @@ import { conversations } from '../../db/schema.js';
 
 export function createConversationRepository(db: DrizzleDB) {
   return {
-    async findByUserAndAgent(userId: string, agentId: string) {
+    async findByUserAndAgent(userId: string, agentId: string, workspaceId: string = 'global') {
       const [row] = await db.select().from(conversations)
         .where(and(
           eq(conversations.userId, userId),
           eq(conversations.agentId, agentId),
+          eq(conversations.workspaceId, workspaceId),
         ))
         .limit(1);
       return row;
@@ -18,6 +19,7 @@ export function createConversationRepository(db: DrizzleDB) {
       id: string;
       userId: string;
       agentId: string;
+      workspaceId?: string;
       messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>;
       aiMessages: unknown[];
     }) {
@@ -25,6 +27,7 @@ export function createConversationRepository(db: DrizzleDB) {
         id: data.id,
         userId: data.userId,
         agentId: data.agentId,
+        workspaceId: data.workspaceId ?? 'global',
         messages: data.messages,
         aiMessages: data.aiMessages,
       }).onConflictDoUpdate({
@@ -56,6 +59,11 @@ export function createConversationRepository(db: DrizzleDB) {
           eq(conversations.userId, userId),
           inArray(conversations.agentId, agentIds),
         ));
+    },
+
+    async deleteByWorkspace(workspaceId: string) {
+      await db.delete(conversations)
+        .where(eq(conversations.workspaceId, workspaceId));
     },
   };
 }

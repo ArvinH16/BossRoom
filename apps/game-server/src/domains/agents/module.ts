@@ -5,6 +5,7 @@ import type { PlayerService } from '../players/service.js';
 import type { SkillService } from '../skills/service.js';
 import type { ScratchpadService } from '../scratchpad/service.js';
 import type { UserRepository } from '../users/repository.js';
+import type { WorkspaceRepository } from '../workspaces/repository.js';
 
 interface AgentModuleDeps {
   agentRepo: AgentRepository;
@@ -13,6 +14,7 @@ interface AgentModuleDeps {
   skillService: SkillService;
   scratchpadService: ScratchpadService;
   userRepo: UserRepository;
+  workspaceRepo: WorkspaceRepository;
 }
 
 export function createAgentModule(deps: AgentModuleDeps): { service: AgentService } {
@@ -23,6 +25,7 @@ export function createAgentModule(deps: AgentModuleDeps): { service: AgentServic
     skillService: deps.skillService,
     scratchpadService: deps.scratchpadService,
     userRepo: deps.userRepo,
+    workspaceRepo: deps.workspaceRepo,
   });
   return { service };
 }

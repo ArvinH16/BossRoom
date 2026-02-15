@@ -37,6 +37,7 @@ export const zoneColors: Record<string, string> = {
   'project-ops': '#D94A4A',
   calendar: '#4AD97A',
   command: '#FFD700',
+  shop: '#9B59B6',
 };
 
 export const zoneDisplayNames: Record<string, string> = {
@@ -44,9 +45,10 @@ export const zoneDisplayNames: Record<string, string> = {
   'project-ops': 'PROJECT OPS',
   calendar: 'CALENDAR',
   command: 'RECEPTION',
+  shop: 'SHOP',
 };
 
-/** Map AGENT_DEFS (now only Receptionist) to frontend AgentData. */
+/** Map AGENT_DEFS (Receptionist + Shopkeeper) to frontend AgentData. */
 export const agents: AgentData[] = AGENT_DEFS.map((def) => ({
   id: def.id,
   name: def.name,

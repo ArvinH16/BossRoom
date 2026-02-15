@@ -12,6 +12,7 @@ import { createConversationModule } from './domains/conversations/module.js';
 import { createAgentModule } from './domains/agents/module.js';
 import { createSkillModule } from './domains/skills/module.js';
 import { createScratchpadService } from './domains/scratchpad/service.js';
+import { createWorkspaceRepository } from './domains/workspaces/repository.js';
 import { handlePlayerJoin } from './handlers/playerJoin.js';
 import { handlePlayerMove } from './handlers/playerMove.js';
 import { handlePlayerSettings } from './handlers/playerSettings.js';
@@ -20,10 +21,11 @@ import { handleAgentInteract, handleAgentMessage, handleAgentStopInteract } from
 // --- Composition Root ---
 const playerModule = createPlayerModule();
 const userModule = createUserModule({ db });
-const agentRepo = createAgentRepository();
-const conversationModule = createConversationModule({ db, agentRepo });
 const skillModule = createSkillModule(db);
 const scratchpadService = createScratchpadService(db);
+const workspaceRepo = createWorkspaceRepository(db);
+const agentRepo = createAgentRepository({ workspaceRepo, skillService: skillModule.skillService });
+const conversationModule = createConversationModule({ db, agentRepo });
 const agentModule = createAgentModule({
   agentRepo,
   conversationService: conversationModule.service,
@@ -31,6 +33,7 @@ const agentModule = createAgentModule({
   skillService: skillModule.skillService,
   scratchpadService,
   userRepo: userModule.repository,
+  workspaceRepo,
 });
 
 const players = playerModule.service;
@@ -109,6 +112,9 @@ wss.on('close', () => {
   clearInterval(pruneTimer);
 });
 
+// Track per-connection workspace subscription
+const wsSubscriptions = new Map<WebSocket, string>();
+
 wss.on('connection', (ws: WebSocket) => {
   log.debug('[ws] new connection');
   alive.add(ws);
@@ -134,6 +140,7 @@ wss.on('connection', (ws: WebSocket) => {
     if (uid) {
       players.broadcast({ type: 'player:left', payload: { playerId: uid } });
       agents.handleDisconnect(uid);
+      wsSubscriptions.delete(ws);
       log.info(`[ws] closed ${uid}`);
     } else {
       log.debug('[ws] closed (unauthenticated)');
@@ -150,26 +157,31 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
   switch (msg.type) {
     case 'player:join': {
       await handlePlayerJoin(ws, msg.payload, { players, agents, userRepo });
-      // Send scratchpad history if a workspace is active
-      const allDynamic = agentRepo.getAllDynamic();
-      if (allDynamic.length > 0) {
-        const workspaceId = allDynamic[0].workspaceId;
-        const entries = await scratchpadService.loadWorkspace(workspaceId);
-        if (entries.length > 0) {
-          players.send(ws, {
-            type: 'workspace:scratchpadHistory',
-            payload: {
-              workspaceId,
-              entries: entries.map((e) => ({
-                id: e.id,
-                authorType: e.authorType,
-                authorName: e.authorName,
-                authorColor: e.authorColor,
-                content: e.content,
-                timestamp: e.timestamp,
-              })),
-            },
+      // Load user's active workspaces from DB and send workspace list
+      const uid = players.getUidByWs(ws);
+      if (uid) {
+        try {
+          const userWorkspaces = await workspaceRepo.getActiveWorkspaces(uid);
+          // Rehydrate agents for all active workspaces
+          for (const workspace of userWorkspaces) {
+            if (agentRepo.getByWorkspace(workspace.id).length === 0) {
+              await agentRepo.loadFromDb(workspace.id);
+            }
+          }
+          // Send workspace list to frontend
+          const workspaceList = userWorkspaces.map(workspace => {
+            const wsAgents = agentRepo.getByWorkspace(workspace.id);
+            return {
+              id: workspace.id,
+              taskSummary: workspace.taskSummary,
+              status: workspace.status,
+              createdAt: workspace.createdAt.toISOString(),
+              agentNames: wsAgents.map(a => a.name),
+            };
           });
+          players.send(ws, { type: 'workspace:list', payload: { workspaces: workspaceList } });
+        } catch (err) {
+          log.error(`[player:join] Failed to load workspaces for ${uid}:`, err);
         }
       }
       return;
@@ -230,12 +242,95 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
       );
       return;
     }
-    case 'conversations:reset': {
+    case 'workspace:subscribe': {
       const uid = players.getUidByWs(ws);
       if (!uid) return;
-      // Clean up conversations (memory + DB)
+      const { workspaceId } = msg.payload;
+
+      // SECURITY: validate ownership
+      const workspace = await workspaceRepo.getWorkspace(workspaceId);
+      if (!workspace || workspace.userId !== uid) {
+        log.warn(`[ws] workspace:subscribe denied — ${uid} does not own ${workspaceId}`);
+        return;
+      }
+
+      // Ensure agents loaded in memory (idempotent)
+      if (agentRepo.getByWorkspace(workspaceId).length === 0) {
+        await agentRepo.loadFromDb(workspaceId);
+      }
+
+      // Track subscription
+      wsSubscriptions.set(ws, workspaceId);
+
+      // Load scratchpad
+      const entries = await scratchpadService.loadWorkspace(workspaceId);
+
+      // Build snapshot
+      const wsAgents = agentRepo.getByWorkspace(workspaceId);
+      const snapshotAgents = wsAgents.map(a => ({
+        agentId: a.agentId, workspaceId: a.workspaceId,
+        name: a.name, color: a.color, zoneName: a.zoneName,
+        personality: a.personality, role: a.role, status: a.status,
+        position: a.position, chatHistory: a.chatHistory,
+        skills: a.skills.map(s => ({
+          id: s.id, agentId: s.agentId, name: s.name,
+          description: s.description, creatorType: s.creatorType,
+        })),
+      }));
+
+      players.send(ws, {
+        type: 'workspace:snapshot',
+        payload: {
+          workspaceId,
+          taskSummary: workspace.taskSummary,
+          status: workspace.status,
+          agents: snapshotAgents,
+          scratchpadEntries: entries.map(e => ({
+            id: e.id, authorType: e.authorType as 'agent' | 'user', authorName: e.authorName,
+            authorColor: e.authorColor, content: e.content, timestamp: e.timestamp,
+          })),
+        },
+      });
+      return;
+    }
+    case 'workspace:archive': {
+      const uid = players.getUidByWs(ws);
+      if (!uid) return;
+      const { workspaceId } = msg.payload;
+
+      // Validate ownership
+      const workspace = await workspaceRepo.getWorkspace(workspaceId);
+      if (!workspace || workspace.userId !== uid) return;
+
+      // Get agent IDs BEFORE removing from memory
+      const workspaceAgentList = agentRepo.getByWorkspace(workspaceId);
+      const agentIds = workspaceAgentList.map(a => a.agentId);
+
+      // Archive in DB (workspace, agents, skills archived; scratchpad deleted)
+      await workspaceRepo.archiveWorkspace(workspaceId);
+
+      // Clean up in-memory state
+      for (const a of workspaceAgentList) {
+        agentRepo.removeDynamic(a.agentId);
+      }
+      scratchpadService.clear(workspaceId);
+
+      // Clean up subscription
+      if (wsSubscriptions.get(ws) === workspaceId) {
+        wsSubscriptions.delete(ws);
+      }
+
+      // Clean up conversations for this workspace
+      await conversationModule.service.resetConversations(uid, agentIds, workspaceId);
+
+      log.info(`[workspace] Archived ${workspaceId} for ${uid}`);
+      return;
+    }
+    case 'conversations:reset': {
+      // Legacy handler — kept for backward compatibility with old frontends
+      const uid = players.getUidByWs(ws);
+      if (!uid) return;
       await conversationModule.service.resetConversations(uid, msg.payload.agentIds);
-      // Clean up scratchpad + dynamic agents for any workspaces these agents belong to
       const workspaceIds = new Set<string>();
       for (const agentId of msg.payload.agentIds) {
         const dynAgent = agentRepo.getDynamic(agentId);
@@ -246,11 +341,11 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
         for (const a of agentRepo.getByWorkspace(wsId)) {
           agentRepo.removeDynamic(a.agentId);
         }
-        log.info(`[cleanup] Cleared workspace ${wsId}: scratchpad + dynamic agents`);
       }
-      log.info(`[conversations] reset ${msg.payload.agentIds.length} conversations for ${uid}`);
+      log.info(`[conversations] reset ${msg.payload.agentIds.length} conversations for ${uid} (legacy)`);
       return;
     }
+    // shop:purchase is no longer used — Buy button sends agent:message through LLM
   }
 }
 

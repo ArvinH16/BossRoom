@@ -7,6 +7,7 @@ import { MUSIC } from '@/data/gameConfig';
 import { VOICE_OPTIONS } from '@bossroom/shared-types';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useMusicStore } from '@/stores/musicStore';
+import { AvatarPreview } from './AvatarPreview';
 
 export function GameToolbar() {
   const [activeTab, setActiveTab] = useState<'avatar' | 'music' | 'voice' | null>(null);
@@ -65,7 +66,7 @@ export function GameToolbar() {
                     key={avatar.id}
                     onClick={() => selectAvatar(avatar.id)}
                     className={`
-                      flex flex-col items-center justify-center p-2 rounded-lg
+                      flex flex-col items-center justify-center p-1.5 rounded-lg
                       transition-all cursor-pointer
                       ${
                         avatarPreference === avatar.id
@@ -74,10 +75,14 @@ export function GameToolbar() {
                       }
                     `}
                   >
-                    <span className="text-2xl mb-1">
-                      {avatar.id === 'random' ? '🎲' : '🧑'}
-                    </span>
-                    <span className="text-xs text-white/70 text-center">
+                    {avatar.id === 'random' ? (
+                      <div className="w-[52px] h-[52px] flex items-center justify-center">
+                        <span className="text-2xl">🎲</span>
+                      </div>
+                    ) : (
+                      <AvatarPreview url={avatar.modelUrl} size={52} />
+                    )}
+                    <span className="text-[10px] text-white/70 text-center leading-tight mt-0.5">
                       {avatar.label}
                     </span>
                   </button>

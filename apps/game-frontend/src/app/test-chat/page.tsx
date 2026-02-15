@@ -138,6 +138,10 @@ function AgentColumn({ agentId }: { agentId: string }) {
           {messages.map((msg, i) =>
             msg.role === 'tool' ? (
               <ToolDebugRow key={i} toolName={msg.toolName} status={msg.status} result={msg.result} />
+            ) : msg.role === 'products' ? (
+              <div key={i} className="text-white/50 text-xs mr-auto">
+                [{msg.products.length} product cards]
+              </div>
             ) : (
               <div
                 key={i}

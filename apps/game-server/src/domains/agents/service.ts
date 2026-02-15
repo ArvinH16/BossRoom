@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { streamText, generateText, stepCountIs } from 'ai';
+import { streamText, generateText, stepCountIs, type ToolSet } from 'ai';
 import type { ServerMessage, DynamicAgent } from '@bossroom/shared-types';
 import { TIMEOUTS } from '@bossroom/shared-utils';
 import { getModel } from '../../ai/gateway.js';
@@ -13,7 +13,9 @@ import type { PlayerService } from '../players/service.js';
 import type { SkillService } from '../skills/service.js';
 import type { ScratchpadService } from '../scratchpad/service.js';
 import type { UserRepository } from '../users/repository.js';
+import type { WorkspaceRepository } from '../workspaces/repository.js';
 import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools, createEmbedTools, createFinishTaskTool, createPeekConversationTool } from './skillTools.js';
+import { createPaymentTools } from './paymentTools.js';
 
 interface AgentServiceDeps {
   agentRepo: AgentRepository;
@@ -22,10 +24,11 @@ interface AgentServiceDeps {
   skillService: SkillService;
   scratchpadService: ScratchpadService;
   userRepo: UserRepository;
+  workspaceRepo: WorkspaceRepository;
 }
 
 export function createAgentService(deps: AgentServiceDeps) {
-  const { agentRepo, conversationService, playerService, skillService, scratchpadService, userRepo } = deps;
+  const { agentRepo, conversationService, playerService, skillService, scratchpadService, userRepo, workspaceRepo } = deps;
 
   /** Guard against duplicate workspace completion triggers. */
   const completedWorkspaces = new Set<string>();
@@ -55,6 +58,10 @@ export function createAgentService(deps: AgentServiceDeps) {
     }
 
     completedWorkspaces.add(workspaceId);
+    // Persist workspace status to DB
+    void workspaceRepo.updateWorkspaceStatus(workspaceId, 'completed').catch(err =>
+      log.error(`[workspace] DB status update failed for ${workspaceId}:`, err)
+    );
     log.info(`[workspace] Lead "${leadAgent.name}" done in ${workspaceId}, triggering receptionist summary`);
 
     // Gather scratchpad
@@ -732,10 +739,19 @@ No other text.`,
             onWorkspaceBuilt: (agents, taskSummary) =>
               handleWorkspaceBuilt(agents, taskSummary, playerId, ws, broadcastFn),
             getDynamicAgentCount: () => agentRepo.getAllDynamic().length,
+            workspaceRepo,
           })
         : {};
 
-      const tools = { ...composioTools, ...mcpTools, ...setupTool };
+      // Shopkeeper gets display_products (search & payment via Composio tools)
+      const shopkeeperTools: ToolSet = agentId === 'shopkeeper'
+        ? createPaymentTools({
+            playerId,
+            broadcastFn: (msg) => playerService.send(ws, msg),
+          })
+        : {};
+
+      const tools = { ...composioTools, ...mcpTools, ...setupTool, ...shopkeeperTools };
       const hasTools = Object.keys(tools).length > 0;
 
       // Build AI SDK messages
@@ -885,6 +901,11 @@ No other text.`,
       return agentRepo.getAll();
     },
 
+    /** Check if an agent is a dynamic (workspace) agent. */
+    isDynamicAgent(agentId: string): boolean {
+      return !!agentRepo.getDynamic(agentId);
+    },
+
     async handleInteraction(playerId: string, agentId: string, ws: WebSocket, displayName: string | null) {
       // Check static agents first, then dynamic
       const agent = agentRepo.get(agentId);
@@ -940,7 +961,7 @@ No other text.`,
         return handleDynamicAgentMessage(playerId, agentId, content, ws, broadcastFn, false, inputMode);
       }
 
-      // Static agent (Receptionist) — delegate to extracted helper
+      // Static agent (Receptionist/Shopkeeper) — delegate to extracted helper
       return handleStaticAgentMessage(playerId, agentId, content, inputMode, ws, broadcastFn);
     },
 

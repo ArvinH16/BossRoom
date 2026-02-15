@@ -6,8 +6,8 @@ import { Grid, useGLTF, Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { MathUtils, Group } from 'three';
-import { agents, zoneColors } from '@/data/agents';
-import { WORLD, FURNITURE_SCALE } from '@/data/gameConfig';
+import { agents, zoneColors, zoneDisplayNames } from '@/data/agents';
+import { WORLD, FURNITURE_SCALE, SHOP } from '@/data/gameConfig';
 import { Workstation } from './Workstation';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import type { DynamicAgent } from '@bossroom/shared-types';
@@ -125,6 +125,58 @@ function AnimatedZone({ agent }: { agent: DynamicAgent }) {
 
       {/* Workstation */}
       <Workstation position={[0, 0, 0]} />
+    </group>
+  );
+}
+
+/** Shop area decor — counter + purple neon accents near the Shopkeeper. */
+function ShopDecor() {
+  const lamp = useGLTF('/models/furniture/lampSquareFloor.glb');
+
+  return (
+    <group position={[SHOP.position[0], 0, SHOP.position[2]]}>
+      {/* Shop counter */}
+      <mesh position={[0, 0.5, -2]} castShadow>
+        <boxGeometry args={[3.5, 1, 0.6]} />
+        <meshStandardMaterial
+          color="#3a2050"
+          emissive="#9B59B6"
+          emissiveIntensity={0.15}
+        />
+      </mesh>
+      {/* Counter top accent strip */}
+      <mesh position={[0, 1.02, -2]}>
+        <boxGeometry args={[3.6, 0.04, 0.65]} />
+        <meshStandardMaterial
+          color="#9B59B6"
+          emissive="#9B59B6"
+          emissiveIntensity={1.5}
+        />
+      </mesh>
+
+      {/* Zone rug */}
+      <mesh position={[0, 0.012, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[7, 6]} />
+        <meshStandardMaterial
+          color="#9B59B6"
+          transparent
+          opacity={0.06}
+        />
+      </mesh>
+
+      {/* Floor lamps flanking the shop */}
+      <primitive
+        object={lamp.scene.clone()}
+        scale={FURNITURE_SCALE}
+        position={[-3, 0, -1]}
+        castShadow
+      />
+      <primitive
+        object={lamp.scene.clone()}
+        scale={FURNITURE_SCALE}
+        position={[3, 0, -1]}
+        castShadow
+      />
     </group>
   );
 }
@@ -265,7 +317,7 @@ export function Office() {
         infiniteGrid
       />
 
-      {/* Reception zone plate (always visible — for Receptionist) */}
+      {/* Static agent zone plates + labels (Receptionist, Shopkeeper, etc.) */}
       {agents.map((agent) => (
         <group key={agent.id}>
           <mesh
@@ -291,13 +343,23 @@ export function Office() {
             outlineColor="#000000"
             letterSpacing={0.1}
           >
-            RECEPTION
+            {zoneDisplayNames[agent.zone] ?? agent.zone.toUpperCase()}
           </Text>
         </group>
       ))}
 
       {/* Reception area decor (always visible) */}
       <ReceptionDecor />
+
+      {/* Shop area decor (always visible) */}
+      <ShopDecor />
+
+      {/* Purple neon strip around shop zone */}
+      <NeonStrip
+        position={[SHOP.position[0], 0.03, SHOP.position[2] + 4]}
+        length={10}
+        color="#9B59B6"
+      />
 
       {/* Dynamic workspace zones — isolated to avoid re-rendering Office */}
       <DynamicZones />

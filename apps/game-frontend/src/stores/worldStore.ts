@@ -32,6 +32,7 @@ interface WorldState {
   updateAgentStatus: (agentId: string, status: AgentStatus) => void;
   addAgents: (newAgents: AgentData[]) => void;
   removeAgents: (ids: string[]) => void;
+  clearDynamicAgents: () => void;
   reset: () => void;
 
   // Internal (called by message handler)
@@ -86,6 +87,14 @@ export const useWorldStore = create<WorldState>((set) => ({
     const idsToRemove = new Set(ids);
     set((state) => ({
       agents: state.agents.filter((a) => !idsToRemove.has(a.id)),
+    }));
+  },
+
+  /** Clear all dynamic agents from the world (keeps static agents like Receptionist). */
+  clearDynamicAgents: () => {
+    const defaultIds = new Set(defaultAgents.map(a => a.id));
+    set((state) => ({
+      agents: state.agents.filter(a => defaultIds.has(a.id)),
     }));
   },
 

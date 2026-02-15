@@ -8,6 +8,7 @@ import { log } from '../../logger.js';
 import { randomUUID } from 'node:crypto';
 import type { ScratchpadService } from '../scratchpad/service.js';
 import type { AgentRepository } from './repository.js';
+import type { WorkspaceRepository } from '../workspaces/repository.js';
 
 /**
  * Compute a unique zone position for a dynamic agent based on its global index.
@@ -91,6 +92,7 @@ interface SetupWorkspaceDeps {
   broadcastFn: (msg: ServerMessage) => void;
   onWorkspaceBuilt: (agents: DynamicAgent[], taskSummary: string) => void;
   getDynamicAgentCount: () => number;
+  workspaceRepo: WorkspaceRepository;
 }
 
 interface DelegateTaskDeps {
@@ -171,7 +173,7 @@ export function createAgentSkillTools(deps: SkillToolsDeps): ToolSet {
  * Creates dynamic agents, skills, and triggers the build sequence.
  */
 export function createSetupWorkspaceTool(deps: SetupWorkspaceDeps): ToolSet {
-  const { skillService, broadcastFn, onWorkspaceBuilt, getDynamicAgentCount } = deps;
+  const { skillService, broadcastFn, onWorkspaceBuilt, getDynamicAgentCount, workspaceRepo } = deps;
 
   const setupWorkspace = tool({
     description:
@@ -179,6 +181,10 @@ export function createSetupWorkspaceTool(deps: SetupWorkspaceDeps): ToolSet {
     inputSchema: setupWorkspaceParams,
     execute: async (args: z.infer<typeof setupWorkspaceParams>) => {
       const workspaceId = 'ws-' + randomUUID().slice(0, 8);
+
+      // Persist workspace to DB FIRST (sync) — prevents FK violations on agent insert
+      await workspaceRepo.createWorkspace(workspaceId, deps.playerId, args.taskSummary);
+
       const agentDefs = args.agents;
 
       // 1. Generate unique IDs and assign positions (offset by existing agents)

@@ -105,6 +105,10 @@ export const MUSIC = {
   ],
 } as const;
 
+export const SHOP = {
+  position: [15, 0, 3] as [number, number, number],
+} as const;
+
 export const POST_PROCESSING = {
   bloom: { threshold: 0.8, smoothing: 0.9, intensity: 0.4 },
   vignette: { offset: 0.3, darkness: 0.4 },
