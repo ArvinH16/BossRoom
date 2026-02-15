@@ -25,6 +25,16 @@ output "firebase_config" {
   sensitive = true
 }
 
+output "firebase_admin_credentials" {
+  description = "Firebase Admin SDK service account credentials"
+  value = {
+    projectId   = var.project_id
+    clientEmail = google_service_account.firebase_admin.email
+    privateKey  = jsondecode(base64decode(google_service_account_key.firebase_admin.private_key))["private_key"]
+  }
+  sensitive = true
+}
+
 output "vercel_url" {
   description = "Vercel project URL"
   value       = "https://${vercel_project.frontend.name}.vercel.app"

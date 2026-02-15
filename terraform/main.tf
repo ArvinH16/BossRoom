@@ -43,6 +43,7 @@ locals {
     "sqladmin.googleapis.com",
     "firebase.googleapis.com",
     "identitytoolkit.googleapis.com",
+    "iam.googleapis.com",
   ]
 }
 

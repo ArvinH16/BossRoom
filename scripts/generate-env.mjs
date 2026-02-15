@@ -31,10 +31,13 @@ try {
 
   // Server .env.production
   const dbConnString = outputs.cloud_sql_connection_string?.value || '';
+  const adminCreds = outputs.firebase_admin_credentials?.value || {};
 
   const serverEnv = [
     `DATABASE_URL=${dbConnString}`,
-    `FIREBASE_PROJECT_ID=${firebaseConfig.projectId || ''}`,
+    `FIREBASE_PROJECT_ID=${adminCreds.projectId || firebaseConfig.projectId || ''}`,
+    `FIREBASE_CLIENT_EMAIL=${adminCreds.clientEmail || ''}`,
+    `FIREBASE_PRIVATE_KEY=${JSON.stringify(adminCreds.privateKey || '')}`,
     `PORT=8080`,
   ].join('\n');
 

@@ -9,13 +9,16 @@ import type {
 } from '@bossroom/shared-types';
 import { AgentManager } from './agents/AgentManager.js';
 import { log } from './logger.js';
+import { verifyToken } from './auth/firebase-admin.js';
+import { db } from './db/client.js';
+import { users } from './db/schema.js';
 
 const PORT = parseInt(process.env['PORT'] || '8080', 10);
 
 // --- In-memory state ---
 const players = new Map<string, PlayerState>();
 const connections = new Map<string, WebSocket>();
-let nextPlayerId = 1;
+const wsToUid = new Map<WebSocket, string>();
 
 const agentManager = new AgentManager();
 
@@ -30,74 +33,121 @@ const server = http.createServer((_req, res) => {
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws: WebSocket) => {
-  const playerId = `player-${nextPlayerId++}`;
-  connections.set(playerId, ws);
-  log.info(`[join] ${playerId}`);
-
-  ws.on('message', (data: Buffer) => {
+  ws.on('message', async (data: Buffer) => {
     try {
       const msg: ClientMessage = JSON.parse(data.toString());
-      handleMessage(playerId, msg, ws);
+      await handleMessage(ws, msg);
     } catch (err) {
       log.error('Bad message:', err);
     }
   });
 
   ws.on('close', () => {
-    players.delete(playerId);
-    connections.delete(playerId);
-    broadcast({ type: 'player:left', payload: { playerId } }, playerId);
-    agentManager.handleDisconnect(playerId);
-    log.info(`[leave] ${playerId}`);
+    const uid = wsToUid.get(ws);
+    if (uid) {
+      players.delete(uid);
+      connections.delete(uid);
+      wsToUid.delete(ws);
+      broadcast({ type: 'player:left', payload: { playerId: uid } });
+      agentManager.handleDisconnect(uid);
+      log.info(`[leave] ${uid}`);
+    }
   });
 });
 
-function handleMessage(playerId: string, msg: ClientMessage, ws: WebSocket) {
+async function handleMessage(ws: WebSocket, msg: ClientMessage) {
   switch (msg.type) {
     case 'player:join': {
+      // 1. Verify token
+      let verifiedUser;
+      try {
+        verifiedUser = await verifyToken(msg.payload.token);
+      } catch (err) {
+        log.warn('[auth] rejected:', err);
+        send(ws, { type: 'auth:error', payload: { message: 'Invalid or expired token' } });
+        ws.close();
+        return;
+      }
+
+      const uid = verifiedUser.uid;
+      log.info(`[join] ${uid} (${verifiedUser.email})`);
+
+      // 2. Upsert user in DB
+      try {
+        await db.insert(users).values({
+          id: uid,
+          email: verifiedUser.email,
+          displayName: verifiedUser.displayName,
+          photoURL: verifiedUser.photoURL,
+          lastLoginAt: new Date(),
+        }).onConflictDoUpdate({
+          target: users.id,
+          set: {
+            displayName: verifiedUser.displayName,
+            photoURL: verifiedUser.photoURL,
+            lastLoginAt: new Date(),
+          },
+        });
+      } catch (err) {
+        log.error('[db] user upsert failed:', err);
+        send(ws, { type: 'auth:error', payload: { message: 'Server error' } });
+        ws.close();
+        return;
+      }
+
+      // 3. Register connection with real UID
+      connections.set(uid, ws);
+      wsToUid.set(ws, uid);
+
       const player: PlayerState = {
-        id: playerId,
-        username: msg.payload.username,
+        id: uid,
+        username: verifiedUser.displayName ?? verifiedUser.email,
+        email: verifiedUser.email,
+        photoURL: verifiedUser.photoURL,
         position: [0, 2, 5],
         rotation: 0,
         animation: 'idle',
       };
-      players.set(playerId, player);
+      players.set(uid, player);
 
       const worldState: WorldState = {
         players: Object.fromEntries(players),
         agents: agentManager.getAgentStates(),
       };
       send(ws, { type: 'world:state', payload: worldState });
-      broadcast({ type: 'player:joined', payload: player }, playerId);
+      broadcast({ type: 'player:joined', payload: player }, uid);
       break;
     }
 
     case 'player:move': {
-      const p = players.get(playerId);
+      const uid = wsToUid.get(ws);
+      if (!uid) return;
+      const p = players.get(uid);
       if (p) {
         p.position = msg.payload.position;
         p.rotation = msg.payload.rotation;
         p.animation = msg.payload.animation;
         broadcast(
-          {
-            type: 'player:moved',
-            payload: { playerId, ...msg.payload },
-          },
-          playerId,
+          { type: 'player:moved', payload: { playerId: uid, ...msg.payload } },
+          uid,
         );
       }
       break;
     }
 
     case 'agent:interact': {
-      agentManager.startInteraction(playerId, msg.payload.agentId, ws);
+      const uid = wsToUid.get(ws);
+      if (!uid) return;
+      const user = players.get(uid);
+      agentManager.startInteraction(uid, msg.payload.agentId, ws, user?.username ?? null);
       break;
     }
 
     case 'agent:message': {
+      const uid = wsToUid.get(ws);
+      if (!uid) return;
       agentManager.handleMessage(
-        playerId,
+        uid,
         msg.payload.agentId,
         msg.payload.conversationId,
         msg.payload.content,
@@ -108,7 +158,9 @@ function handleMessage(playerId: string, msg: ClientMessage, ws: WebSocket) {
     }
 
     case 'agent:stopInteract': {
-      agentManager.stopInteraction(playerId, msg.payload.agentId);
+      const uid = wsToUid.get(ws);
+      if (!uid) return;
+      agentManager.stopInteraction(uid, msg.payload.agentId);
       broadcast({
         type: 'agent:statusChanged',
         payload: { agentId: msg.payload.agentId, status: 'idle' },

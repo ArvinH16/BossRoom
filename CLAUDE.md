@@ -55,6 +55,13 @@ scripts/              health-check.mjs, generate-env.mjs
 - Status display maps (`statusColors`, `statusLabels`) live in `apps/game-frontend/src/data/agents.ts`
 - Game constants live in `apps/game-frontend/src/data/gameConfig.ts`
 - Server logging uses `log` from `apps/game-server/src/logger.ts` (not raw `console.log`)
+- Auth store: `apps/game-frontend/src/stores/authStore.ts` — Zustand + module-level `onAuthStateChanged`
+- Firebase client SDK: `apps/game-frontend/src/lib/firebase.ts` — singleton init with HMR guard
+- Firebase Admin SDK: `apps/game-server/src/auth/firebase-admin.ts` — `verifyToken()` helper
+- Login page: `apps/game-frontend/src/components/auth/LoginPage.tsx` — Google Sign-In gate
+- Auth gating lives in `page.tsx` (client component), not `layout.tsx` (server component)
+- WebSocket `player:join` sends Firebase ID token; server verifies and upserts user in DB
+- Player IDs are Firebase UIDs (text), tracked via `wsToUid` Map in `main.ts`
 
 ## WebSocket Protocol
 
@@ -62,7 +69,7 @@ Messages are typed in `libs/shared-types/src/lib/websocket.ts`:
 
 **Client -> Server:** `player:join`, `player:move`, `agent:interact`, `agent:message`, `agent:stopInteract`
 
-**Server -> Client:** `world:state`, `player:joined`, `player:left`, `player:moved`, `agent:statusChanged`, `agent:chatMessage`, `agent:chatStream`, `agent:toolExecution`
+**Server -> Client:** `world:state`, `player:joined`, `player:left`, `player:moved`, `agent:statusChanged`, `agent:chatMessage`, `agent:chatStream`, `agent:toolExecution`, `auth:error`
 
 ## Common Gotchas
 
@@ -71,3 +78,6 @@ Messages are typed in `libs/shared-types/src/lib/websocket.ts`:
 - `drizzle-kit` auto-loads `.env` — no need for dotenv wrapper in npm scripts
 - The frontend WebSocket client (`lib/websocket.ts`) is a singleton; `initWebSocket` guards against double-init
 - Zustand store actions that modify state inside async callbacks must use `get()` (not captured references) to avoid stale closures
+- Firebase Identity Platform `authorized_domains` must include `localhost` for local dev
+- Google IDP config needs explicit `enabled = true` in Terraform — updates to Identity Platform config can reset it
+- Firebase Admin credentials come from Terraform-managed service account (env vars: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`)
