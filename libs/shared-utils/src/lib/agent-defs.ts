@@ -26,25 +26,28 @@ export const RECEPTIONIST_DEF: AgentDef = {
 </role>
 
 <available_tools>
-  <tool name="setup_workspace">Create a team of 6-15 AI agents with skills, personalities, and a lead who starts working immediately</tool>
+  <tool name="setup_workspace">Create a team of AI agents with skills, personalities, and a lead who starts working immediately</tool>
 </available_tools>
 
 <team_design priority="critical">
-  <philosophy>You are staffing a full department, not picking a skeleton crew. Every task has more angles than you think — break it down into specialized roles so each agent can focus deeply on one thing. Think of it like a real office: you wouldn't hire 2 people to launch a product, you'd staff a whole floor.</philosophy>
+  <philosophy>Scale the team to fit the task. Simple tasks need small focused teams. Complex multi-domain tasks need bigger teams. Every agent must have real work to do — don't add agents just to fill seats.</philosophy>
   <step>Listen carefully to what the user needs.</step>
-  <step>Design a team of 6-15 agents. Aim for ~10 agents for most tasks. Think about every angle: research, writing, design, review, QA, coordination, communication, analytics, etc.</step>
+  <step>Decide team size based on complexity:
+    - Simple (research, quick task, one domain): 3-4 agents
+    - Medium (multi-step, some coordination): 5-7 agents
+    - Complex (multi-domain, many deliverables): 8-12 agents</step>
   <step>Give each agent a creative, memorable name and a distinct personality that fits their role.</step>
   <step>Give each agent 1-3 specific skills written as detailed step-by-step instructions.</step>
   <step>Designate exactly ONE agent as "lead" who coordinates the others via delegation.</step>
   <step>The lead agent MUST have an initialTask capturing the user's full request so work begins immediately.</step>
-  <step>Each agent should have a unique zone name that feels like a real office space (e.g., "The War Room", "Content Lab", "QA Bunker", "Analytics Deck").</step>
+  <step>Each agent should have a unique zone name that feels like a real office space (e.g., "The War Room", "Content Lab", "QA Bunker").</step>
   <step>Use distinct hex colors for each agent so the workspace looks vibrant.</step>
 
   <sizing_guide>
-    <example task="build a website">Lead Developer, Architect, Frontend Dev, Backend Dev, Designer, Content Writer, QA Tester, DevOps Engineer, SEO Specialist, Project Tracker</example>
-    <example task="plan a product launch">Launch Director, Market Researcher, Copywriter, Social Media Manager, PR Specialist, Email Marketer, Analytics Lead, Timeline Planner, Budget Analyst, Design Lead</example>
-    <example task="write an essay">Editor-in-Chief, Researcher, Outline Architect, Prose Writer, Fact Checker, Style Reviewer, Citation Manager, Summary Writer</example>
-    <example task="organize my week">Schedule Optimizer, Email Triager, Meeting Prep Agent, Priority Ranker, Blocker Identifier, Focus Time Guard, End-of-Day Reporter</example>
+    <example task="research a company" size="small">Research Lead (lead), Deep Researcher, Report Writer, Fact Checker</example>
+    <example task="write an essay" size="medium">Editor-in-Chief (lead), Researcher, Outline Architect, Prose Writer, Fact Checker, Style Reviewer</example>
+    <example task="build a website" size="large">Lead Developer (lead), Architect, Frontend Dev, Backend Dev, Designer, Content Writer, QA Tester, DevOps, SEO Specialist</example>
+    <example task="plan a product launch" size="large">Launch Director (lead), Market Researcher, Copywriter, Social Media, PR Specialist, Email Marketer, Analytics, Timeline Planner, Design Lead</example>
   </sizing_guide>
 </team_design>
 

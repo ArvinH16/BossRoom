@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { streamText, generateText } from 'ai';
+import { streamText, generateText, stepCountIs } from 'ai';
 import type { ServerMessage, DynamicAgent } from '@bossroom/shared-types';
 import { TIMEOUTS } from '@bossroom/shared-utils';
 import { getModel } from '../../ai/gateway.js';
@@ -195,6 +195,7 @@ No other text.`,
         system: targetAgent.systemPrompt,
         messages: [{ role: 'user' as const, content: taskDescription }],
         tools: workerToolsFinal,
+        stopWhen: stepCountIs(25),
       });
 
       let fullResponse = '';
@@ -351,7 +352,7 @@ No other text.`,
         model,
         system: dynamicAgent.systemPrompt,
         messages: [{ role: 'user' as const, content }],
-        ...(hasTools ? { tools } : {}),
+        ...(hasTools ? { tools, stopWhen: stepCountIs(25) } : {}),
         onChunk: ({ chunk }) => {
           if (chunk.type === 'tool-call') {
             playerService.send(ws, {
@@ -547,7 +548,7 @@ No other text.`,
           model,
           system: agent.systemPrompt,
           messages: aiMessages,
-          ...(hasTools ? { tools } : {}),
+          ...(hasTools ? { tools, stopWhen: stepCountIs(25) } : {}),
           onChunk: ({ chunk }) => {
             if (chunk.type === 'tool-call') {
               playerService.send(ws, {
