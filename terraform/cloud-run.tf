@@ -6,6 +6,7 @@ resource "google_cloud_run_v2_service" "game_server" {
 
   template {
     timeout = "3600s"
+    session_affinity = true
 
     containers {
       image = var.backend_image
