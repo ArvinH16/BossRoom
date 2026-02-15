@@ -356,6 +356,19 @@ export function createAgentService(deps: AgentServiceDeps) {
 
       if (!agent && !dynamicAgent) return;
 
+      // Dynamic agents: don't create a conversation or send a greeting.
+      // Their chat is populated by delegation streams (agent:chatStream / agent:chatMessage).
+      // Interacting just opens the panel on the frontend — no server-side conversation needed.
+      if (dynamicAgent) {
+        // Only set to listening if the agent isn't busy (delegation may be in progress)
+        const currentStatus = agentRepo.getStatus(agentId);
+        if (currentStatus === 'idle') {
+          agentRepo.setStatus(agentId, 'listening');
+        }
+        return;
+      }
+
+      // Static agents: restore or create conversation
       const result = await conversationService.startOrRestore(playerId, agentId, ws, displayName);
 
       if (result.isNew) {
@@ -560,6 +573,9 @@ export function createAgentService(deps: AgentServiceDeps) {
     },
 
     stopInteraction(playerId: string, agentId: string) {
+      // Don't reset to idle if the agent is actively working (e.g. delegation in progress)
+      const currentStatus = agentRepo.getStatus(agentId);
+      if (currentStatus === 'working' || currentStatus === 'thinking') return;
       agentRepo.setStatus(agentId, 'idle');
     },
 
