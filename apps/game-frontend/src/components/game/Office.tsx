@@ -293,21 +293,21 @@ export function Office() {
         })}
 
       {/* ── Neon accent strips (glow with bloom) ── */}
-      <NeonStrip position={[0, 0.03, 10]} length={60} color="#6366f1" />
-      <NeonStrip position={[0, 0.03, -46]} length={60} color="#6366f1" />
+      <NeonStrip position={[0, 0.03, 10]} length={30} color="#6366f1" />
+      <NeonStrip position={[0, 0.03, -46]} length={30} color="#6366f1" />
       <NeonStrip
-        position={[-30, 0.03, -18]}
+        position={[-15, 0.03, -18]}
         length={56}
         color="#6366f1"
         vertical
       />
       <NeonStrip
-        position={[30, 0.03, -18]}
+        position={[15, 0.03, -18]}
         length={56}
         color="#6366f1"
         vertical
       />
-      <NeonStrip position={[0, 0.03, -2]} length={60} color="#3730a3" />
+      <NeonStrip position={[0, 0.03, -2]} length={30} color="#3730a3" />
 
       {/* Perimeter walls */}
       {walls.map((wall, i) => (
