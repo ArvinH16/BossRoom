@@ -9,6 +9,7 @@ import { CapsuleCollider, RigidBody } from '@react-three/rapier';
 import { CharacterModel } from './CharacterModel';
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
+import { useAgentBehaviorStore } from '@/stores/agentBehaviorStore';
 import { useBroadcastPosition } from '@/hooks/useBroadcastPosition';
 import { PLAYER, INTERACTION } from '@/data/gameConfig';
 
@@ -26,6 +27,7 @@ export function Player() {
   const nearestAgent = useWorldStore((s) => s.nearestAgent);
   const openChat = useChatStore((s) => s.openChat);
   const chatPanelOpen = useChatStore((s) => s.chatPanelOpen);
+  const setPlayerPosition = useAgentBehaviorStore((s) => s.setPlayerPosition);
 
   useBroadcastPosition(rigidBodyRef, animation);
 
@@ -77,6 +79,9 @@ export function Player() {
     camera.position.set(pos.x, pos.y + 5, pos.z + 10);
     camera.lookAt(pos.x, pos.y + 1, pos.z);
 
+    // Broadcast player position so agents can sense proximity
+    setPlayerPosition([pos.x, pos.y, pos.z]);
+
     // Find nearest agent
     let closest: string | null = null;
     let closestDist = Infinity;
@@ -98,6 +103,8 @@ export function Player() {
       position={SPAWN}
       enabledRotations={[false, false, false]}
       lockRotations
+      colliders={false}
+      ccd
     >
       <CapsuleCollider args={[0.5, 0.3]} />
       <group position={[0, -0.8, 0]} rotation={[0, Math.PI, 0]}>

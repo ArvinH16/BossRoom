@@ -13,6 +13,7 @@ type WanderPhase = 'idle' | 'walking';
 interface WanderState {
   phase: WanderPhase;
   timer: number;
+  /** Local-space offset targets (relative to parent group at home). */
   targetX: number;
   targetZ: number;
   targetRotY: number;
@@ -28,8 +29,8 @@ export function useAgentWander(
   const state = useRef<WanderState>({
     phase: 'idle',
     timer: randomIdleTime(),
-    targetX: home[0],
-    targetZ: home[2],
+    targetX: 0,
+    targetZ: 0,
     targetRotY: 0,
     frameCount: 0,
   });
@@ -47,32 +48,31 @@ export function useAgentWander(
     [],
   );
 
+  /** Pick a local-space wander offset, avoiding the workstation exclusion zone. */
   const pickNewTarget = useCallback(() => {
     const { exclusion, exclusionRetries } = AGENT_WANDER;
     for (let i = 0; i < exclusionRetries; i++) {
       const angle = Math.random() * Math.PI * 2;
       const dist = Math.random() * AGENT_WANDER.radius;
-      const cx = home[0] + Math.cos(angle) * dist;
-      const cz = home[2] + Math.sin(angle) * dist;
+      const ox = Math.cos(angle) * dist;
+      const oz = Math.sin(angle) * dist;
 
-      const relX = cx - home[0];
-      const relZ = cz - home[2];
       if (
-        Math.abs(relX) < exclusion.xHalf &&
-        relZ > exclusion.zMin &&
-        relZ < exclusion.zMax
+        Math.abs(ox) < exclusion.xHalf &&
+        oz > exclusion.zMin &&
+        oz < exclusion.zMax
       ) {
         continue; // inside workstation — reject
       }
 
-      state.current.targetX = cx;
-      state.current.targetZ = cz;
+      state.current.targetX = ox;
+      state.current.targetZ = oz;
       return;
     }
-    // All retries landed in the exclusion zone — stay at home
-    state.current.targetX = home[0];
-    state.current.targetZ = home[2];
-  }, [home]);
+    // All retries landed in the exclusion zone — stay at home (local origin)
+    state.current.targetX = 0;
+    state.current.targetZ = 0;
+  }, []);
 
   useFrame((_, delta) => {
     const group = groupRef.current;
@@ -80,12 +80,17 @@ export function useAgentWander(
 
     const s = state.current;
 
-    // If agent is in conversation, return to home
-    if (isBusy) {
-      const hx = home[0];
-      const hz = home[2];
-      const dx = hx - group.position.x;
-      const dz = hz - group.position.z;
+    // Check if player is nearby — agent should return home to greet them
+    const playerPos = useAgentBehaviorStore.getState().playerPosition;
+    const pDx = playerPos[0] - home[0];
+    const pDz = playerPos[2] - home[2];
+    const playerNear =
+      Math.sqrt(pDx * pDx + pDz * pDz) < AGENT_WANDER.playerSenseRadius;
+
+    // Return to home when busy (in conversation) OR when player is nearby
+    if (isBusy || playerNear) {
+      const dx = 0 - group.position.x;
+      const dz = 0 - group.position.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
 
       if (dist > AGENT_WANDER.arrivalThreshold) {
@@ -97,8 +102,8 @@ export function useAgentWander(
         group.rotation.y = MathUtils.lerp(group.rotation.y, targetRot, 0.1);
         updateAnimation('walk');
       } else {
-        group.position.x = hx;
-        group.position.z = hz;
+        group.position.x = 0;
+        group.position.z = 0;
         updateAnimation('idle');
       }
 
@@ -154,6 +159,7 @@ function randomIdleTime(): number {
   );
 }
 
+/** Sync world-space position to the behavior store (local offset + home). */
 function syncPosition(
   s: WanderState,
   group: Group,
@@ -164,9 +170,9 @@ function syncPosition(
   s.frameCount++;
   if (s.frameCount % 6 === 0) {
     setPosition(agentId, [
-      group.position.x,
+      home[0] + group.position.x,
       home[1],
-      group.position.z,
+      home[2] + group.position.z,
     ]);
   }
 }

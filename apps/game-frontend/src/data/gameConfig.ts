@@ -35,7 +35,7 @@ export const LIGHTING = {
 } as const;
 
 export const AGENT_WANDER = {
-  radius: 2.5,
+  radius: 1.8,
   walkSpeed: 1.2,
   arrivalThreshold: 0.15,
   idleTimeMin: 3,
@@ -47,6 +47,8 @@ export const AGENT_WANDER = {
     zMax: -0.3,
   },
   exclusionRetries: 10,
+  /** When the player is within this distance, agent returns home. */
+  playerSenseRadius: 4,
 } as const;
 
 export const POST_PROCESSING = {
