@@ -6,6 +6,7 @@ import { Canvas } from '@react-three/fiber';
 import { Scene } from './Scene';
 import { ChatPanel } from '../ui/ChatPanel';
 import { EmbedPanel } from '../ui/EmbedPanel';
+import { ProductCanvas } from '../ui/ProductCanvas';
 import { InteractionPrompt } from './InteractionPrompt';
 import { PushToTalkOverlay } from '../ui/PushToTalkOverlay';
 import { TTSAudioPlayer } from '../ui/TTSAudioPlayer';
@@ -62,6 +63,7 @@ export function Game({ user }: GameProps) {
       <HUD />
       <ChatPanel />
       <EmbedPanel />
+      <ProductCanvas />
       <InteractionPrompt />
       <PunchHint />
       <PushToTalkOverlay />

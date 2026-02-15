@@ -3,10 +3,24 @@ import { gameSocket } from '@/lib/websocket';
 import { generateConversationId } from '@bossroom/shared-utils';
 import { useVoiceStore } from '@/stores/voiceStore';
 
+export interface ProductCard {
+  name: string;
+  price: number;
+  currency: string;
+  rating?: number;
+  retailer: string;
+  url: string;
+  imageUrl?: string;
+  description: string;
+  freeShipping?: boolean;
+  recommended?: boolean;
+}
+
 export type ChatMessage =
   | { role: 'user'; content: string }
   | { role: 'agent'; content: string }
-  | { role: 'tool'; toolName: string; status: 'started' | 'completed' | 'failed'; result?: string };
+  | { role: 'tool'; toolName: string; status: 'started' | 'completed' | 'failed'; result?: string }
+  | { role: 'products'; products: ProductCard[] };
 
 /** Detect markdown links or raw URLs in agent text. */
 const LINK_REGEX = /https?:\/\/[^\s)]+|\[.+?\]\(.+?\)/;
@@ -40,7 +54,7 @@ interface ChatState {
   openChat: (agentId: string) => void;
   interactAgent: (agentId: string) => void;
   closeChat: (reason?: 'explicit' | 'walkAway') => void;
-  sendMessage: (agentId: string, content: string, inputMode?: 'voice' | 'text') => void;
+  sendMessage: (agentId: string, content: string, inputMode?: 'voice' | 'text', purchaseOpts?: { purchaseMode?: 'approval' | 'autonomous'; purchaseBudget?: number }) => void;
   addMessage: (agentId: string, msg: ChatMessage) => void;
   addToolExecution: (agentId: string, toolName: string, status: 'started' | 'completed' | 'failed', result?: string) => void;
   appendStream: (agentId: string, delta: string) => void;
@@ -110,7 +124,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
   },
 
-  sendMessage: (agentId, content, inputMode?: 'voice' | 'text') => {
+  sendMessage: (agentId, content, inputMode?: 'voice' | 'text', purchaseOpts?) => {
     useVoiceStore.getState().stopTTS();
     const state = get();
     const convId = state.conversationIds[agentId] ?? generateConversationId();
@@ -130,7 +144,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     gameSocket.send({
       type: 'agent:message',
-      payload: { agentId, conversationId: convId, content, inputMode: inputMode ?? 'text' },
+      payload: {
+        agentId,
+        conversationId: convId,
+        content,
+        inputMode: inputMode ?? 'text',
+        ...(purchaseOpts?.purchaseMode ? { purchaseMode: purchaseOpts.purchaseMode } : {}),
+        ...(purchaseOpts?.purchaseBudget !== undefined ? { purchaseBudget: purchaseOpts.purchaseBudget } : {}),
+      },
     });
   },
 

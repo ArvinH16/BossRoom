@@ -251,6 +251,7 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
       log.info(`[conversations] reset ${msg.payload.agentIds.length} conversations for ${uid}`);
       return;
     }
+    // shop:purchase is no longer used — Buy button sends agent:message through LLM
   }
 }
 

@@ -14,6 +14,7 @@ import { useVoiceStore } from '@/stores/voiceStore';
 import { useEmbedStore } from '@/stores/embedStore';
 import { toDynamicAgentData } from '@/data/agents';
 import { useAuthStore } from '@/stores/authStore';
+import { useSettingsStore, type PurchaseMode } from '@/stores/settingsStore';
 
 function TaskTabs() {
   const archivedTasks = useChatStore((s) => s.archivedTasks);
@@ -128,6 +129,73 @@ function TaskTabs() {
   );
 }
 
+/** Purchase mode toggle bar shown when chatting with the Shopkeeper. */
+function ShopModeBar() {
+  const purchaseMode = useSettingsStore((s) => s.purchaseMode);
+  const purchaseBudget = useSettingsStore((s) => s.purchaseBudget);
+  const setPurchaseMode = useSettingsStore((s) => s.setPurchaseMode);
+  const setPurchaseBudget = useSettingsStore((s) => s.setPurchaseBudget);
+  const [editingBudget, setEditingBudget] = useState(false);
+  const [budgetInput, setBudgetInput] = useState(String(purchaseBudget));
+
+  function handleModeSwitch(mode: PurchaseMode) {
+    setPurchaseMode(mode);
+  }
+
+  function commitBudget() {
+    const val = parseInt(budgetInput, 10);
+    if (!isNaN(val) && val >= 0) setPurchaseBudget(val);
+    else setBudgetInput(String(purchaseBudget));
+    setEditingBudget(false);
+  }
+
+  return (
+    <div className="px-4 py-2 border-b border-white/10 flex items-center gap-2 text-xs">
+      <span className="text-white/50 mr-1">🛒</span>
+      <button
+        onClick={() => handleModeSwitch('approval')}
+        className={`px-2 py-0.5 rounded-md transition-colors ${
+          purchaseMode === 'approval'
+            ? 'bg-purple-600/60 text-white'
+            : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60'
+        }`}
+      >
+        Approval {purchaseMode === 'approval' && '✓'}
+      </button>
+      <button
+        onClick={() => handleModeSwitch('autonomous')}
+        className={`px-2 py-0.5 rounded-md transition-colors ${
+          purchaseMode === 'autonomous'
+            ? 'bg-purple-600/60 text-white'
+            : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60'
+        }`}
+      >
+        Auto {purchaseMode === 'autonomous' && '✓'}
+      </button>
+      <span className="text-white/20 mx-1">|</span>
+      <span className="text-white/50">Budget:</span>
+      {editingBudget ? (
+        <input
+          autoFocus
+          type="number"
+          value={budgetInput}
+          onChange={(e) => setBudgetInput(e.target.value)}
+          onBlur={commitBudget}
+          onKeyDown={(e) => { if (e.key === 'Enter') commitBudget(); }}
+          className="w-16 px-1 py-0.5 rounded bg-white/10 text-white text-xs border border-white/20 focus:outline-none focus:border-purple-400"
+        />
+      ) : (
+        <button
+          onClick={() => { setBudgetInput(String(purchaseBudget)); setEditingBudget(true); }}
+          className="text-white/70 hover:text-white transition-colors"
+        >
+          ${purchaseBudget}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ChatPanel() {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -143,6 +211,8 @@ export function ChatPanel() {
   const stopTTS = useVoiceStore((s) => s.stopTTS);
   const archivedTasks = useChatStore((s) => s.archivedTasks);
   const activeTaskId = useChatStore((s) => s.activeTaskId);
+  const purchaseMode = useSettingsStore((s) => s.purchaseMode);
+  const purchaseBudget = useSettingsStore((s) => s.purchaseBudget);
 
   const authUser = useAuthStore((s) => s.user);
   const dynamicAgents = useWorkspaceStore((s) => s.dynamicAgents);
@@ -178,9 +248,15 @@ export function ChatPanel() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [chatPanelOpen]);
 
+  const isShopkeeper = activeAgent === 'shopkeeper';
+
   function handleSend() {
     if (!input.trim() || !activeAgent || isViewingArchive) return;
-    sendMessage(activeAgent, input.trim());
+    if (isShopkeeper) {
+      sendMessage(activeAgent, input.trim(), 'text', { purchaseMode, purchaseBudget });
+    } else {
+      sendMessage(activeAgent, input.trim());
+    }
     setInput('');
   }
 
@@ -229,6 +305,9 @@ export function ChatPanel() {
           {isReceptionist && (
             <TaskTabs />
           )}
+
+          {/* Shopping mode bar (shopkeeper only) */}
+          {isShopkeeper && <ShopModeBar />}
 
           {/* Agent info */}
           <div className="px-4 py-3 border-b border-white/5">
@@ -306,6 +385,10 @@ export function ChatPanel() {
             {messages.some((m) => m.role === 'user') && messages.map((msg, i) =>
               msg.role === 'tool' ? (
                 <ToolChip key={i} toolName={msg.toolName} status={msg.status} />
+              ) : msg.role === 'products' ? (
+                <div key={i} className="text-white/40 text-xs text-center py-1">
+                  Products shown in canvas
+                </div>
               ) : (
                 <div
                   key={i}

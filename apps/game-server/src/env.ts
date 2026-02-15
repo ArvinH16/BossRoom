@@ -28,6 +28,13 @@ const envSchema = z.object({
 
   // Google AI
   GOOGLE_AI_API_KEY: z.string().optional(),
+
+  // Visa Intelligent Commerce (VIC) MCP
+  VISA_VIC_API_KEY: z.string().optional(),
+  VISA_VIC_API_KEY_SS: z.string().optional(),
+  VISA_EXTERNAL_CLIENT_ID: z.string().optional(),
+  VISA_EXTERNAL_APP_ID: z.string().optional(),
+  VISA_MCP_BASE_URL: z.string().default('https://sandbox.mcp.visa.com'),
 });
 
 export type Env = z.infer<typeof envSchema>;

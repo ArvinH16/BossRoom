@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { streamText, generateText, stepCountIs } from 'ai';
+import { streamText, generateText, stepCountIs, type ToolSet } from 'ai';
 import type { ServerMessage, DynamicAgent } from '@bossroom/shared-types';
 import { TIMEOUTS } from '@bossroom/shared-utils';
 import { getModel } from '../../ai/gateway.js';
@@ -14,6 +14,7 @@ import type { SkillService } from '../skills/service.js';
 import type { ScratchpadService } from '../scratchpad/service.js';
 import type { UserRepository } from '../users/repository.js';
 import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools, createEmbedTools, createFinishTaskTool, createPeekConversationTool } from './skillTools.js';
+import { createPaymentTools } from './paymentTools.js';
 
 interface AgentServiceDeps {
   agentRepo: AgentRepository;
@@ -720,7 +721,15 @@ No other text.`,
           })
         : {};
 
-      const tools = { ...composioTools, ...mcpTools, ...setupTool };
+      // Shopkeeper gets display_products (search & payment via Composio tools)
+      const shopkeeperTools: ToolSet = agentId === 'shopkeeper'
+        ? createPaymentTools({
+            playerId,
+            broadcastFn: (msg) => playerService.send(ws, msg),
+          })
+        : {};
+
+      const tools = { ...composioTools, ...mcpTools, ...setupTool, ...shopkeeperTools };
       const hasTools = Object.keys(tools).length > 0;
 
       // Build AI SDK messages
@@ -925,7 +934,7 @@ No other text.`,
         return handleDynamicAgentMessage(playerId, agentId, content, ws, broadcastFn);
       }
 
-      // Static agent (Receptionist) — delegate to extracted helper
+      // Static agent (Receptionist/Shopkeeper) — delegate to extracted helper
       return handleStaticAgentMessage(playerId, agentId, content, inputMode, ws, broadcastFn);
     },
 

@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useScratchpadStore } from '@/stores/scratchpadStore';
 import { useEmbedStore } from '@/stores/embedStore';
+import { useProductStore } from '@/stores/productStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
 import { RANDOM_AVATAR_ID } from '@bossroom/shared-types';
@@ -178,6 +179,37 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
 
       case 'workspace:embedPanel': {
         useEmbedStore.getState().addEmbed(msg.payload.embed);
+        break;
+      }
+
+      case 'agent:productCards': {
+        const { agentId, products } = msg.payload;
+        // Show in floating product canvas
+        useProductStore.getState().showProducts(agentId, products);
+        // Minimal chat history reference
+        useChatStore.getState().addMessage(agentId, {
+          role: 'agent',
+          content: `Showing ${products.length} products`,
+        });
+        break;
+      }
+
+      case 'shop:purchaseResult': {
+        const { success, orderId, productName, amount, error } = msg.payload;
+        const productStore = useProductStore.getState();
+        productStore.setPurchaseStatus(
+          success ? 'success' : 'error',
+          success
+            ? `${productName} for $${amount}${orderId ? ` — Order ${orderId}` : ''}`
+            : (error ?? 'Purchase failed'),
+        );
+        // Log in chat history
+        useChatStore.getState().addMessage('shopkeeper', {
+          role: 'agent',
+          content: success
+            ? `done! grabbed ${productName} for $${amount} — order ${orderId ?? 'confirmed'}`
+            : `purchase failed: ${error ?? 'unknown error'}`,
+        });
         break;
       }
 

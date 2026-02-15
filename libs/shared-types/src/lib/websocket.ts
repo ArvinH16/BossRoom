@@ -8,12 +8,21 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('player:join'), payload: z.object({ username: z.string(), token: z.string() }) }),
   z.object({ type: z.literal('player:move'), payload: z.object({ position: positionSchema, rotation: z.number(), animation: z.string() }) }),
   z.object({ type: z.literal('agent:interact'), payload: z.object({ agentId: z.string() }) }),
-  z.object({ type: z.literal('agent:message'), payload: z.object({ agentId: z.string(), conversationId: z.string(), content: z.string(), inputMode: z.enum(['voice', 'text']).default('text') }) }),
+  z.object({ type: z.literal('agent:message'), payload: z.object({ agentId: z.string(), conversationId: z.string(), content: z.string(), inputMode: z.enum(['voice', 'text']).default('text'), purchaseMode: z.enum(['approval', 'autonomous']).optional(), purchaseBudget: z.number().optional() }) }),
   z.object({ type: z.literal('agent:stopInteract'), payload: z.object({ agentId: z.string() }) }),
   z.object({ type: z.literal('player:updateSettings'), payload: z.object({ avatarId: z.string().optional(), voiceId: z.string().optional() }) }),
   z.object({ type: z.literal('voice:talking'), payload: z.object({ isTalking: z.boolean(), targetPlayerId: z.string().nullable() }) }),
   z.object({ type: z.literal('workspace:userNote'), payload: z.object({ workspaceId: z.string(), content: z.string() }) }),
   z.object({ type: z.literal('conversations:reset'), payload: z.object({ agentIds: z.array(z.string()) }) }),
+  // Direct purchase (bypasses LLM)
+  z.object({ type: z.literal('shop:purchase'), payload: z.object({
+    productName: z.string(),
+    productUrl: z.string(),
+    amount: z.number(),
+    currency: z.string(),
+    merchantName: z.string(),
+    merchantUrl: z.string(),
+  }) }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 
@@ -92,6 +101,32 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
       agentId: z.string(),
       agentName: z.string(),
     }),
+  }) }),
+  // Shopping product cards
+  z.object({ type: z.literal('agent:productCards'), payload: z.object({
+    agentId: z.string(),
+    products: z.array(z.object({
+      name: z.string(),
+      price: z.number(),
+      currency: z.string(),
+      rating: z.number().optional(),
+      retailer: z.string(),
+      url: z.string(),
+      imageUrl: z.string().optional(),
+      description: z.string(),
+      freeShipping: z.boolean().optional(),
+      recommended: z.boolean().optional(),
+    })),
+  }) }),
+  // Direct purchase result
+  z.object({ type: z.literal('shop:purchaseResult'), payload: z.object({
+    success: z.boolean(),
+    orderId: z.string().optional(),
+    productName: z.string(),
+    amount: z.number(),
+    currency: z.string().optional(),
+    merchantName: z.string().optional(),
+    error: z.string().optional(),
   }) }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;

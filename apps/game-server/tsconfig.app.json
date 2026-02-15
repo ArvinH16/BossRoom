@@ -17,6 +17,9 @@
       "path": "../../libs/shared-utils/tsconfig.lib.json"
     },
     {
+      "path": "../../vendor/visa-mcp/packages/mcp-client"
+    },
+    {
       "path": "../../libs/shared-types/tsconfig.lib.json"
     }
   ]
