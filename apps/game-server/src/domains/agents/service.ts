@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { streamText, stepCountIs } from 'ai';
+import { streamText } from 'ai';
 import type { ServerMessage, DynamicAgent } from '@bossroom/shared-types';
 import { TIMEOUTS } from '@bossroom/shared-utils';
 import { getModel } from '../../ai/gateway.js';
@@ -102,7 +102,6 @@ export function createAgentService(deps: AgentServiceDeps) {
         system: targetAgent.systemPrompt,
         messages: [{ role: 'user' as const, content: taskDescription }],
         tools: workerToolsFinal,
-        stopWhen: stepCountIs(3),
       });
 
       let fullResponse = '';
@@ -256,7 +255,7 @@ export function createAgentService(deps: AgentServiceDeps) {
         model,
         system: dynamicAgent.systemPrompt,
         messages: [{ role: 'user' as const, content }],
-        ...(hasTools ? { tools, stopWhen: stepCountIs(5) } : {}),
+        ...(hasTools ? { tools } : {}),
         onChunk: ({ chunk }) => {
           if (chunk.type === 'tool-call') {
             playerService.send(ws, {
@@ -452,7 +451,7 @@ export function createAgentService(deps: AgentServiceDeps) {
           model,
           system: agent.systemPrompt,
           messages: aiMessages,
-          ...(hasTools ? { tools, stopWhen: stepCountIs(5) } : {}),
+          ...(hasTools ? { tools } : {}),
           onChunk: ({ chunk }) => {
             if (chunk.type === 'tool-call') {
               playerService.send(ws, {
