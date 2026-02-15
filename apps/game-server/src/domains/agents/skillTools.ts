@@ -8,15 +8,22 @@ import { randomUUID } from 'crypto';
 
 /**
  * Compute a unique zone position for a dynamic agent based on its global index.
- * Grid: 5 columns (x = -20, -10, 0, 10, 20), rows start at z = -6 stepping -10.
+ * Grid: 5 columns (x = -20..20), 5 rows (z = -6..-46), scattered so consecutive
+ * agents land in distant cells instead of filling left-to-right.
  */
 const ZONE_COLUMNS = [-20, -10, 0, 10, 20];
 const ZONE_ROW_START_Z = -6;
 const ZONE_ROW_SPACING = -10;
+const SCATTER_CAPACITY = ZONE_COLUMNS.length * 5; // 25 scattered slots
+const SCATTER_MULT = 11; // coprime to 25 → bijective mapping
 
 function getZonePosition(index: number): [number, number, number] {
-  const col = index % ZONE_COLUMNS.length;
-  const row = Math.floor(index / ZONE_COLUMNS.length);
+  // Scatter first 25 agents across the grid; overflow continues sequentially
+  const slot = index < SCATTER_CAPACITY
+    ? (index * SCATTER_MULT + 3) % SCATTER_CAPACITY
+    : index;
+  const col = slot % ZONE_COLUMNS.length;
+  const row = Math.floor(slot / ZONE_COLUMNS.length);
   return [ZONE_COLUMNS[col], 0, ZONE_ROW_START_Z + row * ZONE_ROW_SPACING];
 }
 
