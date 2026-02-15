@@ -12,7 +12,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Vector3, MathUtils } from 'three';
 import { playerPositionRef } from './Player';
 
-const DEFAULT_DISTANCE = 12;
+const DEFAULT_DISTANCE = 10;
 const MIN_DISTANCE = 5;
 const MAX_DISTANCE = 25;
 const MIN_POLAR = 0.3;               // prevent looking straight down
@@ -26,7 +26,7 @@ export function CameraRig() {
   const { camera, gl } = useThree();
 
   const yaw = useRef(0);              // horizontal angle (0 = behind player looking -Z)
-  const polar = useRef(0.8);          // vertical angle from top
+  const polar = useRef(1.1);          // vertical angle from top (higher = more behind)
   const distance = useRef(DEFAULT_DISTANCE);
   const isDragging = useRef(false);
   const smoothTarget = useRef(new Vector3());
