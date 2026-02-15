@@ -76,6 +76,32 @@ export const PUNCH = {
   reactions: ['die', 'fall', 'emote-no', 'crouch', 'jump', 'sit'],
 } as const;
 
+export const MUSIC = {
+  defaultVolume: 15,
+  tracks: [
+    {
+      id: 'calm',
+      label: 'Calm Ambient',
+      url: 'https://archive.org/download/freepd/Page2/Ambient%20L%20Delicate.mp3',
+    },
+    {
+      id: 'nature',
+      label: 'Nature Sounds',
+      url: 'https://archive.org/download/naturesounds-soundtheraphy/Relaxing%20Nature%20Sounds%20-%20Trickling%20Stream%20Sounds%20%26%20Birds.mp3',
+    },
+    {
+      id: 'chill',
+      label: 'Chill Synth',
+      url: 'https://opengameart.org/sites/default/files/001_Synthwave_4k_0.mp3',
+    },
+    {
+      id: 'peaceful',
+      label: 'Peaceful',
+      url: 'https://archive.org/download/freepd/Page2/Ambient%20J%20Thoughtful.mp3',
+    },
+  ],
+} as const;
+
 export const POST_PROCESSING = {
   bloom: { threshold: 0.8, smoothing: 0.9, intensity: 0.4 },
   vignette: { offset: 0.3, darkness: 0.4 },
