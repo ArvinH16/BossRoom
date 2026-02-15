@@ -1,12 +1,15 @@
 /** NPC agent: Kenney character model + floating name label + status orb + sparkles + click-to-chat + wander + thought bubbles. */
 'use client';
 
+import { useRef, useEffect, useState } from 'react';
 import { Billboard, Text, Sparkles } from '@react-three/drei';
 import { CharacterModel } from './CharacterModel';
 import { ThoughtBubble } from './ThoughtBubble';
 import { useChatStore } from '@/stores/chatStore';
+import { useWorldStore } from '@/stores/worldStore';
 import { useAgentWander } from '@/hooks/useAgentWander';
 import { statusColors, statusLabels, type AgentData } from '@/data/agents';
+import { PUNCH } from '@/data/gameConfig';
 
 interface AgentProps {
   agent: AgentData;
@@ -16,8 +19,24 @@ export function Agent({ agent }: AgentProps) {
   const openChat = useChatStore((s) => s.openChat);
   const isActive = agent.status !== 'idle';
   const isBusy = agent.status !== 'idle';
+  const punchedAgentId = useWorldStore((s) => s.punchedAgentId);
+  const punchReaction = useWorldStore((s) => s.punchReaction);
 
-  const { animation, groupRef } = useAgentWander(agent.id, agent.position, isBusy);
+  const { animation: wanderAnimation, groupRef } = useAgentWander(agent.id, agent.position, isBusy);
+
+  const [reactionAnim, setReactionAnim] = useState<string | null>(null);
+  const punchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (punchedAgentId === agent.id && punchReaction) {
+      setReactionAnim(punchReaction);
+      if (punchTimer.current) clearTimeout(punchTimer.current);
+      punchTimer.current = setTimeout(() => setReactionAnim(null), PUNCH.reactionDuration);
+    }
+  }, [punchedAgentId, punchReaction, agent.id]);
+
+  const isPunched = reactionAnim !== null;
+  const animation = reactionAnim ?? wanderAnimation;
 
   return (
     <group position={agent.position}>
@@ -94,6 +113,18 @@ export function Agent({ agent }: AgentProps) {
             size={3}
             speed={3}
             color="#ff4444"
+            position={[0, 1, 0]}
+          />
+        )}
+
+        {/* Punch reaction effect */}
+        {isPunched && (
+          <Sparkles
+            count={25}
+            scale={2}
+            size={5}
+            speed={4}
+            color="#ff2222"
             position={[0, 1, 0]}
           />
         )}

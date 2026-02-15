@@ -17,7 +17,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useBroadcastPosition } from '@/hooks/useBroadcastPosition';
 import { useProximityVoice } from '@/hooks/useProximityVoice';
 import { playerSpatialAudio } from '@/lib/playerSpatialAudio';
-import { INTERACTION, SPATIAL_AUDIO } from '@/data/gameConfig';
+import { INTERACTION, SPATIAL_AUDIO, PUNCH } from '@/data/gameConfig';
 import { getAvatarModelUrl } from '@/data/avatars';
 
 const MOVE_SPEED = 5;
@@ -26,6 +26,12 @@ const ROTATION_LERP = 0.15;
 
 /** Shared ref so CameraRig can track the player position. */
 export const playerPositionRef = { current: SPAWN as [number, number, number] };
+
+/** Shared ref so CameraRig can swing to a cinematic side view during punches. */
+export const punchCameraRef = {
+  active: false,
+  agentPos: [0, 0, 0] as [number, number, number],
+};
 
 export function Player() {
   const rigidBodyRef = useRef<any>(null);
@@ -48,6 +54,10 @@ export function Player() {
   const recordingRef = useRef(false);
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const targetTypeRef = useRef<'agent' | 'player' | null>(null);
+  const punchCooldown = useRef(false);
+  const attackIndex = useRef(0);
+  const reactionIndex = useRef(0);
+  const punchAgent = useWorldStore((s) => s.punchAgent);
   const { startPlayerVoice, stopPlayerVoice } = useProximityVoice();
 
   useBroadcastPosition(rigidBodyRef, animation, facingAngle);
@@ -93,6 +103,27 @@ export function Player() {
           // Player voice flow (new)
           startPlayerVoice(target.id);
         }
+      }
+
+      if (e.code === 'KeyF' && !e.repeat && nearestAgent && !punchCooldown.current) {
+        punchCooldown.current = true;
+        const attack = PUNCH.attacks[attackIndex.current % PUNCH.attacks.length];
+        attackIndex.current++;
+        const reaction = PUNCH.reactions[reactionIndex.current % PUNCH.reactions.length];
+        reactionIndex.current++;
+        setAnimation(attack);
+        punchAgent(nearestAgent, reaction);
+
+        // Cinematic side-view camera
+        const agentData = useWorldStore.getState().agents.find((a) => a.id === nearestAgent);
+        if (agentData) {
+          punchCameraRef.active = true;
+          punchCameraRef.agentPos = [...agentData.position] as [number, number, number];
+          setTimeout(() => { punchCameraRef.active = false; }, PUNCH.reactionDuration);
+        }
+
+        setTimeout(() => setAnimation('idle'), PUNCH.attackDuration);
+        setTimeout(() => { punchCooldown.current = false; }, PUNCH.cooldown);
       }
 
       if (e.code === 'KeyR' && !chatPanelOpen) {

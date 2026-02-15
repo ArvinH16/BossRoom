@@ -6,7 +6,7 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
 import { RANDOM_AVATAR_ID } from '@bossroom/shared-types';
-import { agents as defaultAgents, toDynamicAgentData } from '@/data/agents';
+import { agents as defaultAgents } from '@/data/agents';
 import type { AgentData } from '@/data/agents';
 
 export function initWebSocket(username: string, token: string, tokenRefresher: () => Promise<string>, uid: string) {
@@ -138,12 +138,6 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         // Track which agents belong to the current task
         const newAgentIds = dynamicAgents.map((a) => a.agentId);
         useChatStore.getState().registerTaskAgents(newAgentIds);
-
-        // Add dynamic agents to world store for status tracking
-        const worldStore = useWorldStore.getState();
-        const currentAgents = worldStore.agents;
-        const newAgents = dynamicAgents.map((a) => toDynamicAgentData(a));
-        worldStore.setAgents([...currentAgents, ...newAgents]);
         break;
       }
 
