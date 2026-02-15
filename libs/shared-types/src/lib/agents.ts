@@ -51,6 +51,7 @@ export type SkillSummary = z.infer<typeof skillSummarySchema>;
 
 export const dynamicAgentSchema = z.object({
   agentId: z.string(),
+  workspaceId: z.string(),
   name: z.string(),
   color: z.string(),
   zoneName: z.string(),

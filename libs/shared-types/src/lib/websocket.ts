@@ -12,6 +12,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('agent:stopInteract'), payload: z.object({ agentId: z.string() }) }),
   z.object({ type: z.literal('player:updateSettings'), payload: z.object({ avatarId: z.string() }) }),
   z.object({ type: z.literal('voice:talking'), payload: z.object({ isTalking: z.boolean(), targetPlayerId: z.string().nullable() }) }),
+  z.object({ type: z.literal('workspace:userNote'), payload: z.object({ workspaceId: z.string(), content: z.string() }) }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 
@@ -56,5 +57,16 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('agent:skillCreated'), payload: z.object({ agentId: z.string(), skill: skillSummarySchema }) }),
   z.object({ type: z.literal('agent:delegatedTask'), payload: z.object({ fromAgentId: z.string(), toAgentId: z.string(), toAgentName: z.string(), task: z.string() }) }),
   z.object({ type: z.literal('voice:playerTalking'), payload: z.object({ playerId: z.string(), isTalking: z.boolean() }) }),
+  z.object({ type: z.literal('workspace:scratchpadEntry'), payload: z.object({
+    workspaceId: z.string(),
+    entry: z.object({
+      id: z.string(),
+      authorType: z.enum(['agent', 'user']),
+      authorName: z.string(),
+      authorColor: z.string(),
+      content: z.string(),
+      timestamp: z.number(),
+    }),
+  }) }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;

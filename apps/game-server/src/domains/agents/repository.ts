@@ -9,6 +9,7 @@ type AgentWithStatus = AgentDef & { status: AgentStatus };
 /** Dynamic agent registered at runtime by the Receptionist. */
 export interface RegisteredDynamicAgent {
   agentId: string;
+  workspaceId: string;
   name: string;
   color: string;
   zoneName: string;
@@ -83,11 +84,13 @@ export function createAgentRepository() {
         {
           isLead: agent.role === 'lead',
           teamMembers: agent.role === 'lead' ? teamMembers : undefined,
+          hasWorkspace: true,
         },
       );
 
       const registered: RegisteredDynamicAgent = {
         agentId: agent.agentId,
+        workspaceId: agent.workspaceId,
         name: agent.name,
         color: agent.color,
         zoneName: agent.zoneName,

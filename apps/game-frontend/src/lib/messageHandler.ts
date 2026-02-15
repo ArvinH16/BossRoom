@@ -3,6 +3,7 @@ import { useChatStore } from '@/stores/chatStore';
 import { useVoiceStore } from '@/stores/voiceStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useScratchpadStore } from '@/stores/scratchpadStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
 import { RANDOM_AVATAR_ID } from '@bossroom/shared-types';
@@ -139,6 +140,10 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         const newAgentIds = dynamicAgents.map((a) => a.agentId);
         useChatStore.getState().registerTaskAgents(newAgentIds);
 
+        // Set active workspace for scratchpad
+        const workspaceId = dynamicAgents[0]?.workspaceId;
+        if (workspaceId) useScratchpadStore.getState().setActiveWorkspace(workspaceId);
+
         // Add dynamic agents to world store for status tracking
         const worldStore = useWorldStore.getState();
         const currentAgents = worldStore.agents;
@@ -168,6 +173,13 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
           role: 'agent',
           content: `*New skill created:* ${skill.name} — ${skill.description}`,
         });
+        break;
+      }
+
+      case 'workspace:scratchpadEntry': {
+        const scratchpadState = useScratchpadStore.getState();
+        if (msg.payload.workspaceId !== scratchpadState.activeWorkspaceId) break;
+        scratchpadState.addEntry(msg.payload.entry);
         break;
       }
 

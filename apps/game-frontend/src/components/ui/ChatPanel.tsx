@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useScratchpadStore } from '@/stores/scratchpadStore';
 import { Markdown } from '@/components/ui/Markdown';
 import { ThinkingIndicator } from '@/components/ui/ThinkingIndicator';
 import { AgentAvatar } from '@/components/ui/AgentAvatar';
@@ -38,6 +39,7 @@ function TaskTabs() {
           removeAgents(currentTaskAgentIds);
         }
         closeCurrentTask();
+        useScratchpadStore.getState().clearWorkspace();
       } else {
         // Close an archived task
         const task = archivedTasks.find((t) => t.id === taskId);
@@ -45,6 +47,7 @@ function TaskTabs() {
           removeAgents(task.agentIds);
         }
         closeTask(taskId);
+        useScratchpadStore.getState().clearWorkspace();
       }
       setConfirmingClose(null);
     } else {

@@ -11,17 +11,19 @@ import type { AgentRepository } from './repository.js';
 import type { ConversationService } from '../conversations/service.js';
 import type { PlayerService } from '../players/service.js';
 import type { SkillService } from '../skills/service.js';
-import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool } from './skillTools.js';
+import type { ScratchpadService } from '../scratchpad/service.js';
+import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools } from './skillTools.js';
 
 interface AgentServiceDeps {
   agentRepo: AgentRepository;
   conversationService: ConversationService;
   playerService: PlayerService;
   skillService: SkillService;
+  scratchpadService: ScratchpadService;
 }
 
 export function createAgentService(deps: AgentServiceDeps) {
-  const { agentRepo, conversationService, playerService, skillService } = deps;
+  const { agentRepo, conversationService, playerService, skillService, scratchpadService } = deps;
 
   /**
    * Handle delegation: lead agent sends a task to a worker agent.
@@ -71,6 +73,16 @@ export function createAgentService(deps: AgentServiceDeps) {
       const workerMcpTools = await mcpManager.getAllTools();
       const workerTools = { ...workerComposioTools, ...workerMcpTools, ...workerSkillTools };
 
+      const workerScratchpadTools = createScratchpadTools({
+        scratchpadService,
+        workspaceId: targetAgent.workspaceId,
+        agentId: targetAgent.agentId,
+        agentName: targetAgent.name,
+        agentColor: targetAgent.color,
+        broadcastFn: (msg) => playerService.send(ws, msg),
+      });
+      const workerToolsFinal = { ...workerTools, ...workerScratchpadTools };
+
       // Set to working
       agentRepo.setStatus(targetAgent.agentId, 'working');
       broadcastFn({
@@ -83,7 +95,7 @@ export function createAgentService(deps: AgentServiceDeps) {
         model,
         system: targetAgent.systemPrompt,
         messages: [{ role: 'user' as const, content: taskDescription }],
-        tools: workerTools,
+        tools: workerToolsFinal,
         stopWhen: stepCountIs(3),
       });
 
@@ -202,6 +214,16 @@ export function createAgentService(deps: AgentServiceDeps) {
       const mcpTools = await mcpManager.getAllTools();
 
       let tools = { ...composioTools, ...mcpTools, ...agentSkillToolSet };
+
+      const scratchpadTools = createScratchpadTools({
+        scratchpadService,
+        workspaceId: dynamicAgent.workspaceId,
+        agentId,
+        agentName: dynamicAgent.name,
+        agentColor: dynamicAgent.color,
+        broadcastFn: (msg) => playerService.send(ws, msg),
+      });
+      tools = { ...tools, ...scratchpadTools };
 
       // Lead agents get delegate_task tool
       if (dynamicAgent.role === 'lead') {

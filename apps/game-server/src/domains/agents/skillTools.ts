@@ -4,7 +4,8 @@ import { z } from 'zod';
 import type { SkillService } from '../skills/service.js';
 import type { ServerMessage, SkillSummary, DynamicAgent } from '@bossroom/shared-types';
 import { log } from '../../logger.js';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
+import type { ScratchpadService } from '../scratchpad/service.js';
 
 /**
  * Compute a unique zone position for a dynamic agent based on its global index.
@@ -59,6 +60,12 @@ const delegateTaskParams = z.object({
   taskDescription: z.string().describe('Clear description of what they should do'),
 });
 
+const readScratchpadParams = z.object({});
+
+const writeScratchpadParams = z.object({
+  content: z.string().max(500).describe('Brief update about what you found, decided, or completed'),
+});
+
 // ----- Types for tool factory deps -----
 
 interface SkillToolsDeps {
@@ -78,6 +85,15 @@ interface SetupWorkspaceDeps {
 interface DelegateTaskDeps {
   agentId: string;
   onDelegate: (targetName: string, task: string) => Promise<string>;
+  broadcastFn: (msg: ServerMessage) => void;
+}
+
+interface ScratchpadToolsDeps {
+  scratchpadService: ScratchpadService;
+  workspaceId: string;
+  agentId: string;
+  agentName: string;
+  agentColor: string;
   broadcastFn: (msg: ServerMessage) => void;
 }
 
@@ -143,12 +159,14 @@ export function createSetupWorkspaceTool(deps: SetupWorkspaceDeps): ToolSet {
       'Create a custom team of AI agents for the user task. Choose 1-3 agents with creative names, distinct personalities, relevant skills, and designate one as lead.',
     inputSchema: setupWorkspaceParams,
     execute: async (args: z.infer<typeof setupWorkspaceParams>) => {
+      const workspaceId = 'ws-' + randomUUID().slice(0, 8);
       const agentDefs = args.agents;
 
       // 1. Generate unique IDs and assign positions (offset by existing agents)
       const baseIndex = getDynamicAgentCount();
       const dynamicAgents: DynamicAgent[] = agentDefs.map((def, i) => ({
         agentId: `agent-${randomUUID().slice(0, 8)}`,
+        workspaceId,
         name: def.name,
         color: def.color,
         zoneName: def.zoneName,
@@ -223,4 +241,55 @@ export function createDelegateTaskTool(deps: DelegateTaskDeps): ToolSet {
   });
 
   return { delegate_task: delegateTask } as ToolSet;
+}
+
+/**
+ * The scratchpad tools — available to all dynamic agents in a workspace.
+ * Enables shared team communication and context tracking.
+ */
+export function createScratchpadTools(deps: ScratchpadToolsDeps): ToolSet {
+  const { scratchpadService, workspaceId, agentId, agentName, agentColor, broadcastFn } = deps;
+
+  const readScratchpad = tool({
+    description: 'Read the shared team scratchpad to see updates from teammates and the user',
+    inputSchema: readScratchpadParams,
+    execute: async () => {
+      const entries = scratchpadService.read(workspaceId);
+      if (entries.length === 0) return 'Scratchpad is empty — no updates yet.';
+      return entries
+        .map((e) => `[${e.authorName}] ${e.content}`)
+        .join('\n');
+    },
+  });
+
+  const writeScratchpad = tool({
+    description: 'Post an update to the shared team scratchpad for teammates and the user to see',
+    inputSchema: writeScratchpadParams,
+    execute: async (args) => {
+      const entry = scratchpadService.write(workspaceId, {
+        authorType: 'agent',
+        authorId: agentId,
+        authorName: agentName,
+        authorColor: agentColor,
+        content: args.content,
+      });
+      broadcastFn({
+        type: 'workspace:scratchpadEntry',
+        payload: {
+          workspaceId,
+          entry: {
+            id: entry.id,
+            authorType: entry.authorType,
+            authorName: entry.authorName,
+            authorColor: entry.authorColor,
+            content: entry.content,
+            timestamp: entry.timestamp,
+          },
+        },
+      });
+      return `Posted to scratchpad: "${args.content}"`;
+    },
+  });
+
+  return { read_scratchpad: readScratchpad, write_scratchpad: writeScratchpad } as ToolSet;
 }

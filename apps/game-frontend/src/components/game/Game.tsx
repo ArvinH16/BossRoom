@@ -11,6 +11,7 @@ import { TTSAudioPlayer } from '../ui/TTSAudioPlayer';
 import { HUD } from '../ui/HUD';
 import { OnboardingOverlay } from '../ui/OnboardingOverlay';
 import { MissionControl } from '../ui/MissionControl';
+import { ScratchpadFeed } from '../ui/ScratchpadFeed';
 import { useAuthStore } from '@/stores/authStore';
 import { initWebSocket } from '@/lib/messageHandler';
 import { CAMERA, WORLD } from '@/data/gameConfig';
@@ -61,6 +62,7 @@ export function Game({ user }: GameProps) {
       <TTSAudioPlayer />
       <OnboardingOverlay />
       <MissionControl />
+      <ScratchpadFeed />
     </div>
   );
 }

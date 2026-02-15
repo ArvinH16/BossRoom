@@ -11,6 +11,7 @@ import { createAgentRepository } from './domains/agents/repository.js';
 import { createConversationModule } from './domains/conversations/module.js';
 import { createAgentModule } from './domains/agents/module.js';
 import { createSkillModule } from './domains/skills/module.js';
+import { createScratchpadService } from './domains/scratchpad/service.js';
 import { handlePlayerJoin } from './handlers/playerJoin.js';
 import { handlePlayerMove } from './handlers/playerMove.js';
 import { handlePlayerSettings } from './handlers/playerSettings.js';
@@ -22,11 +23,13 @@ const userModule = createUserModule({ db });
 const agentRepo = createAgentRepository();
 const conversationModule = createConversationModule({ db, agentRepo });
 const skillModule = createSkillModule(db);
+const scratchpadService = createScratchpadService();
 const agentModule = createAgentModule({
   agentRepo,
   conversationService: conversationModule.service,
   playerService: playerModule.service,
   skillService: skillModule.skillService,
+  scratchpadService,
 });
 
 const players = playerModule.service;
@@ -152,6 +155,33 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
         { type: 'voice:playerTalking', payload: { playerId: uid, isTalking: msg.payload.isTalking } },
         uid,
       );
+      return;
+    }
+    case 'workspace:userNote': {
+      const uid = players.getUidByWs(ws);
+      if (!uid) return;
+      const player = players.getPlayer(uid);
+      const entry = scratchpadService.write(msg.payload.workspaceId, {
+        authorType: 'user',
+        authorId: uid,
+        authorName: player?.username ?? 'Unknown',
+        authorColor: '#818CF8',
+        content: msg.payload.content,
+      });
+      players.send(ws, {
+        type: 'workspace:scratchpadEntry',
+        payload: {
+          workspaceId: msg.payload.workspaceId,
+          entry: {
+            id: entry.id,
+            authorType: entry.authorType,
+            authorName: entry.authorName,
+            authorColor: entry.authorColor,
+            content: entry.content,
+            timestamp: entry.timestamp,
+          },
+        },
+      });
       return;
     }
   }

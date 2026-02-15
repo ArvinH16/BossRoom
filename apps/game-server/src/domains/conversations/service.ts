@@ -85,7 +85,10 @@ export function createConversationService(deps: {
 
       // Brand new conversation
       const agent = agentRepo.get(agentId);
-      const greeting = getGreeting(agent!, displayName);
+      const dynamicAgent = agent ? undefined : agentRepo.getDynamic(agentId);
+      const greeting = agent
+        ? getGreeting(agent, displayName)
+        : `Hi ${displayName ?? 'there'}! I'm ${dynamicAgent?.name ?? 'an agent'}. How can I help you?`;
       const id = generateConversationId();
       conv = {
         id,
