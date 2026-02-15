@@ -12,7 +12,7 @@ import type { ConversationService } from '../conversations/service.js';
 import type { PlayerService } from '../players/service.js';
 import type { SkillService } from '../skills/service.js';
 import type { ScratchpadService } from '../scratchpad/service.js';
-import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools } from './skillTools.js';
+import { createSetupWorkspaceTool, createAgentSkillTools, createDelegateTaskTool, createScratchpadTools, createEmbedTools } from './skillTools.js';
 
 interface AgentServiceDeps {
   agentRepo: AgentRepository;
@@ -81,7 +81,13 @@ export function createAgentService(deps: AgentServiceDeps) {
         agentColor: targetAgent.color,
         broadcastFn: (msg) => playerService.send(ws, msg),
       });
-      const workerToolsFinal = { ...workerTools, ...workerScratchpadTools };
+      const workerEmbedTools = createEmbedTools({
+        workspaceId: targetAgent.workspaceId,
+        agentId: targetAgent.agentId,
+        agentName: targetAgent.name,
+        broadcastFn: (msg) => playerService.send(ws, msg),
+      });
+      const workerToolsFinal = { ...workerTools, ...workerScratchpadTools, ...workerEmbedTools };
 
       // Set to working
       agentRepo.setStatus(targetAgent.agentId, 'working');
@@ -224,6 +230,14 @@ export function createAgentService(deps: AgentServiceDeps) {
         broadcastFn: (msg) => playerService.send(ws, msg),
       });
       tools = { ...tools, ...scratchpadTools };
+
+      const embedTools = createEmbedTools({
+        workspaceId: dynamicAgent.workspaceId,
+        agentId,
+        agentName: dynamicAgent.name,
+        broadcastFn: (msg) => playerService.send(ws, msg),
+      });
+      tools = { ...tools, ...embedTools };
 
       // Lead agents get delegate_task tool
       if (dynamicAgent.role === 'lead') {

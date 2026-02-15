@@ -68,5 +68,16 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
       timestamp: z.number(),
     }),
   }) }),
+  z.object({ type: z.literal('workspace:embedPanel'), payload: z.object({
+    workspaceId: z.string(),
+    embed: z.object({
+      id: z.string(),
+      url: z.string(),
+      title: z.string(),
+      type: z.enum(['document', 'board', 'spreadsheet', 'presentation', 'other']),
+      agentId: z.string(),
+      agentName: z.string(),
+    }),
+  }) }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;

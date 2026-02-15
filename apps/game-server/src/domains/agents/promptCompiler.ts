@@ -67,6 +67,7 @@ export function compileSystemPrompt(
   if (options?.hasWorkspace) {
     toolList.push('  <tool name="read_scratchpad">Read the shared team feed for teammate updates and user directives</tool>');
     toolList.push('  <tool name="write_scratchpad">Post a progress update to the shared team feed (visible to user and all agents)</tool>');
+    toolList.push('  <tool name="show_embed">Show an embedded document, board, or artifact to the user in an iframe panel</tool>');
   }
   toolList.push('  <tool name="composio_*">OAuth-integrated tools (Gmail, Google Calendar, Google Tasks, Linear, etc.) — available per user</tool>');
   parts.push(`<available_tools>\n${toolList.join('\n')}\n</available_tools>`);
@@ -89,37 +90,44 @@ export function compileSystemPrompt(
   // 6. Team Scratchpad
   if (options?.hasWorkspace) {
     parts.push(
-`<scratchpad priority="critical">
-  <purpose>Shared feed visible to ALL agents and the user. This is the user's primary way to see your progress.</purpose>
-  <rules>
-    <rule>Call read_scratchpad BEFORE starting work — check for teammate updates and user directives.</rule>
-    <rule>You MUST call write_scratchpad every time you complete a step, make a decision, hand off work, or finish your task.</rule>
-    <rule>If you do not write to the scratchpad, the user has NO visibility into what you are doing.</rule>
-    <rule>Keep entries concise: 1-2 sentences. Example: "Generated 15 jokes, handing off to The Critic for selection."</rule>
-  </rules>
-</scratchpad>`);
+`<workspace_workflow priority="critical">
+  <overview>You have two collaboration tools: embedded documents (for deliverables) and the scratchpad (for coordination). Documents are preferred for any substantial output.</overview>
 
-    parts.push(
-`<embedded_content>
-  <purpose>You can show documents, boards, and web content to the user using the show_embed tool. Content appears in an iframe panel.</purpose>
-  <rules>
-    <rule>ALWAYS set sharing permissions to "Anyone with the link can view/edit" when creating documents.</rule>
-    <rule>Call show_embed immediately after creating a document, board, or artifact via a tool.</rule>
-    <rule>If the embed fails, share the direct link in your message instead.</rule>
-  </rules>
-  <embed_urls>
-    <format service="Google Docs">https://docs.google.com/document/d/{ID}/pub?embedded=true</format>
-    <format service="Google Sheets">https://docs.google.com/spreadsheets/d/{ID}/pub?embedded=true</format>
-    <format service="Google Slides">https://docs.google.com/presentation/d/{ID}/embed</format>
-    <format service="Miro">https://miro.com/app/live-embed/{BOARD_ID}/</format>
-  </embed_urls>
-  <cannot_embed>
-    <service reason="X-Frame-Options">Gmail</service>
-    <service reason="Content-Security-Policy">Linear</service>
-    <service reason="X-Frame-Options">Slack</service>
-    <service reason="inconsistent support">Notion</service>
-  </cannot_embed>
-</embedded_content>`);
+  <documents>
+    <purpose>Your PRIMARY output method. For any task that produces a deliverable — reports, plans, drafts, analyses, spreadsheets, boards — create a real document, embed it, and do your work inside it.</purpose>
+    <workflow>
+      <step>1. Create a Google Doc/Sheet/Slide (or Miro board) using your Composio tools.</step>
+      <step>2. IMMEDIATELY set sharing to "Anyone with the link can view" (or edit).</step>
+      <step>3. Call show_embed with the embed URL so the user can see it live in their workspace.</step>
+      <step>4. Do your actual work inside the document — write, edit, organize content there, not in chat.</step>
+      <step>5. Post a scratchpad update: "created [doc name] and embedded it, working on [section]"</step>
+    </workflow>
+    <rule>If you cannot create a document (tools not connected, user hasn't linked Google, etc.), fall back to the scratchpad for content delivery instead.</rule>
+    <embed_urls>
+      <format service="Google Docs">https://docs.google.com/document/d/{ID}/pub?embedded=true</format>
+      <format service="Google Sheets">https://docs.google.com/spreadsheets/d/{ID}/pub?embedded=true</format>
+      <format service="Google Slides">https://docs.google.com/presentation/d/{ID}/embed</format>
+      <format service="Miro">https://miro.com/app/live-embed/{BOARD_ID}/</format>
+    </embed_urls>
+    <cannot_embed>
+      <service reason="X-Frame-Options">Gmail</service>
+      <service reason="Content-Security-Policy">Linear</service>
+      <service reason="X-Frame-Options">Slack</service>
+      <service reason="inconsistent support">Notion</service>
+    </cannot_embed>
+    <rule>If show_embed fails or the user reports issues, share the direct link in your message instead.</rule>
+  </documents>
+
+  <scratchpad>
+    <purpose>Team coordination feed — status updates, decisions, handoffs. NOT for deliverable content (use documents for that).</purpose>
+    <rules>
+      <rule>Call read_scratchpad BEFORE starting work — check for teammate updates and user directives.</rule>
+      <rule>Write to scratchpad when you: start work, complete a step, make a decision, hand off, or finish.</rule>
+      <rule>Keep entries concise: 1-2 sentences. Example: "created project plan doc and embedded it, writing the timeline section now"</rule>
+      <rule>If documents are unavailable, use the scratchpad as your fallback for content delivery too.</rule>
+    </rules>
+  </scratchpad>
+</workspace_workflow>`);
   }
 
   // 7. Voice & tone

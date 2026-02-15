@@ -11,6 +11,7 @@ import { ThinkingIndicator } from '@/components/ui/ThinkingIndicator';
 import { AgentAvatar } from '@/components/ui/AgentAvatar';
 import { AgentStatusBadge } from '@/components/ui/AgentStatusBadge';
 import { useVoiceStore } from '@/stores/voiceStore';
+import { useEmbedStore } from '@/stores/embedStore';
 
 function TaskTabs() {
   const archivedTasks = useChatStore((s) => s.archivedTasks);
@@ -37,6 +38,7 @@ function TaskTabs() {
         // Close the live task
         if (currentTaskAgentIds.length > 0) {
           removeAgents(currentTaskAgentIds);
+          useEmbedStore.getState().removeEmbedsByAgentIds(currentTaskAgentIds);
         }
         closeCurrentTask();
         useScratchpadStore.getState().clearWorkspace();
@@ -45,6 +47,7 @@ function TaskTabs() {
         const task = archivedTasks.find((t) => t.id === taskId);
         if (task && task.agentIds.length > 0) {
           removeAgents(task.agentIds);
+          useEmbedStore.getState().removeEmbedsByAgentIds(task.agentIds);
         }
         closeTask(taskId);
         useScratchpadStore.getState().clearWorkspace();

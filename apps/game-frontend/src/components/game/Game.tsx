@@ -5,6 +5,7 @@ import { Suspense, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Scene } from './Scene';
 import { ChatPanel } from '../ui/ChatPanel';
+import { EmbedPanel } from '../ui/EmbedPanel';
 import { InteractionPrompt } from './InteractionPrompt';
 import { PushToTalkOverlay } from '../ui/PushToTalkOverlay';
 import { TTSAudioPlayer } from '../ui/TTSAudioPlayer';
@@ -57,6 +58,7 @@ export function Game({ user }: GameProps) {
       </Canvas>
       <HUD />
       <ChatPanel />
+      <EmbedPanel />
       <InteractionPrompt />
       <PushToTalkOverlay />
       <TTSAudioPlayer />

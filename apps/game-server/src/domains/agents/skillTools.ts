@@ -66,6 +66,12 @@ const writeScratchpadParams = z.object({
   content: z.string().max(500).describe('Brief update about what you found, decided, or completed'),
 });
 
+const showEmbedParams = z.object({
+  url: z.string().url().describe('The publicly accessible embed URL for the document, board, or artifact'),
+  title: z.string().max(100).describe('Short title for the embed tab'),
+  type: z.enum(['document', 'board', 'spreadsheet', 'presentation', 'other']).describe('Type of embedded content'),
+});
+
 // ----- Types for tool factory deps -----
 
 interface SkillToolsDeps {
@@ -94,6 +100,13 @@ interface ScratchpadToolsDeps {
   agentId: string;
   agentName: string;
   agentColor: string;
+  broadcastFn: (msg: ServerMessage) => void;
+}
+
+interface EmbedToolsDeps {
+  workspaceId: string;
+  agentId: string;
+  agentName: string;
   broadcastFn: (msg: ServerMessage) => void;
 }
 
@@ -292,4 +305,37 @@ export function createScratchpadTools(deps: ScratchpadToolsDeps): ToolSet {
   });
 
   return { read_scratchpad: readScratchpad, write_scratchpad: writeScratchpad } as ToolSet;
+}
+
+/**
+ * The show_embed tool — available to all dynamic agents in a workspace.
+ * Shows embedded documents/boards to the user in an iframe panel.
+ */
+export function createEmbedTools(deps: EmbedToolsDeps): ToolSet {
+  const { workspaceId, agentId, agentName, broadcastFn } = deps;
+
+  const showEmbed = tool({
+    description: 'Show an embedded document, board, or artifact to the user in a panel. Only use for services that support iframe embedding (Google Docs, Google Sheets, Miro, etc). Do NOT use for Gmail, Linear, or other services that block iframes.',
+    inputSchema: showEmbedParams,
+    execute: async (args) => {
+      const embedId = 'embed-' + randomUUID().slice(0, 8);
+      broadcastFn({
+        type: 'workspace:embedPanel',
+        payload: {
+          workspaceId,
+          embed: {
+            id: embedId,
+            url: args.url,
+            title: args.title,
+            type: args.type,
+            agentId,
+            agentName,
+          },
+        },
+      });
+      return `Showing embed "${args.title}" to the user in the workspace panel.`;
+    },
+  });
+
+  return { show_embed: showEmbed } as ToolSet;
 }

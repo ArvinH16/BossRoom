@@ -4,6 +4,7 @@ import { useVoiceStore } from '@/stores/voiceStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useScratchpadStore } from '@/stores/scratchpadStore';
+import { useEmbedStore } from '@/stores/embedStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
 import { RANDOM_AVATAR_ID } from '@bossroom/shared-types';
@@ -180,6 +181,11 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         const scratchpadState = useScratchpadStore.getState();
         if (msg.payload.workspaceId !== scratchpadState.activeWorkspaceId) break;
         scratchpadState.addEntry(msg.payload.entry);
+        break;
+      }
+
+      case 'workspace:embedPanel': {
+        useEmbedStore.getState().addEmbed(msg.payload.embed);
         break;
       }
 
