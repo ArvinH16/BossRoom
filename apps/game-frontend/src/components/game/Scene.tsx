@@ -12,9 +12,9 @@ import { Agent } from './Agent';
 import { Player } from './Player';
 import { CameraRig } from './CameraRig';
 import { SpatialAudioListener } from './SpatialAudioListener';
-import { MissionControlSky } from './MissionControlSky';
 import { RemotePlayer } from './RemotePlayer';
 import { EmbedScreen } from './EmbedScreen';
+import { MissionControlSky } from './MissionControlSky';
 import { useWorldStore } from '@/stores/worldStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useBuildSequence } from '@/hooks/useBuildSequence';
@@ -78,10 +78,7 @@ export function Scene() {
       />
 
       <Terrain />
-      <Suspense fallback={null}>
-        <MissionControlSky />
-      </Suspense>
-
+      <MissionControlSky />
       {/* Easter egg: Stanford campus hidden in the terrain */}
       <Suspense fallback={null}>
         <StanfordCampus />

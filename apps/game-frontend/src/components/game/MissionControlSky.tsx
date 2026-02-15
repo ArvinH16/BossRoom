@@ -1,39 +1,12 @@
-/** Floating todo-list board beyond the office boundary. */
 'use client';
 
-import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { Text, RoundedBox } from '@react-three/drei';
-import * as THREE from 'three';
+import { useState, useMemo } from 'react';
+import { Html } from '@react-three/drei';
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore, type ChatMessage } from '@/stores/chatStore';
 import { useWorkspaceStore, type WorkspacePhase } from '@/stores/workspaceStore';
 import { statusColors, statusLabels, toDynamicAgentData } from '@/data/agents';
 import type { AgentStatus } from '@bossroom/shared-types';
-
-/* ── Layout constants ────────────────────────────────────────────────── */
-
-const PW = 18;
-const PH = 16;
-const HALF_W = PW / 2;
-const HALF_H = PH / 2;
-const ROW_H = 1.8;
-const LEFT = -HALF_W + 1.2;
-
-/* ── Shared materials ────────────────────────────────────────────────── */
-
-const borderMaterial = new THREE.MeshStandardMaterial({
-  color: '#334155',
-  emissive: new THREE.Color('#334155'),
-  emissiveIntensity: 1,
-  toneMapped: false,
-});
-
-const dividerMaterial = new THREE.MeshBasicMaterial({
-  color: '#ffffff',
-  transparent: true,
-  opacity: 0.07,
-});
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -55,142 +28,6 @@ function getLastMessagePreview(messages: ChatMessage[], stream: string): string 
   return '';
 }
 
-function statusIcon(status: AgentStatus): string {
-  switch (status) {
-    case 'working': return '[>>]';
-    case 'thinking': return '[..]';
-    case 'listening': return '[ ~]';
-    case 'error': return '[ !]';
-    default: return '[ok]';
-  }
-}
-
-/* ── Checkbox visual ─────────────────────────────────────────────────── */
-
-function Checkbox({ status, color }: { status: AgentStatus; color: string }) {
-  const ref = useRef<THREE.Mesh>(null);
-  const isActive = status === 'thinking' || status === 'working';
-
-  useFrame(({ clock }) => {
-    if (!ref.current) return;
-    if (isActive) {
-      const mat = ref.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.5 + 0.3 * Math.sin(clock.getElapsedTime() * 3);
-    }
-  });
-
-  const c = statusColors[status] ?? '#888';
-
-  return (
-    <group>
-      {/* Box outline */}
-      <RoundedBox args={[0.6, 0.6, 0.01]} radius={0.08}>
-        <meshBasicMaterial color={c} transparent opacity={0.2} />
-      </RoundedBox>
-      {/* Fill for active/done states */}
-      <RoundedBox ref={ref} args={[0.42, 0.42, 0.01]} radius={0.05} position={[0, 0, 0.005]}>
-        <meshBasicMaterial color={c} transparent opacity={status === 'idle' ? 0.15 : 0.7} />
-      </RoundedBox>
-      {/* Status icon text */}
-      <Text
-        position={[0, 0, 0.02]}
-        fontSize={0.22}
-        color={color}
-        anchorX="center"
-        anchorY="middle"
-      >
-        {status === 'idle' ? '' : status === 'working' ? '>>' : status === 'thinking' ? '..' : status === 'error' ? '!' : '~'}
-      </Text>
-    </group>
-  );
-}
-
-/* ── Single todo row ─────────────────────────────────────────────────── */
-
-interface TodoRowProps {
-  name: string;
-  color: string;
-  status: AgentStatus;
-  messageCount: number;
-  lastMessage: string;
-  isStreaming: boolean;
-  yOffset: number;
-}
-
-function TodoRow({ name, color, status, messageCount, lastMessage, isStreaming, yOffset }: TodoRowProps) {
-  const statusText = statusLabels[status] || 'Idle';
-  const msgPreview = lastMessage || (status === 'idle' ? 'Waiting for task...' : 'Starting up...');
-
-  return (
-    <group position={[0, yOffset, 0]}>
-      {/* Divider above row */}
-      <mesh position={[0, ROW_H / 2 + 0.05, 0.01]} material={dividerMaterial}>
-        <boxGeometry args={[PW - 2, 0.02, 0.01]} />
-      </mesh>
-
-      {/* Checkbox */}
-      <group position={[LEFT + 0.3, 0.15, 0.02]}>
-        <Checkbox status={status} color="#ffffff" />
-      </group>
-
-      {/* Agent name */}
-      <Text
-        position={[LEFT + 1.2, 0.35, 0.02]}
-        fontSize={0.48}
-        color={color}
-        anchorX="left"
-        anchorY="middle"
-      >
-        {name}
-      </Text>
-
-      {/* Status badge */}
-      <group position={[LEFT + 1.2 + name.length * 0.28 + 0.6, 0.35, 0.02]}>
-        <RoundedBox args={[statusText.length * 0.2 + 0.6, 0.4, 0.01]} radius={0.1}>
-          <meshBasicMaterial color={statusColors[status]} transparent opacity={0.2} />
-        </RoundedBox>
-        <Text
-          position={[0, 0, 0.01]}
-          fontSize={0.22}
-          color={statusColors[status]}
-          anchorX="center"
-          anchorY="middle"
-        >
-          {statusText}
-        </Text>
-      </group>
-
-      {/* Message count (right side) */}
-      {messageCount > 0 && (
-        <Text
-          position={[HALF_W - 1.2, 0.35, 0.02]}
-          fontSize={0.3}
-          color="#94a3b8"
-          anchorX="right"
-          anchorY="middle"
-        >
-          {messageCount} msg{messageCount !== 1 ? 's' : ''}
-        </Text>
-      )}
-
-      {/* Last message preview */}
-      <Text
-        position={[LEFT + 1.2, -0.2, 0.02]}
-        fontSize={0.3}
-        color="#ffffff"
-        anchorX="left"
-        anchorY="middle"
-        fillOpacity={isStreaming ? 0.6 : 0.35}
-        maxWidth={PW - 4}
-      >
-        {isStreaming ? `${statusIcon(status)} ${msgPreview}` : msgPreview}
-      </Text>
-    </group>
-  );
-}
-
-/* ── Phase badge ─────────────────────────────────────────────────────── */
-
 const phaseLabels: Record<WorkspacePhase, string> = {
   reception: 'Lobby',
   building: 'Building...',
@@ -202,20 +39,70 @@ const phaseColors: Record<WorkspacePhase, string> = {
   ready: '#22c55e',
 };
 
+/* ── Agent row ───────────────────────────────────────────────────────── */
+
+function AgentRow({ name, color, status, preview, isStreaming }: {
+  name: string;
+  color: string;
+  status: AgentStatus;
+  preview: string;
+  isStreaming: boolean;
+}) {
+  const isActive = status === 'working' || status === 'thinking';
+
+  return (
+    <div className="px-3 py-2 border-b border-white/5 last:border-b-0">
+      <div className="flex items-center gap-2">
+        {/* Status indicator — checkmark ONLY for 'done', dot for everything else */}
+        {status === 'done' ? (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="#14B8A6" className="w-3 h-3 shrink-0">
+            <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
+          </svg>
+        ) : (
+          <div
+            className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'animate-pulse' : ''}`}
+            style={{ backgroundColor: statusColors[status] }}
+          />
+        )}
+
+        {/* Agent name in their color */}
+        <span className="text-xs font-medium truncate" style={{ color }}>
+          {name}
+        </span>
+
+        {/* Status badge pill — only show when there's a label */}
+        {statusLabels[status] && (
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0"
+            style={{ backgroundColor: statusColors[status] + '20', color: statusColors[status] }}
+          >
+            {statusLabels[status]}
+          </span>
+        )}
+      </div>
+
+      {/* Message preview — truncated single line */}
+      {preview && (
+        <p className={`text-[11px] mt-0.5 ml-4 truncate ${isStreaming ? 'text-white/50' : 'text-white/35'}`}>
+          {preview}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /* ── Main component ──────────────────────────────────────────────────── */
 
-const PANEL_Z = -30;
-
 export function MissionControlSky() {
-  const groupRef = useRef<THREE.Group>(null);
+  const [collapsed, setCollapsed] = useState(false);
 
   const agents = useWorldStore((s) => s.agents);
-  const chatMessages = useChatStore((s) => s.chatMessages);
-  const streamingText = useChatStore((s) => s.streamingText);
   const phase = useWorkspaceStore((s) => s.phase);
   const taskSummary = useWorkspaceStore((s) => s.taskSummary);
   const dynamicAgents = useWorkspaceStore((s) => s.dynamicAgents);
   const builtAgentIds = useWorkspaceStore((s) => s.builtAgentIds);
+  const chatMessages = useChatStore((s) => s.chatMessages);
+  const streamingText = useChatStore((s) => s.streamingText);
 
   const allAgents = useMemo(() => {
     const seen = new Set<string>();
@@ -236,113 +123,99 @@ export function MissionControlSky() {
     return result;
   }, [agents, dynamicAgents, builtAgentIds]);
 
-  // Gentle bob
-  useFrame(({ clock }) => {
-    if (groupRef.current) {
-      groupRef.current.position.y = 10 + 0.15 * Math.sin(clock.getElapsedTime() * 0.4);
-    }
-  });
+  // Hide when no workspace activity
+  if (phase === 'reception' && dynamicAgents.length === 0) return null;
 
-  const summary = taskSummary || 'No active task';
   const activeCount = allAgents.filter((a) => a.status !== 'idle').length;
   const phaseColor = phaseColors[phase];
+  const showBuildingPlaceholder = phase === 'building' && allAgents.length === 0;
 
   return (
-    <group ref={groupRef} position={[0, 10, PANEL_Z]}>
-      {/* ── Background ───────────────────────────────────────────── */}
-      <RoundedBox args={[PW, PH, 0.05]} radius={0.3}>
-        <meshBasicMaterial color="#0f172a" transparent opacity={0.8} side={THREE.DoubleSide} />
-      </RoundedBox>
-
-      {/* ── Subtle border ────────────────────────────────────────── */}
-      <mesh position={[0, HALF_H, 0.03]} material={borderMaterial}>
-        <boxGeometry args={[PW, 0.04, 0.01]} />
-      </mesh>
-      <mesh position={[0, -HALF_H, 0.03]} material={borderMaterial}>
-        <boxGeometry args={[PW, 0.04, 0.01]} />
-      </mesh>
-      <mesh position={[-HALF_W, 0, 0.03]} material={borderMaterial}>
-        <boxGeometry args={[0.04, PH, 0.01]} />
-      </mesh>
-      <mesh position={[HALF_W, 0, 0.03]} material={borderMaterial}>
-        <boxGeometry args={[0.04, PH, 0.01]} />
-      </mesh>
-
-      {/* ── Header ───────────────────────────────────────────────── */}
-      <Text
-        position={[LEFT, HALF_H - 1.1, 0.04]}
-        fontSize={0.8}
-        color="#e2e8f0"
-        anchorX="left"
-        anchorY="middle"
+    <group position={[0, 6, -20]}>
+      <Html
+        transform
+        center
+        distanceFactor={10}
+        zIndexRange={[1, 10]}
+        className="pointer-events-auto"
+        style={{ pointerEvents: 'auto' }}
       >
-        Todo List
-      </Text>
-
-      {/* Phase badge (top right) */}
-      <group position={[HALF_W - 2.5, HALF_H - 1.1, 0.04]}>
-        <RoundedBox args={[phaseLabels[phase].length * 0.25 + 0.8, 0.55, 0.01]} radius={0.12}>
-          <meshBasicMaterial color={phaseColor} transparent opacity={0.25} />
-        </RoundedBox>
-        <Text
-          position={[0, 0, 0.01]}
-          fontSize={0.28}
-          color={phaseColor}
-          anchorX="center"
-          anchorY="middle"
+        <div
+          style={{ width: '400px' }}
+          className="bg-black/50 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden"
         >
-          {phaseLabels[phase]}
-        </Text>
-      </group>
+          {/* Header — always visible */}
+          <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-white/90">Todo List</span>
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded-full"
+                style={{ backgroundColor: phaseColor + '25', color: phaseColor }}
+              >
+                {phaseLabels[phase]}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-white/40">
+                {activeCount}/{allAgents.length}
+              </span>
+              <button
+                onClick={() => setCollapsed((c) => !c)}
+                className="text-white/40 hover:text-white/60 transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  className={`w-3 h-3 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+                >
+                  <path fillRule="evenodd" d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
 
-      {/* Task summary + counts */}
-      <Text
-        position={[LEFT, HALF_H - 1.9, 0.04]}
-        fontSize={0.34}
-        color="#94a3b8"
-        anchorX="left"
-        anchorY="middle"
-        maxWidth={PW - 3}
-      >
-        {summary}
-      </Text>
-      <Text
-        position={[HALF_W - 1.2, HALF_H - 1.9, 0.04]}
-        fontSize={0.3}
-        color="#64748b"
-        anchorX="right"
-        anchorY="middle"
-      >
-        {activeCount}/{allAgents.length} active
-      </Text>
+          {/* Task summary — only when not collapsed and summary exists */}
+          {!collapsed && taskSummary && (
+            <p className="px-3 pb-2 text-[11px] text-white/35 truncate">{taskSummary}</p>
+          )}
 
-      {/* ── Header divider ───────────────────────────────────────── */}
-      <mesh position={[0, HALF_H - 2.4, 0.03]}>
-        <boxGeometry args={[PW - 1.5, 0.03, 0.01]} />
-        <meshBasicMaterial color="#334155" transparent opacity={0.5} />
-      </mesh>
+          {/* Divider */}
+          {!collapsed && <div className="border-b border-white/10" />}
 
-      {/* ── Agent todo rows ──────────────────────────────────────── */}
-      {allAgents.map((agent, i) => {
-        const yOffset = HALF_H - 3.3 - i * ROW_H;
-        const msgs = chatMessages[agent.id] ?? [];
-        const stream = streamingText[agent.id] ?? '';
-        const isStreaming = !!stream;
-        const lastMessage = getLastMessagePreview(msgs, stream);
-
-        return (
-          <TodoRow
-            key={agent.id}
-            name={agent.name}
-            color={agent.color}
-            status={agent.status}
-            messageCount={msgs.length}
-            lastMessage={lastMessage}
-            isStreaming={isStreaming}
-            yOffset={yOffset}
-          />
-        );
-      })}
+          {/* Agent rows or building placeholder */}
+          {!collapsed && (
+            showBuildingPlaceholder ? (
+              <div className="px-3 py-4 text-center">
+                <span className="text-[11px] text-white/30">Building workspace...</span>
+              </div>
+            ) : (
+              <div className="overflow-y-auto max-h-[400px]
+                [&::-webkit-scrollbar]:w-1.5
+                [&::-webkit-scrollbar-track]:bg-transparent
+                [&::-webkit-scrollbar-thumb]:bg-white/20
+                [&::-webkit-scrollbar-thumb]:rounded-full
+                hover:[&::-webkit-scrollbar-thumb]:bg-white/30"
+              >
+                {allAgents.map((agent) => {
+                  const msgs = chatMessages[agent.id] ?? [];
+                  const stream = streamingText[agent.id] ?? '';
+                  return (
+                    <AgentRow
+                      key={agent.id}
+                      name={agent.name}
+                      color={agent.color}
+                      status={agent.status}
+                      preview={getLastMessagePreview(msgs, stream)}
+                      isStreaming={!!stream}
+                    />
+                  );
+                })}
+              </div>
+            )
+          )}
+        </div>
+      </Html>
     </group>
   );
 }
