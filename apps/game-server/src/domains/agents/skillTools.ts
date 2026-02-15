@@ -52,7 +52,7 @@ const setupWorkspaceParams = z.object({
       instructions: z.string().max(2000),
     })).min(1).max(4).describe('Skills for this agent'),
     initialTask: z.string().optional().describe('Initial task for the lead agent to begin working on'),
-  })).min(1).max(3),
+  })).min(1),
 });
 
 const delegateTaskParams = z.object({
@@ -169,7 +169,7 @@ export function createSetupWorkspaceTool(deps: SetupWorkspaceDeps): ToolSet {
 
   const setupWorkspace = tool({
     description:
-      'Create a custom team of AI agents for the user task. Choose 1-3 agents with creative names, distinct personalities, relevant skills, and designate one as lead.',
+      'Create a custom team of AI agents for the user task. Build a full team of 6-15 specialized agents with creative names, distinct personalities, relevant skills, and designate one as lead. More agents = more parallel work and a more impressive workspace.',
     inputSchema: setupWorkspaceParams,
     execute: async (args: z.infer<typeof setupWorkspaceParams>) => {
       const workspaceId = 'ws-' + randomUUID().slice(0, 8);
