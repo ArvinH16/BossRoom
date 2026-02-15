@@ -15,24 +15,46 @@ resource "google_cloud_run_v2_service" "game_server" {
         container_port = 8080
       }
 
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+
+      # Database — Cloud SQL proxy via Unix socket
       env {
-        name  = "DB_HOST"
-        value = "/cloudsql/${google_sql_database_instance.main.connection_name}"
+        name  = "DATABASE_URL"
+        value = "postgresql://${google_sql_user.bossroom.name}:${var.db_password}@/bossroom?host=/cloudsql/${google_sql_database_instance.main.connection_name}"
+      }
+
+      # Firebase Admin SDK
+      env {
+        name  = "FIREBASE_PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "FIREBASE_CLIENT_EMAIL"
+        value = google_service_account.firebase_admin.email
+      }
+      env {
+        name  = "FIREBASE_PRIVATE_KEY"
+        value = jsondecode(base64decode(google_service_account_key.firebase_admin.private_key)).private_key
+      }
+
+      # AI Gateway
+      env {
+        name  = "AI_GATEWAY_API_KEY"
+        value = var.ai_gateway_api_key
+      }
+
+      # CORS — allow Cloudflare Pages origin
+      env {
+        name  = "ALLOWED_ORIGIN"
+        value = "https://bossroom.pages.dev"
       }
 
       env {
-        name  = "DB_NAME"
-        value = google_sql_database.bossroom.name
-      }
-
-      env {
-        name  = "DB_USER"
-        value = google_sql_user.bossroom.name
-      }
-
-      env {
-        name  = "DB_PASS"
-        value = var.db_password
+        name  = "LOG_LEVEL"
+        value = "INFO"
       }
     }
 

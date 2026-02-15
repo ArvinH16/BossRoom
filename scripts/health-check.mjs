@@ -132,6 +132,27 @@ if (fbProjectId && fbClientEmail && fbPrivateKey) {
   fail('Firebase Admin SDK', `Missing: ${missing}`);
 }
 
+// --- 5. WebSocket (production) ---
+console.info('\n[WEBSOCKET]');
+const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+
+if (wsUrl) {
+  try {
+    const { default: WebSocket } = await import('ws');
+    const ws = new WebSocket(wsUrl);
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => { ws.close(); reject(new Error('Connection timed out (5s)')); }, 5000);
+      ws.on('open', () => { clearTimeout(timeout); ws.close(); resolve(); });
+      ws.on('error', (err) => { clearTimeout(timeout); reject(err); });
+    });
+    ok('WebSocket', `Connected to ${wsUrl}`);
+  } catch (err) {
+    fail('WebSocket', `${wsUrl} — ${err.message}`);
+  }
+} else {
+  console.info('  - NEXT_PUBLIC_WS_URL: not set (skipping — set to test prod WebSocket)');
+}
+
 // --- Summary ---
 const failed = results.filter((r) => r.status === 'FAIL');
 console.info('\n' + '='.repeat(50));

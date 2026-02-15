@@ -44,6 +44,7 @@ locals {
     "firebase.googleapis.com",
     "identitytoolkit.googleapis.com",
     "iam.googleapis.com",
+    "artifactregistry.googleapis.com",
   ]
 }
 
