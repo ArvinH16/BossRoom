@@ -1,83 +1,52 @@
-/** Mission Control: top overlay showing agent activity during autonomous work. */
+/** Mission Control: compact agent badges at top of screen during workspace activity. */
 'use client';
 
-import { useState } from 'react';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
-import { statusColors, statusLabels } from '@/data/agents';
+import { statusColors } from '@/data/agents';
 import type { AgentStatus } from '@bossroom/shared-types';
 
-const MAX_VISIBLE = 3;
-
-function AgentCard({
+function AgentBadge({
   name,
   color,
   status,
-  lastText,
+  role,
   onClick,
 }: {
   name: string;
   color: string;
   status: AgentStatus;
-  lastText: string;
+  role: 'lead' | 'worker';
   onClick: () => void;
 }) {
-  const isActive = status !== 'idle';
+  const isActive = status === 'working' || status === 'thinking';
+  const statusColor = statusColors[status];
 
   return (
     <button
       onClick={onClick}
-      className="flex flex-col gap-1.5 bg-black/60 backdrop-blur-sm rounded-lg p-3 min-w-[200px] max-w-[260px]
-                 border border-white/10 hover:border-white/20 transition-colors cursor-pointer text-left"
+      className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1
+                 border border-white/10 hover:border-white/25 transition-all cursor-pointer"
     >
-      <div className="flex items-center gap-2">
-        <div className="relative shrink-0">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: color }}
-          />
-          {isActive && (
-            <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
-          )}
-        </div>
-        <span className="text-sm font-medium text-white truncate">{name}</span>
-        {isActive && (
-          <span
-            className="text-[10px] px-1.5 py-0.5 rounded-full ml-auto"
-            style={{
-              backgroundColor: `${statusColors[status]}20`,
-              color: statusColors[status],
-            }}
-          >
-            {statusLabels[status]}
-          </span>
-        )}
-      </div>
-
-      {/* Last streaming text (truncated preview) */}
-      <p className="text-[11px] text-white/50 line-clamp-2 leading-tight min-h-[2em]">
-        {lastText || (isActive ? 'Starting up...' : 'Click to chat →')}
-      </p>
-
-      {/* Status bar */}
-      <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{
-            backgroundColor: statusColors[status],
-            width:
-              status === 'working'
-                ? '80%'
-                : status === 'thinking'
-                  ? '40%'
-                  : status === 'idle'
-                    ? '100%'
-                    : '10%',
-            opacity: isActive ? 1 : 0.3,
-          }}
-        />
-      </div>
+      {/* Status dot — color based on processing state, pulses when active */}
+      <div
+        className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'animate-pulse' : ''}`}
+        style={{ backgroundColor: statusColor }}
+      />
+      {/* Agent name */}
+      <span className="text-xs text-white/80 whitespace-nowrap">
+        {name}
+      </span>
+      {/* Lead badge */}
+      {role === 'lead' && (
+        <span
+          className="text-[9px] font-medium px-1 py-px rounded-sm"
+          style={{ backgroundColor: `${color}30`, color }}
+        >
+          lead
+        </span>
+      )}
     </button>
   );
 }
@@ -87,96 +56,41 @@ export function MissionControl() {
   const dynamicAgents = useWorkspaceStore((s) => s.dynamicAgents);
   const taskSummary = useWorkspaceStore((s) => s.taskSummary);
   const worldAgents = useWorldStore((s) => s.agents);
-  const streamingText = useChatStore((s) => s.streamingText);
   const openChat = useChatStore((s) => s.openChat);
-
-  const [page, setPage] = useState(0);
 
   // Only show when workspace is building or ready and there are dynamic agents
   if (phase === 'reception' || dynamicAgents.length === 0) return null;
 
-  // Always show the overlay once workspace is built so users can click into agents
-  const totalPages = Math.ceil(dynamicAgents.length / MAX_VISIBLE);
-  const visibleAgents = dynamicAgents.slice(page * MAX_VISIBLE, (page + 1) * MAX_VISIBLE);
-  const needsCarousel = dynamicAgents.length > MAX_VISIBLE;
-
   return (
-    <div className="fixed top-4 left-4 right-4 z-40 pointer-events-none">
-      <div className="max-w-4xl mx-auto pointer-events-auto">
-        {/* Task summary header */}
+    <div className="fixed top-3 left-3 right-3 z-40 pointer-events-none">
+      <div className="max-w-5xl mx-auto pointer-events-auto">
+        {/* Task summary */}
         {taskSummary && (
           <div className="text-center mb-2">
-            <span className="text-xs text-white/40 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
+            <span className="text-[11px] text-white/40 bg-black/40 backdrop-blur-sm rounded-full px-3 py-0.5">
               {phase === 'building' ? 'Building workspace...' : taskSummary}
             </span>
           </div>
         )}
 
-        {/* Agent cards with carousel */}
-        <div className="flex items-center justify-center gap-2">
-          {needsCarousel && (
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="shrink-0 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm border border-white/10
-                         text-white/60 hover:text-white hover:border-white/30 disabled:opacity-20 disabled:cursor-default
-                         flex items-center justify-center transition-colors text-sm"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
-          )}
+        {/* Agent badges — wrapping flex layout */}
+        <div className="flex flex-wrap justify-center gap-1.5">
+          {dynamicAgents.map((da) => {
+            const worldAgent = worldAgents.find((a) => a.id === da.agentId);
+            const status: AgentStatus = worldAgent?.status ?? 'idle';
 
-          <div className="flex gap-3 justify-center">
-            {visibleAgents.map((da) => {
-              const worldAgent = worldAgents.find((a) => a.id === da.agentId);
-              const status: AgentStatus = worldAgent?.status ?? 'idle';
-              const lastText = streamingText[da.agentId] ?? '';
-              // Truncate to last ~80 chars
-              const preview =
-                lastText.length > 80
-                  ? '...' + lastText.slice(-80)
-                  : lastText;
-
-              return (
-                <AgentCard
-                  key={da.agentId}
-                  name={da.name}
-                  color={da.color}
-                  status={status}
-                  lastText={preview}
-                  onClick={() => openChat(da.agentId)}
-                />
-              );
-            })}
-          </div>
-
-          {needsCarousel && (
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
-              className="shrink-0 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm border border-white/10
-                         text-white/60 hover:text-white hover:border-white/30 disabled:opacity-20 disabled:cursor-default
-                         flex items-center justify-center transition-colors text-sm"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-            </button>
-          )}
-        </div>
-
-        {/* Page dots */}
-        {needsCarousel && (
-          <div className="flex justify-center gap-1.5 mt-2">
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => setPage(i)}
-                className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                  i === page ? 'bg-white/60' : 'bg-white/20'
-                }`}
+            return (
+              <AgentBadge
+                key={da.agentId}
+                name={da.name}
+                color={da.color}
+                status={status}
+                role={da.role}
+                onClick={() => openChat(da.agentId)}
               />
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
