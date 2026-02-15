@@ -3,6 +3,7 @@
 
 import { Suspense } from 'react';
 import { Physics } from '@react-three/rapier';
+import { Sky } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { Office } from './Office';
 import { Agent } from './Agent';
@@ -38,6 +39,8 @@ export function Scene() {
         intensity={LIGHTING.point.intensity}
         color={LIGHTING.point.color}
       />
+
+      <Sky sunPosition={[100, 60, 100]} turbidity={0.8} rayleigh={0.5} />
 
       <fog
         attach="fog"
