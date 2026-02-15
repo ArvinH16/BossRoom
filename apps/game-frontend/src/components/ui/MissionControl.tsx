@@ -90,12 +90,12 @@ export function MissionControl() {
   const streamingText = useChatStore((s) => s.streamingText);
   const openChat = useChatStore((s) => s.openChat);
 
+  const [page, setPage] = useState(0);
+
   // Only show when workspace is building or ready and there are dynamic agents
   if (phase === 'reception' || dynamicAgents.length === 0) return null;
 
   // Always show the overlay once workspace is built so users can click into agents
-
-  const [page, setPage] = useState(0);
   const totalPages = Math.ceil(dynamicAgents.length / MAX_VISIBLE);
   const visibleAgents = dynamicAgents.slice(page * MAX_VISIBLE, (page + 1) * MAX_VISIBLE);
   const needsCarousel = dynamicAgents.length > MAX_VISIBLE;
