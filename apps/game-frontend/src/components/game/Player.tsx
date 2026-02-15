@@ -54,11 +54,16 @@ export function Player() {
   // Keyboard input
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      keys.current[e.code] = true;
-
-      // Ignore interaction keys if typing in an input
+      // When typing in an input, ignore WASD/E/T but still allow arrow keys
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
+      if (isTyping) {
+        // Still track arrow keys for movement while typing
+        if (e.code.startsWith('Arrow')) keys.current[e.code] = true;
+        return;
+      }
+
+      keys.current[e.code] = true;
 
       if (e.code === 'KeyE' && nearestAgent && !chatPanelOpen) {
         openChat(nearestAgent);
@@ -77,6 +82,11 @@ export function Player() {
 
     function handleKeyUp(e: KeyboardEvent) {
       keys.current[e.code] = false;
+
+      // Skip interaction key handling when typing in an input
+      const tag = (e.target as HTMLElement)?.tagName;
+      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
+      if (isTyping) return;
 
       if (e.code === 'KeyT' && recordingRef.current) {
         recordingRef.current = false;
