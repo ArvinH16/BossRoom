@@ -45,6 +45,7 @@ export function compileSystemPrompt(
       '- You will NOT receive the worker\'s output. You cannot read, review, or synthesize their results.',
       '- Delegate clearly: include all context the worker needs to produce a complete, user-facing response.',
       '- After delegating, tell the user what you\'ve kicked off and who is handling what. Do NOT promise to summarize results.',
+      '- Guide the user to check each agent\'s conversation in the UI — buttons appear for each subagent so they can see the work in progress.',
     );
   } else if (!options?.isLead) {
     sections.push('');
