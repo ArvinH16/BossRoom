@@ -28,16 +28,17 @@ export function handleComposioAuthRoutes(req: IncomingMessage, res: ServerRespon
       return true;
     }
 
-    composio.connectedAccounts.initiate(userId, app, {
-      callbackUrl: url.searchParams.get('callbackUrl') ?? undefined,
-    })
-      .then(connRequest => {
+    (async () => {
+      try {
+        const connRequest = await composio.connectedAccounts.initiate(userId, app, {
+          callbackUrl: url.searchParams.get('callbackUrl') ?? undefined,
+        });
         jsonResponse(res, 200, { redirectUrl: connRequest.redirectUrl });
-      })
-      .catch(err => {
+      } catch (err) {
         log.error('Composio auth initiate error:', err);
         jsonResponse(res, 500, { error: 'Failed to initiate auth' });
-      });
+      }
+    })();
 
     return true;
   }
@@ -55,19 +56,20 @@ export function handleComposioAuthRoutes(req: IncomingMessage, res: ServerRespon
       return true;
     }
 
-    composio.connectedAccounts.list({ userIds: [userId], statuses: ['ACTIVE'] })
-      .then(accounts => {
+    (async () => {
+      try {
+        const accounts = await composio.connectedAccounts.list({ userIds: [userId], statuses: ['ACTIVE'] });
         const connections = accounts.items.map(a => ({
           id: a.id,
           toolkit: a.toolkit.slug,
           status: a.status,
         }));
         jsonResponse(res, 200, { connections });
-      })
-      .catch(err => {
+      } catch (err) {
         log.error('Composio status error:', err);
         jsonResponse(res, 500, { error: 'Failed to fetch status' });
-      });
+      }
+    })();
 
     return true;
   }

@@ -1,8 +1,15 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import type { LanguageModel } from 'ai';
-import { type AgentModel, GATEWAY_MODEL_MAP } from '@bossroom/shared-types';
+import type { AgentModel } from '@bossroom/shared-types';
 import { env } from '../env.js';
 import { log } from '../logger.js';
+
+/** Maps our internal model names to Cloudflare AI Gateway provider/model format */
+const GATEWAY_MODEL_MAP: Record<AgentModel, string> = {
+  'claude': 'anthropic/claude-sonnet-4-5',
+  'gpt-4o': 'openai/gpt-4o',
+  'gemini': 'google-ai-studio/gemini-2.5-flash',
+} as const;
 
 const GATEWAY_BASE = `https://gateway.ai.cloudflare.com/v1/${env.CF_AI_GATEWAY_ACCOUNT_ID}/${env.CF_AI_GATEWAY_ID}/compat`;
 

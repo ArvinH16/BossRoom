@@ -5,11 +5,11 @@ import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { Office } from './Office';
 import { Agent } from './Agent';
 import { Player } from './Player';
-import { useGameStore } from '@/stores/gameStore';
+import { useWorldStore } from '@/stores/worldStore';
 import { LIGHTING, POST_PROCESSING } from '@/data/gameConfig';
 
 export function Scene() {
-  const agents = useGameStore((s) => s.agents);
+  const agents = useWorldStore((s) => s.agents);
 
   return (
     <>

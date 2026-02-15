@@ -1,7 +1,8 @@
 /** Floating notifications for agent tool executions (email sent, ticket created, etc.) */
 'use client';
 
-import { useGameStore } from '@/stores/gameStore';
+import { useToolStore } from '@/stores/toolStore';
+import { useWorldStore } from '@/stores/worldStore';
 
 function formatToolName(raw: string): string {
   // "GMAIL_SEND_EMAIL" -> "Send Email"
@@ -13,8 +14,8 @@ function formatToolName(raw: string): string {
 }
 
 export function ToolExecutionToasts() {
-  const toolExecutions = useGameStore((s) => s.toolExecutions);
-  const agents = useGameStore((s) => s.agents);
+  const toolExecutions = useToolStore((s) => s.toolExecutions);
+  const agents = useWorldStore((s) => s.agents);
 
   if (toolExecutions.length === 0) return null;
 

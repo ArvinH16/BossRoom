@@ -31,7 +31,7 @@ const walls: {
   },
 ];
 
-const FURNITURE_SCALE = 2.2;
+import { FURNITURE_SCALE } from '@/data/gameConfig';
 
 function Decor() {
   const bookcase = useGLTF('/models/furniture/bookcaseOpen.glb');

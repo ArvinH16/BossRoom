@@ -1,8 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useGameStore } from '@/stores/gameStore';
+import { useWorldStore } from '@/stores/worldStore';
+import { useChatStore } from '@/stores/chatStore';
+import { useToolStore } from '@/stores/toolStore';
 import { useAuthStore } from '@/stores/authStore';
+import { initWebSocket } from '@/lib/messageHandler';
+import { gameSocket } from '@/lib/websocket';
 import {
   agents as agentList,
   statusColors,
@@ -14,19 +18,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Markdown } from '@/components/ui/Markdown';
+import { ThinkingIndicator } from '@/components/ui/ThinkingIndicator';
+import { AgentAvatar } from '@/components/ui/AgentAvatar';
 import { Send, LogOut, Wifi, WifiOff, Bot, Wrench } from 'lucide-react';
 
 function AgentColumn({ agentId }: { agentId: string }) {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const agents = useGameStore((s) => s.agents);
-  const chatMessages = useGameStore((s) => s.chatMessages);
-  const streamingText = useGameStore((s) => s.streamingText);
-  const activeAgent = useGameStore((s) => s.activeAgent);
-  const toolExecutions = useGameStore((s) => s.toolExecutions);
-  const openChat = useGameStore((s) => s.openChat);
-  const sendMessage = useGameStore((s) => s.sendMessage);
+  const agents = useWorldStore((s) => s.agents);
+  const chatMessages = useChatStore((s) => s.chatMessages);
+  const streamingText = useChatStore((s) => s.streamingText);
+  const activeAgent = useChatStore((s) => s.activeAgent);
+  const toolExecutions = useToolStore((s) => s.toolExecutions);
+  const openChat = useChatStore((s) => s.openChat);
+  const sendMessage = useChatStore((s) => s.sendMessage);
 
   const agent = agents.find((a) => a.id === agentId)!;
   const agentData = agentList.find((a) => a.id === agentId)!;
@@ -58,12 +64,7 @@ function AgentColumn({ agentId }: { agentId: string }) {
     <div className="flex flex-col h-full border border-border rounded-xl bg-card overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-border shrink-0">
-        <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-          style={{ backgroundColor: agent.color }}
-        >
-          {agent.name[0]}
-        </div>
+        <AgentAvatar name={agent.name} color={agent.color} className="w-10 h-10 text-sm" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-foreground font-semibold text-sm truncate">
@@ -195,20 +196,7 @@ function AgentColumn({ agentId }: { agentId: string }) {
           {/* Thinking indicator */}
           {agent.status === 'thinking' && !currentStream && (
             <div className="max-w-[90%] mr-auto px-3 py-2 rounded-lg text-sm bg-secondary text-muted-foreground">
-              <span className="inline-flex gap-1">
-                <span
-                  className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
-                  style={{ animationDelay: '0ms' }}
-                />
-                <span
-                  className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
-                  style={{ animationDelay: '150ms' }}
-                />
-                <span
-                  className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
-                  style={{ animationDelay: '300ms' }}
-                />
-              </span>
+              <ThinkingIndicator />
             </div>
           )}
 
@@ -255,9 +243,9 @@ export default function TestChatPage() {
   const signIn = useAuthStore((s) => s.signIn);
   const signOut = useAuthStore((s) => s.signOut);
   const getToken = useAuthStore((s) => s.getToken);
-  const connected = useGameStore((s) => s.connected);
-  const initWebSocket = useGameStore((s) => s.initWebSocket);
-  const reset = useGameStore((s) => s.reset);
+  const connected = useWorldStore((s) => s.connected);
+  const worldReset = useWorldStore((s) => s.reset);
+  const chatReset = useChatStore((s) => s.reset);
 
   // Connect to WebSocket once authenticated
   useEffect(() => {
@@ -277,12 +265,14 @@ export default function TestChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [user, getToken, initWebSocket]);
+  }, [user, getToken]);
 
   const handleSignOut = useCallback(async () => {
-    reset();
+    gameSocket.disconnect();
+    worldReset();
+    chatReset();
     await signOut();
-  }, [reset, signOut]);
+  }, [worldReset, chatReset, signOut]);
 
   // Loading state
   if (loading) {

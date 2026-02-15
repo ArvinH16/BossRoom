@@ -4,7 +4,7 @@
 import { Billboard, Text, Sparkles } from '@react-three/drei';
 import { RigidBody } from '@react-three/rapier';
 import { CharacterModel } from './CharacterModel';
-import { useGameStore } from '@/stores/gameStore';
+import { useChatStore } from '@/stores/chatStore';
 import { statusColors, statusLabels, type AgentData } from '@/data/agents';
 
 interface AgentProps {
@@ -12,7 +12,7 @@ interface AgentProps {
 }
 
 export function Agent({ agent }: AgentProps) {
-  const openChat = useGameStore((s) => s.openChat);
+  const openChat = useChatStore((s) => s.openChat);
   const isActive = agent.status !== 'idle';
 
   return (

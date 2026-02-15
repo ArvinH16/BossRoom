@@ -1,8 +1,10 @@
 /** GTA-style onboarding: bottom text box + step-by-step tutorial teaching core mechanics. */
 'use client';
 
-import { useEffect } from 'react';
-import { useGameStore } from '@/stores/gameStore';
+import { useOnboardingStore } from '@/stores/onboardingStore';
+import { useWorldStore } from '@/stores/worldStore';
+import { useChatStore } from '@/stores/chatStore';
+import { useOnboardingSteps } from '@/hooks/useOnboardingSteps';
 
 const STEPS = [
   {
@@ -28,48 +30,22 @@ const STEPS = [
 ];
 
 export function OnboardingOverlay() {
-  const step = useGameStore((s) => s.onboardingStep);
-  const complete = useGameStore((s) => s.onboardingComplete);
-  const advance = useGameStore((s) => s.advanceOnboarding);
-  const finish = useGameStore((s) => s.completeOnboarding);
-  const nearestAgent = useGameStore((s) => s.nearestAgent);
-  const chatPanelOpen = useGameStore((s) => s.chatPanelOpen);
-  const chatMessages = useGameStore((s) => s.chatMessages);
+  const step = useOnboardingStore((s) => s.onboardingStep);
+  const complete = useOnboardingStore((s) => s.onboardingComplete);
+  const advance = useOnboardingStore((s) => s.advanceOnboarding);
+  const finish = useOnboardingStore((s) => s.completeOnboarding);
+  const nearestAgent = useWorldStore((s) => s.nearestAgent);
+  const chatPanelOpen = useChatStore((s) => s.chatPanelOpen);
+  const chatMessages = useChatStore((s) => s.chatMessages);
 
-  // Auto-advance based on player actions
-  useEffect(() => {
-    if (complete || step !== 0) return;
-
-    // Step 0 -> 1: auto-advance after 4 seconds (give time to read)
-    const t = setTimeout(() => advance(), 4000);
-    return () => clearTimeout(t);
-  }, [step, complete, advance]);
-
-  useEffect(() => {
-    if (complete) return;
-    // Step 1 -> 2: when player is near an agent
-    if (step === 1 && nearestAgent) advance();
-  }, [step, complete, nearestAgent, advance]);
-
-  useEffect(() => {
-    if (complete) return;
-    // Step 2 -> 3: when chat panel opens
-    if (step === 2 && chatPanelOpen) advance();
-  }, [step, complete, chatPanelOpen, advance]);
-
-  useEffect(() => {
-    if (complete) return;
-    // Step 3 -> 4: when a message is sent
-    const hasMessages = Object.values(chatMessages).some((m) => m.length > 0);
-    if (step === 3 && hasMessages) advance();
-  }, [step, complete, chatMessages, advance]);
-
-  useEffect(() => {
-    if (complete || step !== 4) return;
-    // Step 4 -> done: auto-complete after 5 seconds
-    const t = setTimeout(() => finish(), 5000);
-    return () => clearTimeout(t);
-  }, [step, complete, finish]);
+  useOnboardingSteps({
+    step: complete ? -1 : step,
+    nearestAgent,
+    chatPanelOpen,
+    chatMessages,
+    advance,
+    complete: finish,
+  });
 
   if (complete || step >= STEPS.length) return null;
 

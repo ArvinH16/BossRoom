@@ -2,21 +2,24 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useGameStore } from '@/stores/gameStore';
-import { statusColors, statusLabels } from '@/data/agents';
+import { useWorldStore } from '@/stores/worldStore';
+import { useChatStore } from '@/stores/chatStore';
 import { Markdown } from '@/components/ui/Markdown';
+import { ThinkingIndicator } from '@/components/ui/ThinkingIndicator';
+import { AgentAvatar } from '@/components/ui/AgentAvatar';
+import { AgentStatusBadge } from '@/components/ui/AgentStatusBadge';
 
 export function ChatPanel() {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const chatPanelOpen = useGameStore((s) => s.chatPanelOpen);
-  const activeAgent = useGameStore((s) => s.activeAgent);
-  const agents = useGameStore((s) => s.agents);
-  const chatMessages = useGameStore((s) => s.chatMessages);
-  const streamingText = useGameStore((s) => s.streamingText);
-  const closeChat = useGameStore((s) => s.closeChat);
-  const sendMessage = useGameStore((s) => s.sendMessage);
+  const chatPanelOpen = useChatStore((s) => s.chatPanelOpen);
+  const activeAgent = useChatStore((s) => s.activeAgent);
+  const agents = useWorldStore((s) => s.agents);
+  const chatMessages = useChatStore((s) => s.chatMessages);
+  const streamingText = useChatStore((s) => s.streamingText);
+  const closeChat = useChatStore((s) => s.closeChat);
+  const sendMessage = useChatStore((s) => s.sendMessage);
 
   const agent = agents.find((a) => a.id === activeAgent);
   const messages = activeAgent ? (chatMessages[activeAgent] ?? []) : [];
@@ -54,12 +57,7 @@ export function ChatPanel() {
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold"
-                style={{ backgroundColor: agent.color }}
-              >
-                {agent.name[0]}
-              </div>
+              <AgentAvatar name={agent.name} color={agent.color} />
               <div>
                 <h2 className="text-white font-semibold text-sm">
                   {agent.name}
@@ -68,14 +66,7 @@ export function ChatPanel() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {agent.status !== 'idle' && (
-                <span
-                  className="px-2 py-0.5 rounded-full text-[10px] font-medium text-white capitalize"
-                  style={{ backgroundColor: statusColors[agent.status] + '80' }}
-                >
-                  {statusLabels[agent.status]}
-                </span>
-              )}
+              <AgentStatusBadge status={agent.status} />
               <button
                 onClick={closeChat}
                 className="text-white/50 hover:text-white text-xl leading-none p-1"
@@ -143,11 +134,7 @@ export function ChatPanel() {
             {/* Thinking indicator */}
             {agent.status === 'thinking' && !currentStream && (
               <div className="max-w-[85%] mr-auto px-3 py-2 rounded-lg text-sm bg-white/10 text-white/40">
-                <span className="inline-flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </span>
+                <ThinkingIndicator />
               </div>
             )}
 

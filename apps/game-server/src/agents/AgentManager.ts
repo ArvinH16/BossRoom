@@ -4,12 +4,12 @@
  * Composio tools, and MCP tool support.
  */
 import { WebSocket } from 'ws';
-import { streamText, stepCountIs } from 'ai';
+import { streamText, stepCountIs, type ModelMessage } from 'ai';
 import type {
-  AgentSkill,
   AgentStatus,
   ServerMessage,
 } from '@bossroom/shared-types';
+import { AGENT_DEFS, type AgentDef, generateConversationId, TIMEOUTS } from '@bossroom/shared-utils';
 import { getModel } from '../ai/gateway.js';
 import { getComposioTools } from '../ai/composio.js';
 import { mcpManager } from '../ai/mcp.js';
@@ -18,94 +18,33 @@ import { db } from '../db/client.js';
 import { conversations as conversationsTable } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 
-// --- Agent definitions (in-memory, mirrors frontend data/agents.ts) ---
-interface AgentDef extends AgentSkill {
-  status: AgentStatus;
-}
-
-const AGENT_DEFS: AgentDef[] = [
-  {
-    id: 'mailbot',
-    name: 'Mailbot',
-    description: 'Handles all internal and external communications.',
-    systemPrompt: `You are Mailbot, a cheerful and efficient email assistant in the BossRoom 3D workspace.
-You help users compose, send, and manage emails. You speak casually with energy and enthusiasm.
-When a user asks you to send an email, compose it properly and confirm before "sending."
-If asked about capabilities, list your tools. Keep responses concise and fun.
-You love sorting things and organizing communication.`,
-    model: 'gpt-4o',
-    zone: 'communications',
-    personality: 'Cheerful and efficient. Loves sorting things.',
-    avatarConfig: { color: '#4A90D9', position: [-6, 0, -6] },
-    status: 'idle',
-  },
-  {
-    id: 'taskmaster',
-    name: 'Taskmaster',
-    description: 'Manages projects, tasks, and deadlines.',
-    systemPrompt: `You are Taskmaster, a strict but fair project manager in the BossRoom 3D workspace.
-You help users create tasks, track issues, and manage deadlines. You speak with authority
-and use military/mission metaphors. You never miss a deadline.
-When asked to create a task, gather the details (title, description, priority) then confirm.
-Keep responses direct and action-oriented.`,
-    model: 'gemini',
-    zone: 'project-ops',
-    personality: 'Strict but fair. Never misses a deadline.',
-    avatarConfig: { color: '#D94A4A', position: [6, 0, -6] },
-    status: 'idle',
-  },
-  {
-    id: 'clockwork',
-    name: 'Clockwork',
-    description: 'Keeps track of time, schedules, and calendar events.',
-    systemPrompt: `You are Clockwork, a precise and punctual calendar assistant in the BossRoom 3D workspace.
-You help users manage their schedule, create events, and check availability.
-You are obsessed with punctuality and always speak in time metaphors.
-"Every second counts!" "Let's make sure your calendar is ticking perfectly."
-When scheduling, always confirm the time, duration, and attendees.`,
-    model: 'gemini',
-    zone: 'calendar',
-    personality: 'Precise and punctual. Speaks in time metaphors.',
-    avatarConfig: { color: '#4AD97A', position: [0, 0, -10] },
-    status: 'idle',
-  },
-];
+// --- Local type that extends AgentDef with runtime status ---
+type AgentWithStatus = AgentDef & { status: AgentStatus };
 
 interface Conversation {
   id: string;
   playerId: string;
   agentId: string;
   messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  aiMessages: Array<any>;
+  aiMessages: ModelMessage[];
   ws: WebSocket;
 }
 
 export class AgentManager {
-  private agents: Map<string, AgentDef> = new Map();
+  private agents: Map<string, AgentWithStatus> = new Map();
   private conversations: Map<string, Conversation> = new Map();
   private playerConversations: Map<string, string> = new Map(); // playerId:agentId -> convId
 
   constructor() {
     for (const agent of AGENT_DEFS) {
-      this.agents.set(agent.id, { ...agent });
+      this.agents.set(agent.id, { ...agent, status: 'idle' });
     }
   }
 
-  getAgentStates(): Record<string, AgentSkill & { status: AgentStatus }> {
-    const result: Record<string, AgentSkill & { status: AgentStatus }> = {};
+  getAgentStates(): Record<string, AgentWithStatus> {
+    const result: Record<string, AgentWithStatus> = {};
     for (const [id, agent] of this.agents) {
-      result[id] = {
-        id: agent.id,
-        name: agent.name,
-        description: agent.description,
-        systemPrompt: agent.systemPrompt,
-        model: agent.model,
-        zone: agent.zone,
-        personality: agent.personality,
-        avatarConfig: agent.avatarConfig,
-        status: agent.status,
-      };
+      result[id] = agent;
     }
     return result;
   }
@@ -136,7 +75,7 @@ export class AgentManager {
             playerId,
             agentId,
             messages: (existing.messages ?? []) as Conversation['messages'],
-            aiMessages: (existing.aiMessages ?? []) as Conversation['aiMessages'],
+            aiMessages: (existing.aiMessages ?? []) as ModelMessage[],
             ws,
           };
           this.conversations.set(convId, conv);
@@ -152,7 +91,7 @@ export class AgentManager {
           });
         } else {
           // Brand new conversation
-          convId = crypto.randomUUID();
+          convId = generateConversationId();
           const greeting = this.getGreeting(agent, displayName);
           conv = {
             id: convId,
@@ -183,7 +122,7 @@ export class AgentManager {
       } catch (err) {
         // DB unreachable — fall back to in-memory only
         log.error(`[agent] DB error loading conversation for ${agentId}:`, err);
-        convId = crypto.randomUUID();
+        convId = generateConversationId();
         const greeting = this.getGreeting(agent, displayName);
         conv = {
           id: convId,
@@ -235,7 +174,7 @@ export class AgentManager {
     let conv = convId ? this.conversations.get(convId) : undefined;
 
     if (!conv) {
-      convId = conversationId || `conv-${Date.now()}`;
+      convId = conversationId || generateConversationId();
       conv = { id: convId, playerId, agentId, messages: [], aiMessages: [], ws };
       this.conversations.set(convId, conv);
       this.playerConversations.set(convKey, convId);
@@ -358,7 +297,7 @@ export class AgentManager {
       setTimeout(() => {
         this.setAgentStatus(agentId, 'idle');
         broadcastFn({ type: 'agent:statusChanged', payload: { agentId, status: 'idle' } });
-      }, 2000);
+      }, TIMEOUTS.AGENT_ERROR_RECOVERY_MS);
     }
   }
 
@@ -397,7 +336,7 @@ export class AgentManager {
     }
   }
 
-  private getGreeting(agent: AgentDef, displayName: string | null): string {
+  private getGreeting(agent: AgentWithStatus, displayName: string | null): string {
     const name = displayName ?? 'there';
     switch (agent.id) {
       case 'mailbot':

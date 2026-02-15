@@ -1,12 +1,13 @@
 /** "Press E to talk to [Agent]" overlay shown when player is near an NPC. */
 'use client';
 
-import { useGameStore } from '@/stores/gameStore';
+import { useWorldStore } from '@/stores/worldStore';
+import { useChatStore } from '@/stores/chatStore';
 
 export function InteractionPrompt() {
-  const nearestAgent = useGameStore((s) => s.nearestAgent);
-  const agents = useGameStore((s) => s.agents);
-  const chatPanelOpen = useGameStore((s) => s.chatPanelOpen);
+  const nearestAgent = useWorldStore((s) => s.nearestAgent);
+  const agents = useWorldStore((s) => s.agents);
+  const chatPanelOpen = useChatStore((s) => s.chatPanelOpen);
 
   if (!nearestAgent || chatPanelOpen) return null;
 
