@@ -23,26 +23,38 @@ class GameWebSocket {
   private disabled = false;
 
   constructor() {
-    const explicit = typeof window !== 'undefined'
-      ? process.env['NEXT_PUBLIC_WS_URL']
-      : undefined;
-
-    // Only connect if explicit server URL is configured
-    if (explicit && explicit.trim()) {
-      this.url = explicit;
-    } else if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-      // HTTPS page but no WSS server configured — don't attempt insecure ws://
+    // SSR: disable until client-side hydration
+    if (typeof window === 'undefined') {
       this.url = '';
       this.disabled = true;
-      console.log('[WS] No server configured for production — running in offline mode');
-    } else if (typeof window !== 'undefined') {
-      // Development mode on HTTP - use localhost
-      this.url = 'ws://localhost:8080';
-    } else {
-      // SSR fallback
-      this.url = '';
-      this.disabled = true;
+      return;
     }
+
+    // Runtime check: HTTPS pages cannot use ws://, only wss://
+    const isProduction = window.location.protocol === 'https:';
+    const wsUrl = this.getWebSocketUrl();
+
+    if (isProduction && (!wsUrl || wsUrl.startsWith('ws://'))) {
+      // HTTPS page needs wss:// server - if not configured, disable
+      this.url = '';
+      this.disabled = true;
+      console.log('[WS] Production mode: no secure WebSocket server configured. Running offline.');
+    } else if (wsUrl) {
+      this.url = wsUrl;
+    } else {
+      // Development fallback
+      this.url = 'ws://localhost:8080';
+    }
+  }
+
+  private getWebSocketUrl(): string | null {
+    // Read from meta tag set by Next.js at runtime, not build time
+    if (typeof document !== 'undefined') {
+      const meta = document.querySelector('meta[name="ws-url"]');
+      if (meta) return meta.getAttribute('content');
+    }
+    // Fallback to window-injected value
+    return (window as any).__WS_URL__ || null;
   }
 
   onMessage(handler: MessageHandler) {

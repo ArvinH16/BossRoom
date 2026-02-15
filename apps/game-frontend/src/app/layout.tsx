@@ -10,8 +10,18 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || '';
+  
   return (
     <html lang="en">
+      <head>
+        {wsUrl && <meta name="ws-url" content={wsUrl} />}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__WS_URL__ = ${JSON.stringify(wsUrl)};`,
+          }}
+        />
+      </head>
       <body className="bg-[#0a0a1a]">{children}</body>
     </html>
   );
