@@ -12,14 +12,10 @@ const envSchema = z.object({
   FIREBASE_CLIENT_EMAIL: z.string().min(1),
   FIREBASE_PRIVATE_KEY: z.string().min(1),
 
-  // Cloudflare AI Gateway
-  CF_AI_GATEWAY_ACCOUNT_ID: z.string().min(1),
-  CF_AI_GATEWAY_ID: z.string().min(1),
+  // Vercel AI Gateway
+  AI_GATEWAY_API_KEY: z.string().min(1),
 
-  // Provider API keys (optional — server warns if missing)
-  ANTHROPIC_API_KEY: z.string().optional(),
-  OPENAI_API_KEY: z.string().optional(),
-  GOOGLE_AI_API_KEY: z.string().optional(),
+  // Optional: Composio for agent tools
   COMPOSIO_API_KEY: z.string().optional(),
 
   // Voice: Deepgram STT (server-only token minting)

@@ -13,6 +13,10 @@ const nextConfig = {
   nx: {},
   // Override PORT env so frontend doesn't conflict with game server
   devIndicators: false,
+  // Static export for Cloudflare Pages
+  output: 'export',
+  images: { unoptimized: true },
+  trailingSlash: true,
 };
 
 const plugins = [

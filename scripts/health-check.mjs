@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import pg from 'pg';
-import OpenAI from 'openai';
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
 
 const results = [];
 
@@ -18,16 +19,12 @@ function fail(name, detail) {
 console.info('\n[ENV VARS]');
 const required = [
   'DATABASE_URL',
-  'CF_AI_GATEWAY_ACCOUNT_ID',
-  'CF_AI_GATEWAY_ID',
+  'AI_GATEWAY_API_KEY',
   'FIREBASE_PROJECT_ID',
   'FIREBASE_CLIENT_EMAIL',
   'FIREBASE_PRIVATE_KEY',
 ];
 const optional = [
-  'OPENAI_API_KEY',
-  'ANTHROPIC_API_KEY',
-  'GOOGLE_AI_API_KEY',
   'NEXT_PUBLIC_FIREBASE_API_KEY',
   'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
 ];
@@ -40,18 +37,12 @@ for (const key of required) {
   }
 }
 
-let hasAiKey = false;
 for (const key of optional) {
   if (process.env[key]) {
     ok(key, 'set');
-    if (key.includes('API_KEY') && !key.includes('FIREBASE')) hasAiKey = true;
   } else {
     console.info(`  - ${key}: not set (optional)`);
   }
-}
-
-if (!hasAiKey) {
-  fail('AI API Keys', 'At least one of OPENAI/ANTHROPIC/GOOGLE_AI API key is required');
 }
 
 // --- 2. Database connection ---
@@ -73,51 +64,29 @@ if (process.env.DATABASE_URL) {
   fail('Cloud SQL', 'DATABASE_URL not set');
 }
 
-// --- 3. Cloudflare AI Gateway ---
+// --- 3. Vercel AI Gateway ---
 console.info('\n[AI GATEWAY]');
-const accountId = process.env.CF_AI_GATEWAY_ACCOUNT_ID;
-const gatewayId = process.env.CF_AI_GATEWAY_ID;
+const aiGatewayKey = process.env.AI_GATEWAY_API_KEY;
 
-if (accountId && gatewayId) {
-  // Gateway is unauthenticated (pass-through) — provider API key is sent directly
-  const providers = [
-    { key: 'GOOGLE_AI_API_KEY', model: 'google-ai-studio/gemini-2.5-flash', name: 'Gemini' },
-    { key: 'OPENAI_API_KEY', model: 'openai/gpt-4o', name: 'GPT-4o' },
-    { key: 'ANTHROPIC_API_KEY', model: 'anthropic/claude-sonnet-4-5', name: 'Claude' },
-  ];
+if (aiGatewayKey) {
+  try {
+    const gateway = createOpenAI({
+      apiKey: aiGatewayKey,
+      baseURL: 'https://ai-gateway.vercel.sh/v1',
+    });
 
-  let tested = false;
-  for (const p of providers) {
-    const apiKey = process.env[p.key];
-    if (!apiKey) continue;
+    const res = await generateText({
+      model: gateway.chat('google/gemini-2.5-flash'),
+      prompt: 'Say "ok" and nothing else.',
+      maxTokens: 5,
+    });
 
-    try {
-      const client = new OpenAI({
-        apiKey,
-        baseURL: `https://gateway.ai.cloudflare.com/v1/${accountId}/${gatewayId}/compat`,
-        timeout: 15000,
-      });
-
-      const res = await client.chat.completions.create({
-        model: p.model,
-        messages: [{ role: 'user', content: 'Say "ok" and nothing else.' }],
-        max_tokens: 5,
-      });
-
-      const reply = res.choices[0]?.message?.content?.trim();
-      ok(`AI Gateway (${p.name})`, `Response: "${reply}"`);
-      tested = true;
-      break;
-    } catch (err) {
-      fail(`AI Gateway (${p.name})`, err.message);
-    }
-  }
-
-  if (!tested) {
-    fail('AI Gateway', 'No working AI provider key found');
+    ok('AI Gateway (Gemini)', `Response: "${res.text.trim()}"`);
+  } catch (err) {
+    fail('AI Gateway (Gemini)', err.message);
   }
 } else {
-  fail('AI Gateway', 'Missing CF_AI_GATEWAY_ACCOUNT_ID or CF_AI_GATEWAY_ID');
+  fail('AI Gateway', 'AI_GATEWAY_API_KEY not set');
 }
 
 // --- 4. Firebase ---

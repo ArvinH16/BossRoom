@@ -1,49 +1,20 @@
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { createOpenAI } from '@ai-sdk/openai';
 import type { LanguageModel } from 'ai';
 import type { AgentModel } from '@bossroom/shared-types';
 import { env } from '../env.js';
-import { log } from '../logger.js';
 
-/** Maps our internal model names to Cloudflare AI Gateway provider/model format */
+/** Vercel AI Gateway model IDs — format: provider/model */
 const GATEWAY_MODEL_MAP: Record<AgentModel, string> = {
-  'claude': 'anthropic/claude-sonnet-4-5',
+  claude: 'anthropic/claude-sonnet-4-5',
   'gpt-4o': 'openai/gpt-4o',
-  'gemini': 'google-ai-studio/gemini-2.5-flash',
-} as const;
-
-const GATEWAY_BASE = `https://gateway.ai.cloudflare.com/v1/${env.CF_AI_GATEWAY_ACCOUNT_ID}/${env.CF_AI_GATEWAY_ID}/compat`;
-
-const PROVIDER_CONFIGS: Record<string, { name: string; envKey: 'ANTHROPIC_API_KEY' | 'OPENAI_API_KEY' | 'GOOGLE_AI_API_KEY' }> = {
-  'anthropic': { name: 'cf-anthropic', envKey: 'ANTHROPIC_API_KEY' },
-  'openai': { name: 'cf-openai', envKey: 'OPENAI_API_KEY' },
-  'google-ai-studio': { name: 'cf-google', envKey: 'GOOGLE_AI_API_KEY' },
+  gemini: 'google/gemini-3-flash',
 };
 
-const providers: Record<string, ReturnType<typeof createOpenAICompatible>> = {};
-
-for (const [key, config] of Object.entries(PROVIDER_CONFIGS)) {
-  const apiKey = env[config.envKey];
-  if (apiKey) {
-    providers[key] = createOpenAICompatible({
-      name: config.name,
-      apiKey,
-      baseURL: GATEWAY_BASE,
-    });
-  } else {
-    log.warn(`${config.envKey} not set — ${key} models unavailable`);
-  }
-}
-
-function getProviderName(gatewayModel: string): string {
-  return gatewayModel.split('/')[0];
-}
+const gateway = createOpenAI({
+  apiKey: env.AI_GATEWAY_API_KEY,
+  baseURL: 'https://ai-gateway.vercel.sh/v1',
+});
 
 export function getModel(agentModel: AgentModel): LanguageModel {
-  const gatewayModel = GATEWAY_MODEL_MAP[agentModel];
-  const providerName = getProviderName(gatewayModel);
-  const provider = providers[providerName];
-  if (!provider) {
-    throw new Error(`No API key configured for provider: ${providerName}`);
-  }
-  return provider(gatewayModel);
+  return gateway.chat(GATEWAY_MODEL_MAP[agentModel]);
 }
