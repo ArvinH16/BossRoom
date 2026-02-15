@@ -38,17 +38,20 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws: WebSocket) => {
+  log.debug('[ws] new connection');
+
   ws.on('message', async (data: Buffer) => {
     try {
       const raw = JSON.parse(data.toString());
       const parsed = clientMessageSchema.safeParse(raw);
       if (!parsed.success) {
-        log.warn('Invalid WS message:', parsed.error.issues);
+        log.warn('[ws] invalid client message:', parsed.error.issues);
         return;
       }
+      log.debug(`[ws] recv ${parsed.data.type}`);
       await handleMessage(ws, parsed.data);
     } catch (err) {
-      log.error('Bad message:', err);
+      log.error('[ws] unparseable message:', err);
     }
   });
 
@@ -60,8 +63,15 @@ wss.on('connection', (ws: WebSocket) => {
       wsToUid.delete(ws);
       broadcast({ type: 'player:left', payload: { playerId: uid } });
       agentManager.handleDisconnect(uid);
-      log.info(`[leave] ${uid}`);
+      log.info(`[ws] closed ${uid}`);
+    } else {
+      log.debug('[ws] closed (unauthenticated)');
     }
+  });
+
+  ws.on('error', (err) => {
+    const uid = wsToUid.get(ws);
+    log.error(`[ws] error ${uid ?? 'unknown'}:`, err);
   });
 });
 
@@ -182,6 +192,7 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
 
 function send(ws: WebSocket, msg: ServerMessage) {
   if (ws.readyState === WebSocket.OPEN) {
+    log.debug(`[ws] send ${msg.type}`);
     ws.send(JSON.stringify(msg));
   }
 }

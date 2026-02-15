@@ -3,6 +3,7 @@
  * Handles connection, reconnection, and message routing to the Zustand store.
  */
 import { serverMessageSchema, type ClientMessage, type ServerMessage } from '@bossroom/shared-types';
+import { log } from './logger';
 
 type MessageHandler = (msg: ServerMessage) => void;
 
@@ -33,6 +34,7 @@ class GameWebSocket {
   }
 
   connect(username: string, token: string) {
+    log.info(`[ws] connecting as ${username}`);
     this.username = username;
     this.token = token;
     this.doConnect();
@@ -45,7 +47,9 @@ class GameWebSocket {
     if (this.reconnectAttempts > 0 && this.tokenRefresher) {
       try {
         this.token = await this.tokenRefresher();
+        log.debug('[ws] token refreshed for reconnect');
       } catch {
+        log.warn('[ws] token refresh failed, giving up');
         this.handler?.({
           type: 'player:left',
           payload: { playerId: '__self__' },
@@ -61,11 +65,13 @@ class GameWebSocket {
     try {
       this.ws = new WebSocket(this.url);
     } catch {
+      log.error('[ws] failed to create WebSocket');
       this.scheduleReconnect();
       return;
     }
 
     this.ws.onopen = () => {
+      log.info('[ws] connected');
       this.reconnectAttempts = 0;
       this.send({
         type: 'player:join',
@@ -76,14 +82,19 @@ class GameWebSocket {
     this.ws.onmessage = (event) => {
       try {
         const parsed = serverMessageSchema.safeParse(JSON.parse(event.data as string));
-        if (!parsed.success) return;
+        if (!parsed.success) {
+          log.warn('[ws] invalid server message:', parsed.error.issues);
+          return;
+        }
+        log.debug(`[ws] recv ${parsed.data.type}`);
         this.handler?.(parsed.data);
       } catch {
-        // ignore malformed messages
+        log.warn('[ws] unparseable server message');
       }
     };
 
     this.ws.onclose = () => {
+      log.info('[ws] disconnected');
       this.handler?.({
         type: 'player:left',
         payload: { playerId: '__self__' },
@@ -92,12 +103,14 @@ class GameWebSocket {
     };
 
     this.ws.onerror = () => {
+      log.error('[ws] connection error');
       this.ws?.close();
     };
   }
 
   send(msg: ClientMessage) {
     if (this.ws?.readyState === WebSocket.OPEN) {
+      log.debug(`[ws] send ${msg.type}`);
       this.ws.send(JSON.stringify(msg));
     }
   }
@@ -113,9 +126,13 @@ class GameWebSocket {
   }
 
   private scheduleReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) return;
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      log.warn(`[ws] max reconnect attempts (${this.maxReconnectAttempts}) reached`);
+      return;
+    }
     const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 10000);
     this.reconnectAttempts++;
+    log.info(`[ws] reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
     this.reconnectTimer = setTimeout(() => this.doConnect(), delay);
   }
 }
