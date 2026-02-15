@@ -16,5 +16,5 @@ const gateway = createOpenAI({
 });
 
 export function getModel(agentModel: AgentModel): LanguageModel {
-  return gateway(GATEWAY_MODEL_MAP[agentModel]);
+  return gateway.chat(GATEWAY_MODEL_MAP[agentModel]);
 }

@@ -76,7 +76,7 @@ if (aiGatewayKey) {
     });
 
     const res = await generateText({
-      model: gateway('google/gemini-2.5-flash'),
+      model: gateway.chat('google/gemini-2.5-flash'),
       prompt: 'Say "ok" and nothing else.',
       maxTokens: 5,
     });
