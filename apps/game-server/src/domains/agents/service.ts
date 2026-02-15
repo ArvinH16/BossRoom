@@ -66,6 +66,9 @@ export function createAgentService(deps: AgentServiceDeps) {
         agentId: targetAgent.agentId,
         broadcastFn,
       });
+      const workerComposioTools = await getComposioTools(playerId);
+      const workerMcpTools = await mcpManager.getAllTools();
+      const workerTools = { ...workerComposioTools, ...workerMcpTools, ...workerSkillTools };
 
       // Set to working
       agentRepo.setStatus(targetAgent.agentId, 'working');
@@ -79,7 +82,7 @@ export function createAgentService(deps: AgentServiceDeps) {
         model,
         system: targetAgent.systemPrompt,
         messages: [{ role: 'user' as const, content: taskDescription }],
-        tools: workerSkillTools,
+        tools: workerTools,
         stopWhen: stepCountIs(3),
       });
 
@@ -194,7 +197,10 @@ export function createAgentService(deps: AgentServiceDeps) {
         broadcastFn,
       });
 
-      let tools = { ...agentSkillToolSet };
+      const composioTools = await getComposioTools(playerId);
+      const mcpTools = await mcpManager.getAllTools();
+
+      let tools = { ...composioTools, ...mcpTools, ...agentSkillToolSet };
 
       // Lead agents get delegate_task tool
       if (dynamicAgent.role === 'lead') {
