@@ -13,6 +13,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('player:updateSettings'), payload: z.object({ avatarId: z.string() }) }),
   z.object({ type: z.literal('voice:talking'), payload: z.object({ isTalking: z.boolean(), targetPlayerId: z.string().nullable() }) }),
   z.object({ type: z.literal('workspace:userNote'), payload: z.object({ workspaceId: z.string(), content: z.string() }) }),
+  z.object({ type: z.literal('conversations:reset'), payload: z.object({ agentIds: z.array(z.string()) }) }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 

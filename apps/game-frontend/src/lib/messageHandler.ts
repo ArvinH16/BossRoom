@@ -74,12 +74,6 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
       case 'agent:conversationHistory': {
         const { agentId, messages: history } = msg.payload;
 
-        // After newTask/closeCurrentTask, ignore the server restoring old history
-        if (agentId === 'receptionist' && useChatStore.getState().ignoreNextHistory) {
-          useChatStore.setState({ ignoreNextHistory: false });
-          break;
-        }
-
         // Set full history, replacing any existing messages
         useChatStore.setState((state) => ({
           chatMessages: {

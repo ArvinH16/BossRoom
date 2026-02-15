@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import type { DrizzleDB } from '../../db/client.js';
 import { conversations } from '../../db/schema.js';
 
@@ -47,6 +47,15 @@ export function createConversationRepository(db: DrizzleDB) {
         aiMessages,
         updatedAt: new Date(),
       }).where(eq(conversations.id, id));
+    },
+
+    async deleteByUserAndAgents(userId: string, agentIds: string[]) {
+      if (agentIds.length === 0) return;
+      await db.delete(conversations)
+        .where(and(
+          eq(conversations.userId, userId),
+          inArray(conversations.agentId, agentIds),
+        ));
     },
   };
 }

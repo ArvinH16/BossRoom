@@ -189,6 +189,22 @@ export function createConversationService(deps: {
       }
       return agentIds;
     },
+
+    async resetConversations(playerId: string, agentIds: string[]): Promise<void> {
+      for (const agentId of agentIds) {
+        const convKey = `${playerId}:${agentId}`;
+        const convId = playerConversations.get(convKey);
+        if (convId) {
+          conversations.delete(convId);
+          playerConversations.delete(convKey);
+        }
+      }
+      try {
+        await conversationRepo.deleteByUserAndAgents(playerId, agentIds);
+      } catch (err) {
+        log.error(`[conversation] DB delete failed for reset:`, err);
+      }
+    },
   };
 }
 

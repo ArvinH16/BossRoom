@@ -30,8 +30,6 @@ interface ChatState {
   currentTaskId: string;              // ID of the live task
   currentTaskAgentIds: string[];      // dynamic agent IDs spawned by this task
   taskCounter: number;
-  /** When true, ignore the next agent:conversationHistory for receptionist */
-  ignoreNextHistory: boolean;
 
   openChat: (agentId: string) => void;
   closeChat: (reason?: 'explicit' | 'walkAway') => void;
@@ -64,7 +62,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   currentTaskId: 'task-1',
   currentTaskAgentIds: [],
   taskCounter: 1,
-  ignoreNextHistory: false,
 
   openChat: (agentId) => {
     useVoiceStore.getState().stopTTS();
@@ -206,7 +203,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       taskCounter: newCounter,
       activeTaskId: null, // switch to the new live task
       currentTaskAgentIds: [],
-      ignoreNextHistory: true, // don't let server restore old messages
       chatMessages: {
         ...state.chatMessages,
         receptionist: [],
@@ -226,6 +222,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   closeTask: (taskId) => {
     const state = get();
     const task = state.archivedTasks.find((t) => t.id === taskId);
+    // Tell server to delete these conversations from memory + DB
+    const agentIdsToReset = ['receptionist', ...(task?.agentIds ?? [])];
+    gameSocket.send({
+      type: 'conversations:reset',
+      payload: { agentIds: agentIdsToReset },
+    });
     set({
       archivedTasks: state.archivedTasks.filter((t) => t.id !== taskId),
       activeTaskId: state.activeTaskId === taskId ? null : state.activeTaskId,
@@ -236,14 +238,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
   /** Close the current live task — clears receptionist chat and agents. */
   closeCurrentTask: () => {
     const state = get();
-    const newCounter = state.taskCounter + 1;
+    // Tell server to delete these conversations from memory + DB
+    const agentIdsToReset = ['receptionist', ...state.currentTaskAgentIds];
+    gameSocket.send({
+      type: 'conversations:reset',
+      payload: { agentIds: agentIdsToReset },
+    });
 
+    const newCounter = state.taskCounter + 1;
     set({
       currentTaskId: `task-${newCounter}`,
       taskCounter: newCounter,
       currentTaskAgentIds: [],
       activeTaskId: null,
-      ignoreNextHistory: true,
       chatMessages: {
         ...state.chatMessages,
         receptionist: [],
@@ -269,6 +276,5 @@ export const useChatStore = create<ChatState>((set, get) => ({
       currentTaskId: 'task-1',
       currentTaskAgentIds: [],
       taskCounter: 1,
-      ignoreNextHistory: false,
     }),
 }));
