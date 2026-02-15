@@ -2,7 +2,7 @@ resource "vercel_project" "frontend" {
   name      = "bossroom"
   framework = "nextjs"
 
-  git_repository {
+  git_repository = {
     type = "github"
     repo = var.github_repo
   }

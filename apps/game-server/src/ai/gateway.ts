@@ -3,13 +3,12 @@ import { type AgentModel, GATEWAY_MODEL_MAP } from '@bossroom/shared-types';
 
 const ACCOUNT_ID = process.env['CF_AI_GATEWAY_ACCOUNT_ID'];
 const GATEWAY_ID = process.env['CF_AI_GATEWAY_ID'];
-const GATEWAY_TOKEN = process.env['CF_AI_GATEWAY_TOKEN'];
 
-// Provider API keys — the gateway forwards these to the actual provider
+// Provider API keys — sent through the gateway to the actual provider
 const PROVIDER_KEYS: Record<string, string> = {
-  anthropic: process.env['ANTHROPIC_API_KEY'] || '',
-  openai: process.env['OPENAI_API_KEY'] || '',
-  google: process.env['GOOGLE_AI_API_KEY'] || '',
+  'anthropic': process.env['ANTHROPIC_API_KEY'] || '',
+  'openai': process.env['OPENAI_API_KEY'] || '',
+  'google-ai-studio': process.env['GOOGLE_AI_API_KEY'] || '',
 };
 
 function getProviderFromModel(gatewayModel: string): string {
@@ -19,6 +18,7 @@ function getProviderFromModel(gatewayModel: string): string {
 /**
  * Create an OpenAI-compatible client routed through Cloudflare AI Gateway.
  * All providers (Claude, GPT-4o, Gemini) are accessible via model string.
+ * The provider's own API key is used — gateway is unauthenticated (pass-through).
  */
 export function createGatewayClient(agentModel: AgentModel): {
   client: OpenAI;
@@ -31,9 +31,6 @@ export function createGatewayClient(agentModel: AgentModel): {
   const client = new OpenAI({
     apiKey: providerKey,
     baseURL: `https://gateway.ai.cloudflare.com/v1/${ACCOUNT_ID}/${GATEWAY_ID}/compat`,
-    defaultHeaders: {
-      'cf-aig-authorization': `Bearer ${GATEWAY_TOKEN}`,
-    },
   });
 
   return { client, model: gatewayModel };

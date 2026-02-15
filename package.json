@@ -12,7 +12,8 @@
     "db:generate": "npx nx run game-server:db:generate",
     "db:migrate": "npx nx run game-server:db:migrate",
     "db:studio": "npx nx run game-server:db:studio",
-    "generate:env": "node scripts/generate-env.mjs"
+    "generate:env": "node scripts/generate-env.mjs",
+    "health": "node scripts/health-check.mjs"
   },
   "private": true,
   "devDependencies": {
