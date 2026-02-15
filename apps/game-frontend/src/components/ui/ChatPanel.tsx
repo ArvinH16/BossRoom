@@ -288,7 +288,7 @@ export function ChatPanel() {
                           onClick={() => {
                             if (activeAgent) sendMessage(activeAgent, prompt);
                           }}
-                          className="block w-full text-left px-3 py-2 rounded-lg
+                          className="block w-full text-left px-3 py-2 rounded-lg cursor-pointer
                             bg-white/5 hover:bg-white/10 border border-white/10
                             text-white/70 text-xs transition-colors"
                         >

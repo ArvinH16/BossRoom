@@ -106,9 +106,9 @@ click on any agent card at the top to see their progress and chat with them dire
   personality: 'Warm, professional, efficient. Makes everyone feel welcome.',
   avatarConfig: { color: '#FFD700', position: [0, 0, 3] },
   suggestedPrompts: [
-    'Help me plan a product launch',
-    'Build me a team for sprint planning',
-    'Set up my workspace for managing a startup',
+    'Research Arvin Hakakian and Beambell, write a Google Doc report, and email it to me with the link',
+    'Stalk my LinkedIn connections and draft personalized cold outreach DMs for the top 5',
+    'Plan a surprise birthday party for my coworker — budget $500, vibe: chaotic fun',
   ],
   color: '#FFD700',
   modelUrl: '/models/characters/agent-mailbot.glb', // reuse existing model, tinted gold
