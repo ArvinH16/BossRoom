@@ -10,20 +10,7 @@ export const THOUGHT_BUBBLE = {
   fadeDuration: 0.4,
 } as const;
 
-export const agentThoughts: Record<string, string[]> = {
-  receptionist: [
-    'Welcome! What can I set up?',
-    'Ready to build your workspace.',
-    'Tell me your mission...',
-    'I know just the team for that.',
-    'Another day, another workspace!',
-    'What kind of agents do you need?',
-    'The office is ready for you.',
-    'Describe your project to me!',
-    'I love assembling dream teams.',
-    'Every task needs the right crew.',
-  ],
-};
+export const agentThoughts: Record<string, string[]> = {};
 
 /** Default thoughts for dynamic agents (used when no specific thoughts exist). */
 export const defaultThoughts: string[] = [
