@@ -26,6 +26,7 @@ async function initVisaClient() {
   }
 
   try {
+    // @ts-expect-error — @visa/mcp-client is an optional peer dependency, only available at hackathon runtime
     const { createVisaMcpClient } = await import('@visa/mcp-client');
     visaClient = await createVisaMcpClient();
     visaReady = true;
