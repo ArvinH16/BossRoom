@@ -24,6 +24,8 @@ export const playerStateSchema = z.object({
   rotation: z.number(),
   animation: z.string(),
   avatarId: z.string(),
+  /** Raw user preference (e.g. 'random'). Only sent to the player themselves. */
+  avatarPreference: z.string().optional(),
 });
 export type PlayerState = z.infer<typeof playerStateSchema>;
 

@@ -51,6 +51,10 @@ export async function handlePlayerJoin(
 
   // 3. Load user settings
   const settings = await userRepo.getSettings(uid);
+  const preference = settings.avatarId || RANDOM_AVATAR_ID;
+  const resolvedAvatar = preference === RANDOM_AVATAR_ID
+    ? randomAvatarId()
+    : preference;
 
   // 4. Register connection
   const player: PlayerState = {
@@ -61,14 +65,18 @@ export async function handlePlayerJoin(
     position: [0, 2, 5],
     rotation: 0,
     animation: 'idle',
-    avatarId: !settings.avatarId || settings.avatarId === RANDOM_AVATAR_ID
-      ? randomAvatarId()
-      : settings.avatarId,
+    avatarId: resolvedAvatar,
   };
   players.addPlayer(uid, player, ws);
 
+  // Include avatarPreference for the joining player so their UI shows the right dropdown state
+  const worldPlayers = players.getWorldPlayers();
+  if (worldPlayers[uid]) {
+    worldPlayers[uid] = { ...worldPlayers[uid], avatarPreference: preference };
+  }
+
   const worldState: WorldState = {
-    players: players.getWorldPlayers(),
+    players: worldPlayers,
     agents: agents.getAgentStates(),
   };
   players.send(ws, { type: 'world:state', payload: worldState });

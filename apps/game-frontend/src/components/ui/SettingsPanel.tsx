@@ -6,7 +6,7 @@ import { AVATARS } from '@/data/avatars';
 import { useSettingsStore } from '@/stores/settingsStore';
 
 export function SettingsPanel() {
-  const avatarId = useSettingsStore((s) => s.avatarId);
+  const avatarPreference = useSettingsStore((s) => s.avatarPreference);
   const selectAvatar = useSettingsStore((s) => s.selectAvatar);
   const closeSettingsPanel = useSettingsStore((s) => s.closeSettingsPanel);
 
@@ -51,13 +51,13 @@ export function SettingsPanel() {
               key={avatar.id}
               onClick={() => selectAvatar(avatar.id)}
               className={`flex flex-col items-center gap-1 p-2 rounded-lg cursor-pointer transition-all ${
-                avatarId === avatar.id
+                avatarPreference === avatar.id
                   ? 'bg-indigo-500/30 ring-2 ring-indigo-400'
                   : 'bg-white/5 hover:bg-white/10'
               }`}
             >
               <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-lg">
-                🧑
+                {avatar.id === 'random' ? '🎲' : '🧑'}
               </div>
               <span className="text-[10px] text-white/70">{avatar.label}</span>
             </button>
