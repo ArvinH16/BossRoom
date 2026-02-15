@@ -191,6 +191,21 @@ export const useGameStore = create<GameState>((set, get) => ({
           );
           break;
 
+        case 'agent:conversationHistory': {
+          const { agentId, messages: history } = msg.payload;
+          set((state) => ({
+            chatMessages: {
+              ...state.chatMessages,
+              [agentId]: history.map((m) => ({
+                role: m.role === 'assistant' ? 'agent' as const : 'user' as const,
+                content: m.content,
+              })),
+            },
+            streamingText: { ...state.streamingText, [agentId]: '' },
+          }));
+          break;
+        }
+
         case 'agent:chatMessage': {
           const { agentId, role, content } = msg.payload;
           const streamText = s.streamingText[agentId] ?? '';

@@ -42,5 +42,6 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('agent:chatStream'), payload: z.object({ agentId: z.string(), delta: z.string() }) }),
   z.object({ type: z.literal('agent:toolExecution'), payload: z.object({ agentId: z.string(), toolName: z.string(), status: z.enum(['started', 'completed', 'failed']), result: z.string().optional() }) }),
   z.object({ type: z.literal('auth:error'), payload: z.object({ message: z.string() }) }),
+  z.object({ type: z.literal('agent:conversationHistory'), payload: z.object({ agentId: z.string(), messages: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string() })) }) }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;

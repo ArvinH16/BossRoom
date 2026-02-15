@@ -14,6 +14,9 @@ import { getModel } from '../ai/gateway.js';
 import { getComposioTools } from '../ai/composio.js';
 import { mcpManager } from '../ai/mcp.js';
 import { log } from '../logger.js';
+import { db } from '../db/client.js';
+import { conversations as conversationsTable } from '../db/schema.js';
+import { eq, and } from 'drizzle-orm';
 
 // --- Agent definitions (in-memory, mirrors frontend data/agents.ts) ---
 interface AgentDef extends AgentSkill {
@@ -72,7 +75,7 @@ interface Conversation {
   id: string;
   playerId: string;
   agentId: string;
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+  messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   aiMessages: Array<any>;
   ws: WebSocket;
@@ -107,41 +110,112 @@ export class AgentManager {
     return result;
   }
 
-  startInteraction(playerId: string, agentId: string, ws: WebSocket, displayName: string | null) {
+  async startInteraction(playerId: string, agentId: string, ws: WebSocket, displayName: string | null) {
     const agent = this.agents.get(agentId);
     if (!agent) return;
 
     const convKey = `${playerId}:${agentId}`;
     let convId = this.playerConversations.get(convKey);
+    let conv = convId ? this.conversations.get(convId) : undefined;
 
-    if (!convId) {
-      convId = `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      this.conversations.set(convId, {
-        id: convId,
-        playerId,
-        agentId,
-        messages: [],
-        aiMessages: [],
-        ws,
-      });
-      this.playerConversations.set(convKey, convId);
+    if (!conv) {
+      try {
+        // Try loading from DB
+        const [existing] = await db.select().from(conversationsTable)
+          .where(and(
+            eq(conversationsTable.userId, playerId),
+            eq(conversationsTable.agentId, agentId),
+          ))
+          .limit(1);
+
+        if (existing) {
+          // Restore from DB
+          convId = existing.id;
+          conv = {
+            id: existing.id,
+            playerId,
+            agentId,
+            messages: (existing.messages ?? []) as Conversation['messages'],
+            aiMessages: (existing.aiMessages ?? []) as Conversation['aiMessages'],
+            ws,
+          };
+          this.conversations.set(convId, conv);
+          this.playerConversations.set(convKey, convId);
+
+          // Send history to frontend
+          this.sendToPlayer(ws, {
+            type: 'agent:conversationHistory',
+            payload: {
+              agentId,
+              messages: conv.messages.map(m => ({ role: m.role, content: m.content })),
+            },
+          });
+        } else {
+          // Brand new conversation
+          convId = crypto.randomUUID();
+          const greeting = this.getGreeting(agent, displayName);
+          conv = {
+            id: convId,
+            playerId,
+            agentId,
+            messages: [{ role: 'assistant', content: greeting, timestamp: new Date().toISOString() }],
+            aiMessages: [{ role: 'assistant' as const, content: greeting }],
+            ws,
+          };
+          this.conversations.set(convId, conv);
+          this.playerConversations.set(convKey, convId);
+
+          // Persist new conversation
+          await db.insert(conversationsTable).values({
+            id: convId,
+            userId: playerId,
+            agentId,
+            messages: conv.messages,
+            aiMessages: conv.aiMessages,
+          });
+
+          // Send greeting to frontend
+          this.sendToPlayer(ws, {
+            type: 'agent:chatMessage',
+            payload: { agentId, role: 'assistant', content: greeting },
+          });
+        }
+      } catch (err) {
+        // DB unreachable — fall back to in-memory only
+        log.error(`[agent] DB error loading conversation for ${agentId}:`, err);
+        convId = crypto.randomUUID();
+        const greeting = this.getGreeting(agent, displayName);
+        conv = {
+          id: convId,
+          playerId,
+          agentId,
+          messages: [{ role: 'assistant', content: greeting, timestamp: new Date().toISOString() }],
+          aiMessages: [{ role: 'assistant' as const, content: greeting }],
+          ws,
+        };
+        this.conversations.set(convId, conv);
+        this.playerConversations.set(convKey, convId);
+
+        this.sendToPlayer(ws, {
+          type: 'agent:chatMessage',
+          payload: { agentId, role: 'assistant', content: greeting },
+        });
+      }
     } else {
-      // Update the WebSocket reference (may have reconnected)
-      const conv = this.conversations.get(convId);
-      if (conv) conv.ws = ws;
+      // Already in memory — just update WS ref
+      conv.ws = ws;
+
+      // Send history to frontend
+      this.sendToPlayer(ws, {
+        type: 'agent:conversationHistory',
+        payload: {
+          agentId,
+          messages: conv.messages.map(m => ({ role: m.role, content: m.content })),
+        },
+      });
     }
 
     this.setAgentStatus(agentId, 'listening');
-
-    // Send the conversation ID + greeting
-    this.sendToPlayer(ws, {
-      type: 'agent:chatMessage',
-      payload: {
-        agentId,
-        role: 'assistant',
-        content: this.getGreeting(agent, displayName),
-      },
-    });
   }
 
   async handleMessage(
@@ -168,7 +242,7 @@ export class AgentManager {
     }
 
     // Add user message to display history
-    conv.messages.push({ role: 'user', content });
+    conv.messages.push({ role: 'user', content, timestamp: new Date().toISOString() });
 
     // Status → thinking
     this.setAgentStatus(agentId, 'thinking');
@@ -242,7 +316,18 @@ export class AgentManager {
       );
 
       // Store display-friendly response
-      conv.messages.push({ role: 'assistant', content: fullResponse });
+      conv.messages.push({ role: 'assistant', content: fullResponse, timestamp: new Date().toISOString() });
+
+      // Persist to DB (best-effort — in-memory is still the live copy)
+      try {
+        await db.update(conversationsTable).set({
+          messages: conv.messages,
+          aiMessages: conv.aiMessages,
+          updatedAt: new Date(),
+        }).where(eq(conversationsTable.id, conv.id));
+      } catch (err) {
+        log.error(`[agent] DB save failed for conversation ${conv.id}:`, err);
+      }
 
       // Send complete message (signals end of stream to frontend)
       this.sendToPlayer(ws, {
@@ -282,15 +367,22 @@ export class AgentManager {
   }
 
   handleDisconnect(playerId: string) {
-    // Clean up conversations for this player
+    // Collect keys to delete (can't delete while iterating a Map)
+    const keysToDelete: string[] = [];
     for (const [key, convId] of this.playerConversations) {
       if (key.startsWith(`${playerId}:`)) {
         const conv = this.conversations.get(convId);
         if (conv) {
-          const agentId = conv.agentId;
-          this.setAgentStatus(agentId, 'idle');
+          this.setAgentStatus(conv.agentId, 'idle');
         }
+        keysToDelete.push(key);
       }
+    }
+    // Now safe to delete
+    for (const key of keysToDelete) {
+      const convId = this.playerConversations.get(key)!;
+      this.conversations.delete(convId);
+      this.playerConversations.delete(key);
     }
   }
 

@@ -159,7 +159,7 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
       const uid = wsToUid.get(ws);
       if (!uid) return;
       const user = players.get(uid);
-      agentManager.startInteraction(uid, msg.payload.agentId, ws, user?.username ?? null);
+      await agentManager.startInteraction(uid, msg.payload.agentId, ws, user?.username ?? null);
       break;
     }
 
