@@ -12,7 +12,7 @@ import { TTSAudioPlayer } from '../ui/TTSAudioPlayer';
 import { HUD } from '../ui/HUD';
 import { OnboardingOverlay } from '../ui/OnboardingOverlay';
 import { PunchHint } from './PunchHint';
-import { MissionControl } from '../ui/MissionControl';
+
 import { ScratchpadFeed } from '../ui/ScratchpadFeed';
 import { BackgroundMusic } from '../ui/BackgroundMusic';
 import { GameToolbar } from '../ui/GameToolbar';
@@ -67,7 +67,6 @@ export function Game({ user }: GameProps) {
       <PushToTalkOverlay />
       <TTSAudioPlayer />
       <OnboardingOverlay />
-      <MissionControl />
       <ScratchpadFeed />
       <BackgroundMusic />
       <GameToolbar />
