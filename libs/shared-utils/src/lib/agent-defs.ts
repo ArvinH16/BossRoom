@@ -107,7 +107,7 @@ click on any agent card at the top to see their progress and chat with them dire
   avatarConfig: { color: '#FFD700', position: [0, 0, 3] },
   suggestedPrompts: [
     'Research Arvin Hakakian and Beambell, write a Google Doc report, and email it to me with the link',
-    'Stalk my LinkedIn connections and draft personalized cold outreach DMs for the top 5',
+    'Research my background online, find the top 5 people in my network to reach out to, and draft personalized cold DMs for each',
     'Plan a surprise birthday party for my coworker — budget $500, vibe: chaotic fun',
   ],
   color: '#FFD700',
