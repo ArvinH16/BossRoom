@@ -21,7 +21,7 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>((set) => ({
   avatarPreference: RANDOM_AVATAR_ID,
   avatarId: randomAvatarId(),
-  voiceId: 'Loretta',
+  voiceId: 'Dominus',
 
   setAvatarFromServer: (preference, resolvedAvatarId) => set({
     avatarPreference: preference,
