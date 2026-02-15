@@ -7,7 +7,7 @@ import { env } from '../env.js';
 const GATEWAY_MODEL_MAP: Record<AgentModel, string> = {
   claude: 'anthropic/claude-sonnet-4-5',
   'gpt-4o': 'openai/gpt-4o',
-  gemini: 'google/gemini-2.5-flash',
+  gemini: 'google/gemini-3-flash',
 };
 
 const gateway = createOpenAI({
