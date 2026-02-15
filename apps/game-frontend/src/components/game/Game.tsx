@@ -1,13 +1,17 @@
 /** Canvas root: R3F canvas, physics, keyboard controls, and HTML overlay wiring. */
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { KeyboardControls } from '@react-three/drei';
 import { Physics } from '@react-three/rapier';
 import { Scene } from './Scene';
 import { ChatPanel } from '../ui/ChatPanel';
 import { InteractionPrompt } from './InteractionPrompt';
+import { HUD } from '../ui/HUD';
+import { ToolExecutionToasts } from '../ui/ToolExecutionToasts';
+import { OnboardingOverlay } from '../ui/OnboardingOverlay';
+import { useGameStore } from '@/stores/gameStore';
 import { CAMERA, WORLD } from '@/data/gameConfig';
 
 const keyboardMap = [
@@ -20,6 +24,12 @@ const keyboardMap = [
 ];
 
 export function Game() {
+  const initWebSocket = useGameStore((s) => s.initWebSocket);
+
+  useEffect(() => {
+    initWebSocket('Player');
+  }, [initWebSocket]);
+
   return (
     <div className="w-screen h-screen relative">
       <KeyboardControls map={keyboardMap}>
@@ -35,8 +45,11 @@ export function Game() {
           </Suspense>
         </Canvas>
       </KeyboardControls>
+      <HUD />
       <ChatPanel />
+      <ToolExecutionToasts />
       <InteractionPrompt />
+      <OnboardingOverlay />
     </div>
   );
 }

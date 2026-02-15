@@ -7,13 +7,15 @@ export interface AgentData {
   position: [number, number, number];
   zone: string;
   suggestedPrompts: string[];
-  status: 'idle' | 'busy' | 'away';
+  status: 'idle' | 'listening' | 'thinking' | 'working' | 'error';
 }
 
 export const statusColors: Record<AgentData['status'], string> = {
   idle: '#4AD97A',
-  busy: '#D9D94A',
-  away: '#D94A4A',
+  listening: '#4A90D9',
+  thinking: '#D9D94A',
+  working: '#FF8C00',
+  error: '#D94A4A',
 };
 
 export const zoneColors: Record<string, string> = {

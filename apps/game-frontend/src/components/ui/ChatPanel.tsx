@@ -1,8 +1,9 @@
-/** Slide-in right panel for chatting with an agent: messages, suggested prompts, text input. */
+/** Slide-in right panel for chatting with an agent: messages, streaming, suggested prompts, input. */
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/stores/gameStore';
+import { statusColors } from '@/data/agents';
 
 export function ChatPanel() {
   const [input, setInput] = useState('');
@@ -12,15 +13,17 @@ export function ChatPanel() {
   const activeAgent = useGameStore((s) => s.activeAgent);
   const agents = useGameStore((s) => s.agents);
   const chatMessages = useGameStore((s) => s.chatMessages);
+  const streamingText = useGameStore((s) => s.streamingText);
   const closeChat = useGameStore((s) => s.closeChat);
   const sendMessage = useGameStore((s) => s.sendMessage);
 
   const agent = agents.find((a) => a.id === activeAgent);
   const messages = activeAgent ? (chatMessages[activeAgent] ?? []) : [];
+  const currentStream = activeAgent ? (streamingText[activeAgent] ?? '') : '';
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length]);
+  }, [messages.length, currentStream]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -63,12 +66,25 @@ export function ChatPanel() {
                 <p className="text-white/50 text-xs">{agent.zone}</p>
               </div>
             </div>
-            <button
-              onClick={closeChat}
-              className="text-white/50 hover:text-white text-xl leading-none p-1"
-            >
-              &times;
-            </button>
+            <div className="flex items-center gap-2">
+              {agent.status !== 'idle' && (
+                <span
+                  className="px-2 py-0.5 rounded-full text-[10px] font-medium text-white capitalize"
+                  style={{ backgroundColor: statusColors[agent.status] + '80' }}
+                >
+                  {agent.status === 'thinking' ? 'Thinking...' :
+                   agent.status === 'working' ? 'Working...' :
+                   agent.status === 'listening' ? 'Listening' :
+                   agent.status}
+                </span>
+              )}
+              <button
+                onClick={closeChat}
+                className="text-white/50 hover:text-white text-xl leading-none p-1"
+              >
+                &times;
+              </button>
+            </div>
           </div>
 
           {/* Agent info */}
@@ -81,7 +97,7 @@ export function ChatPanel() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {messages.length === 0 && (
+            {messages.length === 0 && !currentStream && (
               <div className="space-y-2">
                 <p className="text-white/30 text-xs text-center mb-4">
                   Start a conversation
@@ -104,7 +120,7 @@ export function ChatPanel() {
             {messages.map((msg, i) => (
               <div
                 key={i}
-                className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${
+                className={`max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
                   msg.role === 'user'
                     ? 'ml-auto bg-indigo-600/60 text-white'
                     : 'mr-auto bg-white/10 text-white/80'
@@ -113,6 +129,26 @@ export function ChatPanel() {
                 {msg.content}
               </div>
             ))}
+
+            {/* Streaming text */}
+            {currentStream && (
+              <div className="max-w-[85%] mr-auto px-3 py-2 rounded-lg text-sm bg-white/10 text-white/80 whitespace-pre-wrap">
+                {currentStream}
+                <span className="inline-block w-1.5 h-4 ml-0.5 bg-white/60 animate-pulse" />
+              </div>
+            )}
+
+            {/* Thinking indicator */}
+            {agent.status === 'thinking' && !currentStream && (
+              <div className="max-w-[85%] mr-auto px-3 py-2 rounded-lg text-sm bg-white/10 text-white/40">
+                <span className="inline-flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </span>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
@@ -136,7 +172,9 @@ export function ChatPanel() {
               />
               <button
                 onClick={handleSend}
+                disabled={agent.status === 'thinking' || agent.status === 'working'}
                 className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500
+                  disabled:opacity-50 disabled:cursor-not-allowed
                   text-white text-sm font-medium transition-colors"
               >
                 Send
