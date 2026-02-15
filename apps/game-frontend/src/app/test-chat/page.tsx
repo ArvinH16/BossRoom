@@ -114,8 +114,8 @@ function AgentColumn({ agentId }: { agentId: string }) {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-4 space-y-3">
+      <ScrollArea className="flex-1 min-h-0 min-w-0">
+        <div className="p-4 space-y-3 overflow-hidden">
           {messages.length === 0 && !currentStream && (
             <div className="space-y-2">
               <p className="text-muted-foreground/50 text-xs text-center mb-3">
@@ -141,7 +141,7 @@ function AgentColumn({ agentId }: { agentId: string }) {
             ) : (
               <div
                 key={i}
-                className={`max-w-[90%] px-3 py-2 rounded-lg text-sm ${
+                className={`max-w-prose px-3 py-2 rounded-lg text-sm break-words ${
                   msg.role === 'user'
                     ? 'ml-auto bg-indigo-600/60 text-white whitespace-pre-wrap'
                     : 'mr-auto bg-secondary text-foreground/80'
@@ -158,7 +158,7 @@ function AgentColumn({ agentId }: { agentId: string }) {
 
           {/* Streaming text */}
           {currentStream && (
-            <div className="max-w-[90%] mr-auto px-3 py-2 rounded-lg text-sm bg-secondary text-foreground/80">
+            <div className="max-w-prose mr-auto px-3 py-2 rounded-lg text-sm bg-secondary text-foreground/80 break-words">
               <Markdown content={currentStream} />
               <span className="inline-block w-1.5 h-4 ml-0.5 bg-foreground/60 animate-pulse" />
             </div>
@@ -166,7 +166,7 @@ function AgentColumn({ agentId }: { agentId: string }) {
 
           {/* Thinking indicator */}
           {agent.status === 'thinking' && !currentStream && (
-            <div className="max-w-[90%] mr-auto px-3 py-2 rounded-lg text-sm bg-secondary text-muted-foreground">
+            <div className="max-w-prose mr-auto px-3 py-2 rounded-lg text-sm bg-secondary text-muted-foreground">
               <ThinkingIndicator />
             </div>
           )}
@@ -221,7 +221,7 @@ function ToolDebugRow({ toolName, status, result }: {
       : `Failed: ${formatToolName(toolName)}`;
 
   return (
-    <div>
+    <div className="min-w-0">
       <button
         onClick={() => setOpen(!open)}
         className={`flex items-center gap-1 text-[11px] leading-relaxed ${
@@ -232,7 +232,7 @@ function ToolDebugRow({ toolName, status, result }: {
         {label}
       </button>
       {open && (
-        <pre className="mt-1 ml-4 p-2 rounded bg-black/30 text-[10px] text-muted-foreground/50 font-mono overflow-x-auto whitespace-pre-wrap">
+        <pre className="mt-1 ml-4 p-2 rounded bg-black/30 text-[10px] text-muted-foreground/50 font-mono whitespace-pre-wrap break-words">
           {JSON.stringify({ toolName, status, result }, null, 2)}
         </pre>
       )}
