@@ -1,29 +1,59 @@
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useVoiceStore } from '@/stores/voiceStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { gameSocket } from './websocket';
 import type { ServerMessage } from '@bossroom/shared-types';
+import { DEFAULT_AVATAR_ID } from '@bossroom/shared-types';
 import { agents as defaultAgents } from '@/data/agents';
 import type { AgentData } from '@/data/agents';
 
-export function initWebSocket(username: string, token: string, tokenRefresher: () => Promise<string>) {
+export function initWebSocket(username: string, token: string, tokenRefresher: () => Promise<string>, uid: string) {
   if (gameSocket.connected) return;
 
   gameSocket.onMessage((msg: ServerMessage) => {
     switch (msg.type) {
       case 'world:state': {
         const worldStore = useWorldStore.getState();
-        worldStore.setConnected(true);
+        worldStore.setConnected(true, uid);
 
         // Map agents from world state, merging with default frontend data
         const agentStates = msg.payload.agents;
+        console.log('[WebSocket] Received world:state with agents:', agentStates);
+        console.log('[WebSocket] Default agents:', defaultAgents);
+        
         const mapped: AgentData[] = defaultAgents.map((def) => {
           const serverAgent = agentStates[def.id];
           return serverAgent
             ? { ...def, status: serverAgent.status }
             : def;
         });
+        
+        console.log('[WebSocket] Mapped agents:', mapped);
         worldStore.setAgents(mapped);
+        console.log('[WebSocket] Agents after setAgents:', useWorldStore.getState().agents);
+
+        // Extract remote players (filter out self)
+        const players = msg.payload.players;
+        const remotePlayers: Record<string, { id: string; username: string; position: [number, number, number]; rotation: number; animation: string; avatarId: string }> = {};
+        for (const [id, p] of Object.entries(players)) {
+          if (id === uid) continue;
+          remotePlayers[id] = {
+            id: p.id,
+            username: p.username,
+            position: p.position,
+            rotation: p.rotation,
+            animation: p.animation,
+            avatarId: p.avatarId,
+          };
+        }
+        worldStore.setRemotePlayers(remotePlayers);
+
+        // Initialize local user's avatar from server
+        const selfPlayer = players[uid];
+        if (selfPlayer) {
+          useSettingsStore.getState().setAvatarIdLocal(selfPlayer.avatarId ?? DEFAULT_AVATAR_ID);
+        }
         break;
       }
 
@@ -86,10 +116,40 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         });
         break;
 
+      case 'player:joined': {
+        const jp = msg.payload;
+        useWorldStore.getState().addRemotePlayer({
+          id: jp.id,
+          username: jp.username,
+          position: jp.position,
+          rotation: jp.rotation,
+          animation: jp.animation,
+          avatarId: jp.avatarId,
+        });
+        break;
+      }
+
+      case 'player:moved':
+        useWorldStore.getState().updateRemotePlayer(
+          msg.payload.playerId,
+          msg.payload.position,
+          msg.payload.rotation,
+          msg.payload.animation,
+        );
+        break;
+
       case 'player:left':
+        useWorldStore.getState().removeRemotePlayer(msg.payload.playerId);
         if (msg.payload.playerId === '__self__') {
           useWorldStore.getState().setConnected(false);
         }
+        break;
+
+      case 'player:avatarChanged':
+        useWorldStore.getState().updateRemotePlayerAvatar(
+          msg.payload.playerId,
+          msg.payload.avatarId,
+        );
         break;
     }
   });

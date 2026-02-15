@@ -45,6 +45,11 @@ export function createPlayerService() {
       }
     },
 
+    updateAvatarId(uid: string, avatarId: string): void {
+      const p = players.get(uid);
+      if (p) p.avatarId = avatarId;
+    },
+
     getWorldPlayers(): Record<string, PlayerState> {
       return Object.fromEntries(players);
     },

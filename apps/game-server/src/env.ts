@@ -5,6 +5,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
   DATABASE_URL: z.string().min(1),
   LOG_LEVEL: z.enum(['ERROR', 'WARN', 'INFO', 'DEBUG']).default('DEBUG'),
+  ALLOWED_ORIGIN: z.string().default('*'),
 
   // Firebase Admin
   FIREBASE_PROJECT_ID: z.string().min(1),

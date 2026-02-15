@@ -4,6 +4,7 @@ interface OnboardingState {
   onboardingStep: number;
   onboardingComplete: boolean;
   advanceOnboarding: () => void;
+  setOnboardingStep: (step: number) => void;
   completeOnboarding: () => void;
 }
 
@@ -16,6 +17,8 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
 
   advanceOnboarding: () =>
     set((state) => ({ onboardingStep: state.onboardingStep + 1 })),
+
+  setOnboardingStep: (step) => set({ onboardingStep: step }),
 
   completeOnboarding: () => {
     if (typeof window !== 'undefined') {

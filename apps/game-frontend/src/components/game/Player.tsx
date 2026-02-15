@@ -1,50 +1,62 @@
-/** Player character: ecctrl controller + Kenney character with animation state machine. */
+/**
+ * Player character: WASD movement + CharacterModel + third-person camera.
+ */
 'use client';
 
-import { useRef, useEffect } from 'react';
-import Ecctrl, { EcctrlAnimation } from 'ecctrl';
+import { Suspense, useRef, useEffect, useState } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { CapsuleCollider, RigidBody } from '@react-three/rapier';
+import type { Group } from 'three';
+import { CharacterModel } from './CharacterModel';
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useVoiceStore } from '@/stores/voiceStore';
-import { useNearestAgent } from '@/hooks/useNearestAgent';
-import { PLAYER, CAMERA } from '@/data/gameConfig';
-import type { Vector3 } from 'three';
+import { useAgentBehaviorStore } from '@/stores/agentBehaviorStore';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { useBroadcastPosition } from '@/hooks/useBroadcastPosition';
+import { INTERACTION } from '@/data/gameConfig';
+import { getAvatarModelUrl } from '@/data/avatars';
 
-const animationSet = {
-  idle: 'idle',
-  walk: 'walk',
-  run: 'sprint',
-  jump: 'jump',
-  jumpIdle: 'fall',
-  jumpLand: 'idle',
-  fall: 'fall',
-  action1: 'emote-yes',
-  action2: 'interact-right',
-  action3: 'pick-up',
-  action4: 'emote-no',
-};
+const MOVE_SPEED = 5;
+const SPAWN: [number, number, number] = [0, 2, 6];
+const ROTATION_LERP = 0.15;
+
+/** Shared ref so CameraRig can track the player position. */
+export const playerPositionRef = { current: SPAWN as [number, number, number] };
 
 export function Player() {
-  const ecctrlRef = useRef<{ group: { translation(): Vector3 } | null }>(null);
+  const rigidBodyRef = useRef<any>(null);
+  const modelGroupRef = useRef<Group>(null);
+  const facingAngle = useRef(Math.PI); // default facing camera (away from camera)
+  const keys = useRef<Record<string, boolean>>({});
+  const [animation, setAnimation] = useState('idle');
+
   const agents = useWorldStore((s) => s.agents);
+  const setNearestAgent = useWorldStore((s) => s.setNearestAgent);
   const nearestAgent = useWorldStore((s) => s.nearestAgent);
   const openChat = useChatStore((s) => s.openChat);
   const chatPanelOpen = useChatStore((s) => s.chatPanelOpen);
+  const setPlayerPosition = useAgentBehaviorStore((s) => s.setPlayerPosition);
+  const avatarId = useSettingsStore((s) => s.avatarId);
 
   const { startRecording, stopRecording, transcript: voiceTranscript } = useVoiceInput();
   const recordingRef = useRef(false);
   const startPromiseRef = useRef<Promise<void> | null>(null);
 
-  useNearestAgent(agents, ecctrlRef);
+  useBroadcastPosition(rigidBodyRef, animation, facingAngle);
 
+  // Sync voice transcript to store
   useEffect(() => {
     useVoiceStore.getState().setVoiceTranscript(voiceTranscript);
   }, [voiceTranscript]);
 
+  // Keyboard input
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Ignore if typing in an input
+      keys.current[e.code] = true;
+
+      // Ignore interaction keys if typing in an input
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
 
@@ -53,40 +65,31 @@ export function Player() {
       }
 
       if (e.code === 'KeyT' && !e.repeat) {
-        console.log('[DEBUG-FIX] T key pressed', { nearestAgent, recording: recordingRef.current, chatPanelOpen });
-        if (!nearestAgent) { console.log('[DEBUG-FIX] No nearestAgent, ignoring T'); return; }
-        if (recordingRef.current) { console.log('[DEBUG-FIX] Already recording, ignoring T'); return; }
+        if (!nearestAgent) return;
+        if (recordingRef.current) return;
         if (!chatPanelOpen) openChat(nearestAgent);
         recordingRef.current = true;
         useVoiceStore.getState().setRecording(true);
-        console.log('[DEBUG-FIX] Starting recording for agent:', nearestAgent);
         startPromiseRef.current = startRecording();
       }
     }
 
     function handleKeyUp(e: KeyboardEvent) {
+      keys.current[e.code] = false;
+
       if (e.code === 'KeyT' && recordingRef.current) {
-        console.log('[DEBUG-FIX] T key released, stopping recording');
         recordingRef.current = false;
         const doStop = async () => {
-          // Wait for startRecording to finish before stopping
           if (startPromiseRef.current) {
-            console.log('[DEBUG-FIX] Waiting for startRecording promise to resolve...');
             await startPromiseRef.current;
             startPromiseRef.current = null;
           }
-          console.log('[DEBUG-FIX] Calling stopRecording...');
           const transcript = await stopRecording();
-          console.log('[DEBUG-FIX] stopRecording returned transcript:', JSON.stringify(transcript));
           useVoiceStore.getState().setRecording(false);
           useVoiceStore.getState().setVoiceTranscript('');
           const agent = useChatStore.getState().activeAgent;
-          console.log('[DEBUG-FIX] activeAgent:', agent, '| transcript.trim():', JSON.stringify(transcript.trim()));
           if (transcript.trim() && agent) {
-            console.log('[DEBUG-FIX] Sending message to agent:', agent, 'content:', transcript.trim());
             useChatStore.getState().sendMessage(agent, transcript.trim());
-          } else {
-            console.log('[DEBUG-FIX] NOT sending message - transcript empty or no agent');
           }
         };
         doStop();
@@ -101,23 +104,84 @@ export function Player() {
     };
   }, [nearestAgent, chatPanelOpen, openChat, startRecording, stopRecording]);
 
+  useFrame(() => {
+    if (!rigidBodyRef.current) return;
+
+    const rb = rigidBodyRef.current;
+    const pos = rb.translation();
+
+    // Movement
+    const forward = (keys.current['KeyW'] || keys.current['ArrowUp']) ? 1 : 0;
+    const backward = (keys.current['KeyS'] || keys.current['ArrowDown']) ? 1 : 0;
+    const left = (keys.current['KeyA'] || keys.current['ArrowLeft']) ? 1 : 0;
+    const right = (keys.current['KeyD'] || keys.current['ArrowRight']) ? 1 : 0;
+
+    let moveX = right - left;
+    let moveZ = backward - forward;
+    const isMoving = moveX !== 0 || moveZ !== 0;
+
+    if (isMoving) {
+      // Normalize diagonal movement so strafing isn't faster
+      const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
+      moveX /= len;
+      moveZ /= len;
+
+      rb.setLinvel({ x: moveX * MOVE_SPEED, y: 0, z: moveZ * MOVE_SPEED }, true);
+      setAnimation('walk');
+
+      // Face movement direction
+      const targetAngle = Math.atan2(moveX, moveZ);
+      // Smooth rotation with angle wrapping
+      let delta = targetAngle - facingAngle.current;
+      while (delta > Math.PI) delta -= 2 * Math.PI;
+      while (delta < -Math.PI) delta += 2 * Math.PI;
+      facingAngle.current += delta * ROTATION_LERP;
+    } else {
+      rb.setLinvel({ x: 0, y: rb.linvel().y, z: 0 }, true);
+      setAnimation('idle');
+    }
+
+    // Apply visual rotation to model group
+    if (modelGroupRef.current) {
+      modelGroupRef.current.rotation.y = facingAngle.current;
+    }
+
+    // Expose position for CameraRig
+    playerPositionRef.current = [pos.x, pos.y, pos.z];
+
+    // Broadcast player position so agents can sense proximity
+    setPlayerPosition([pos.x, pos.y, pos.z]);
+
+    // Find nearest agent
+    let closest: string | null = null;
+    let closestDist = Infinity;
+    for (const agent of agents) {
+      const dx = pos.x - agent.position[0];
+      const dz = pos.z - agent.position[2];
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < INTERACTION.proximityRadius && dist < closestDist) {
+        closest = agent.id;
+        closestDist = dist;
+      }
+    }
+    setNearestAgent(closest);
+  });
+
   return (
-    <Ecctrl
-      ref={ecctrlRef as never}
-      camInitDis={CAMERA.initDis}
-      camMinDis={CAMERA.minDis}
-      camMaxDis={CAMERA.maxDis}
-      maxVelLimit={PLAYER.maxSpeed}
-      capsuleHalfHeight={PLAYER.capsuleHalfHeight}
-      capsuleRadius={PLAYER.capsuleRadius}
-      animated
+    <RigidBody
+      ref={rigidBodyRef}
+      position={SPAWN}
+      enabledRotations={[false, false, false]}
+      lockRotations
+      colliders={false}
+      ccd
     >
-      <EcctrlAnimation
-        characterURL={PLAYER.modelUrl}
-        animationSet={animationSet}
-      >
-        <group scale={2.2} />
-      </EcctrlAnimation>
-    </Ecctrl>
+      <CapsuleCollider args={[0.5, 0.3]} />
+      <group ref={modelGroupRef} position={[0, -0.8, 0]} rotation={[0, Math.PI, 0]}>
+        <Suspense fallback={null}>
+          <CharacterModel url={getAvatarModelUrl(avatarId)} animation={animation} />
+        </Suspense>
+      </group>
+    </RigidBody>
   );
 }

@@ -12,6 +12,7 @@ import { createConversationModule } from './domains/conversations/module.js';
 import { createAgentModule } from './domains/agents/module.js';
 import { handlePlayerJoin } from './handlers/playerJoin.js';
 import { handlePlayerMove } from './handlers/playerMove.js';
+import { handlePlayerSettings } from './handlers/playerSettings.js';
 import { handleAgentInteract, handleAgentMessage, handleAgentStopInteract } from './handlers/agentHandlers.js';
 
 // --- Composition Root ---
@@ -31,34 +32,61 @@ const userRepo = userModule.repository;
 
 // --- HTTP + WebSocket Server ---
 const PORT = env.PORT;
+const ALLOWED_ORIGIN = env.ALLOWED_ORIGIN || '*';
+const PING_INTERVAL_MS = 30_000; // 30s keepalive for Cloud Run
+const alive = new WeakSet<WebSocket>();
 
 const server = http.createServer(async (req, res) => {
+  // CORS headers for cross-origin requests from Vercel
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
   if (handleComposioAuthRoutes(req, res)) return;
 
   if (req.method === 'GET' && req.url === '/api/deepgram/token') {
     const deepgramKey = env.DEEPGRAM_API_KEY;
     if (!deepgramKey) {
-      res.writeHead(503, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Deepgram not configured' }));
       return;
     }
     // Return the API key directly as the access_token (hackathon shortcut)
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ access_token: deepgramKey }));
     return;
   }
 
-  res.writeHead(200, {
-    'Content-Type': 'text/plain',
-    'Access-Control-Allow-Origin': '*',
-  });
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('BossRoom Game Server');
 });
 
 const wss = new WebSocketServer({ server });
 
+// Keepalive: ping every 30s to prevent Cloud Run idle timeout (default 5min)
+const pingTimer = setInterval(() => {
+  for (const ws of wss.clients) {
+    if (!alive.has(ws)) {
+      ws.terminate();
+      continue;
+    }
+    alive.delete(ws);
+    ws.ping();
+  }
+}, PING_INTERVAL_MS);
+
+wss.on('close', () => clearInterval(pingTimer));
+
 wss.on('connection', (ws: WebSocket) => {
   log.debug('[ws] new connection');
+  alive.add(ws);
+  ws.on('pong', () => alive.add(ws));
 
   ws.on('message', async (data: Buffer) => {
     try {
@@ -98,6 +126,8 @@ async function handleMessage(ws: WebSocket, msg: ClientMessage) {
       return handlePlayerJoin(ws, msg.payload, { players, agents, userRepo });
     case 'player:move':
       return handlePlayerMove(ws, msg.payload, players);
+    case 'player:updateSettings':
+      return handlePlayerSettings(ws, msg.payload, { players, userRepo });
     case 'agent:interact':
       return handleAgentInteract(ws, msg.payload, { players, agents });
     case 'agent:message':

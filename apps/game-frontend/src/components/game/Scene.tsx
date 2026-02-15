@@ -1,15 +1,21 @@
 /** Scene composition: lighting, fog, office environment, agents, player, post-processing. */
 'use client';
 
+import { Suspense } from 'react';
+import { Physics } from '@react-three/rapier';
+import { Sky } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { Office } from './Office';
 import { Agent } from './Agent';
 import { Player } from './Player';
+import { CameraRig } from './CameraRig';
+import { RemotePlayer } from './RemotePlayer';
 import { useWorldStore } from '@/stores/worldStore';
 import { LIGHTING, POST_PROCESSING } from '@/data/gameConfig';
 
 export function Scene() {
   const agents = useWorldStore((s) => s.agents);
+  const remotePlayers = useWorldStore((s) => s.remotePlayers);
 
   return (
     <>
@@ -35,18 +41,29 @@ export function Scene() {
         color={LIGHTING.point.color}
       />
 
+      <Sky sunPosition={[100, 60, 100]} turbidity={0.8} rayleigh={0.5} />
+      <CameraRig />
+
       <fog
         attach="fog"
         args={[LIGHTING.fog.color, LIGHTING.fog.near, LIGHTING.fog.far]}
       />
 
-      <Office />
+      <Physics gravity={[0, -30, 0]}>
+        <Suspense fallback={null}>
+          <Office />
 
-      {agents.map((agent) => (
-        <Agent key={agent.id} agent={agent} />
-      ))}
+          {agents.map((agent) => (
+            <Agent key={agent.id} agent={agent} />
+          ))}
 
-      <Player />
+          {Object.values(remotePlayers).map((player) => (
+            <RemotePlayer key={player.id} player={player} />
+          ))}
+
+          <Player />
+        </Suspense>
+      </Physics>
 
       <EffectComposer>
         <Bloom

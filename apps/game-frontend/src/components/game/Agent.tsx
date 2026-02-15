@@ -1,10 +1,11 @@
-/** NPC agent: Kenney character model + floating name label + status orb + sparkles + click-to-chat. */
+/** NPC agent: Kenney character model + floating name label + status orb + sparkles + click-to-chat + wander + thought bubbles. */
 'use client';
 
 import { Billboard, Text, Sparkles } from '@react-three/drei';
-import { RigidBody } from '@react-three/rapier';
 import { CharacterModel } from './CharacterModel';
+import { ThoughtBubble } from './ThoughtBubble';
 import { useChatStore } from '@/stores/chatStore';
+import { useAgentWander } from '@/hooks/useAgentWander';
 import { statusColors, statusLabels, type AgentData } from '@/data/agents';
 
 interface AgentProps {
@@ -14,17 +15,14 @@ interface AgentProps {
 export function Agent({ agent }: AgentProps) {
   const openChat = useChatStore((s) => s.openChat);
   const isActive = agent.status !== 'idle';
+  const isBusy = agent.status !== 'idle';
+
+  const { animation, groupRef } = useAgentWander(agent.id, agent.position, isBusy);
 
   return (
     <group position={agent.position}>
-      <RigidBody type="fixed" colliders="cuboid">
-        <mesh>
-          <boxGeometry args={[0.8, 1.8, 0.6]} />
-          <meshStandardMaterial transparent opacity={0} />
-        </mesh>
-      </RigidBody>
-
       <group
+        ref={groupRef}
         onClick={(e) => {
           e.stopPropagation();
           openChat(agent.id);
@@ -36,70 +34,73 @@ export function Agent({ agent }: AgentProps) {
           document.body.style.cursor = 'default';
         }}
       >
-        <CharacterModel url={agent.modelUrl} animation="idle" />
-      </group>
+        <CharacterModel url={agent.modelUrl} animation={animation} />
 
-      {/* Floating name label */}
-      <Billboard position={[0, 2.2, 0]}>
-        <Text
-          fontSize={0.25}
-          color="#ffffff"
-          anchorX="center"
-          anchorY="middle"
-          outlineWidth={0.02}
-          outlineColor="#000000"
-        >
-          {agent.name}
-        </Text>
-      </Billboard>
-
-      {/* Status label when active */}
-      {isActive && (
-        <Billboard position={[0, 2.8, 0]}>
+        {/* Floating name label */}
+        <Billboard position={[0, 2.2, 0]}>
           <Text
-            fontSize={0.15}
-            color={statusColors[agent.status]}
+            fontSize={0.25}
+            color="#ffffff"
             anchorX="center"
             anchorY="middle"
+            outlineWidth={0.02}
+            outlineColor="#000000"
           >
-            {statusLabels[agent.status]}
+            {agent.name}
           </Text>
         </Billboard>
-      )}
 
-      {/* Status orb */}
-      <mesh position={[0, 2.55, 0]}>
-        <sphereGeometry args={[0.08, 8, 8]} />
-        <meshStandardMaterial
-          color={statusColors[agent.status]}
-          emissive={statusColors[agent.status]}
-          emissiveIntensity={isActive ? 2.5 : 1.5}
-        />
-      </mesh>
+        {/* Status label when active */}
+        {isActive && (
+          <Billboard position={[0, 2.8, 0]}>
+            <Text
+              fontSize={0.15}
+              color={statusColors[agent.status]}
+              anchorX="center"
+              anchorY="middle"
+            >
+              {statusLabels[agent.status]}
+            </Text>
+          </Billboard>
+        )}
 
-      {/* Sparkle effects for thinking/working */}
-      {(agent.status === 'thinking' || agent.status === 'working') && (
-        <Sparkles
-          count={agent.status === 'working' ? 30 : 12}
-          scale={2}
-          size={agent.status === 'working' ? 4 : 2}
-          speed={agent.status === 'working' ? 2 : 0.5}
-          color={agent.color}
-          position={[0, 1, 0]}
-        />
-      )}
+        {/* Status orb */}
+        <mesh position={[0, 2.55, 0]}>
+          <sphereGeometry args={[0.08, 8, 8]} />
+          <meshStandardMaterial
+            color={statusColors[agent.status]}
+            emissive={statusColors[agent.status]}
+            emissiveIntensity={isActive ? 2.5 : 1.5}
+          />
+        </mesh>
 
-      {/* Error effect */}
-      {agent.status === 'error' && (
-        <Sparkles
-          count={20}
-          scale={1.5}
-          size={3}
-          speed={3}
-          color="#ff4444"
-          position={[0, 1, 0]}
-        />
-      )}
+        {/* Sparkle effects for thinking/working */}
+        {(agent.status === 'thinking' || agent.status === 'working') && (
+          <Sparkles
+            count={agent.status === 'working' ? 30 : 12}
+            scale={2}
+            size={agent.status === 'working' ? 4 : 2}
+            speed={agent.status === 'working' ? 2 : 0.5}
+            color={agent.color}
+            position={[0, 1, 0]}
+          />
+        )}
+
+        {/* Error effect */}
+        {agent.status === 'error' && (
+          <Sparkles
+            count={20}
+            scale={1.5}
+            size={3}
+            speed={3}
+            color="#ff4444"
+            position={[0, 1, 0]}
+          />
+        )}
+
+        {/* Thought bubble */}
+        <ThoughtBubble agentId={agent.id} isBusy={isBusy} />
+      </group>
     </group>
   );
 }

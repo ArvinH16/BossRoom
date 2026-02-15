@@ -267,7 +267,7 @@ export default function TestChatPage() {
       try {
         const token = await getToken();
         if (cancelled) return;
-        initWebSocket(user.displayName ?? user.email, token, getToken);
+        initWebSocket(user.displayName ?? user.email, token, getToken, user.uid);
       } catch {
         // auth error — user will see "not connected"
       }

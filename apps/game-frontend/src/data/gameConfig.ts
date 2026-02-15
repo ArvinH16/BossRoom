@@ -24,17 +24,34 @@ export const INTERACTION = {
 export const WORLD = {
   floorSize: 50,
   wallHeight: 3,
-  background: '#0a0a1a',
+  background: '#87ceeb',
 } as const;
 
 export const LIGHTING = {
-  ambient: { intensity: 0.3, color: '#6366f1' },
-  directional: { intensity: 0.8, position: [10, 15, 10] as const },
-  point: { intensity: 0.4, color: '#8b5cf6', position: [0, 5, 0] as const },
-  fog: { color: '#0a0a1a', near: 10, far: 50 },
+  ambient: { intensity: 0.6, color: '#ffffff' },
+  directional: { intensity: 1.2, position: [10, 15, 10] as const },
+  point: { intensity: 0.3, color: '#8b5cf6', position: [0, 5, 0] as const },
+  fog: { color: '#c8dff5', near: 25, far: 80 },
+} as const;
+
+export const AGENT_WANDER = {
+  radius: 1.8,
+  walkSpeed: 1.2,
+  arrivalThreshold: 0.15,
+  idleTimeMin: 3,
+  idleTimeMax: 8,
+  /** Workstation exclusion zone (relative to agent home position). */
+  exclusion: {
+    xHalf: 0.9,
+    zMin: -3.4,
+    zMax: -0.3,
+  },
+  exclusionRetries: 10,
+  /** When the player is within this distance, agent returns home. */
+  playerSenseRadius: 4,
 } as const;
 
 export const POST_PROCESSING = {
-  bloom: { threshold: 0.6, smoothing: 0.9, intensity: 0.8 },
-  vignette: { offset: 0.1, darkness: 0.8 },
+  bloom: { threshold: 0.8, smoothing: 0.9, intensity: 0.4 },
+  vignette: { offset: 0.3, darkness: 0.4 },
 } as const;
