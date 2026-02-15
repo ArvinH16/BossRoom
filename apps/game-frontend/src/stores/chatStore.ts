@@ -12,6 +12,7 @@ export interface ArchivedTask {
   id: string;
   label: string;
   messages: ChatMessage[];
+  agentIds: string[];
 }
 
 interface ChatState {
@@ -25,6 +26,7 @@ interface ChatState {
   archivedTasks: ArchivedTask[];
   activeTaskId: string | null;        // null = current live conversation
   currentTaskId: string;              // ID of the live task
+  currentTaskAgentIds: string[];      // dynamic agent IDs spawned by this task
   taskCounter: number;
 
   openChat: (agentId: string) => void;
@@ -36,6 +38,7 @@ interface ChatState {
   finalizeStream: (agentId: string) => void;
 
   /** Task management (receptionist only) */
+  registerTaskAgents: (agentIds: string[]) => void;
   newTask: () => void;
   switchTask: (taskId: string | null) => void;
   closeTask: (taskId: string) => void;
@@ -53,6 +56,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   archivedTasks: [],
   activeTaskId: null,
   currentTaskId: 'task-1',
+  currentTaskAgentIds: [],
   taskCounter: 1,
 
   openChat: (agentId) => {
@@ -158,6 +162,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       };
     }),
 
+  /** Called when workspace:build fires — associates agent IDs with the current task. */
+  registerTaskAgents: (agentIds) => {
+    set((state) => ({
+      currentTaskAgentIds: [...state.currentTaskAgentIds, ...agentIds],
+    }));
+  },
+
   newTask: () => {
     const state = get();
     const currentMessages = state.chatMessages['receptionist'] ?? [];
@@ -169,6 +180,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         id: state.currentTaskId,
         label: `Task ${state.taskCounter}`,
         messages: currentMessages,
+        agentIds: state.currentTaskAgentIds,
       });
     }
 
@@ -180,6 +192,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       currentTaskId: newTaskId,
       taskCounter: newCounter,
       activeTaskId: null, // switch to the new live task
+      currentTaskAgentIds: [],
       chatMessages: {
         ...state.chatMessages,
         receptionist: [],
@@ -203,11 +216,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   closeTask: (taskId) => {
-    set((state) => ({
+    const state = get();
+    const task = state.archivedTasks.find((t) => t.id === taskId);
+    set({
       archivedTasks: state.archivedTasks.filter((t) => t.id !== taskId),
-      // If we were viewing the deleted task, switch to current
       activeTaskId: state.activeTaskId === taskId ? null : state.activeTaskId,
-    }));
+    });
+    // Return agent IDs so the caller can clean them up
+    return task?.agentIds ?? [];
   },
 
   reset: () =>
@@ -220,6 +236,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       archivedTasks: [],
       activeTaskId: null,
       currentTaskId: 'task-1',
+      currentTaskAgentIds: [],
       taskCounter: 1,
     }),
 }));

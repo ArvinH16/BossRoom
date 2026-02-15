@@ -119,6 +119,10 @@ export function initWebSocket(username: string, token: string, tokenRefresher: (
         // Start the build sequence
         useWorkspaceStore.getState().startBuild(dynamicAgents, taskSummary);
 
+        // Track which agents belong to the current task
+        const newAgentIds = dynamicAgents.map((a) => a.agentId);
+        useChatStore.getState().registerTaskAgents(newAgentIds);
+
         // Add dynamic agents to world store for status tracking
         const worldStore = useWorldStore.getState();
         const currentAgents = worldStore.agents;

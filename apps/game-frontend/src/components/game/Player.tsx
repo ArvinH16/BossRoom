@@ -10,7 +10,6 @@ import type { Group } from 'three';
 import { CharacterModel } from './CharacterModel';
 import { useWorldStore } from '@/stores/worldStore';
 import { useChatStore } from '@/stores/chatStore';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAgentBehaviorStore } from '@/stores/agentBehaviorStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useBroadcastPosition } from '@/hooks/useBroadcastPosition';
@@ -49,9 +48,8 @@ export function Player() {
         openChat(nearestAgent);
       }
       if (e.code === 'KeyR' && !chatPanelOpen) {
-        // Open receptionist with a fresh task
+        // Open receptionist with a fresh task (additive — keeps existing agents)
         useChatStore.getState().newTask();
-        useWorkspaceStore.getState().reset();
         openChat('receptionist');
       }
     };

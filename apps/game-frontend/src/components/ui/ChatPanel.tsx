@@ -17,18 +17,22 @@ function TaskTabs() {
   const switchTask = useChatStore((s) => s.switchTask);
   const newTask = useChatStore((s) => s.newTask);
   const closeTask = useChatStore((s) => s.closeTask);
-  const resetWorkspace = useWorkspaceStore((s) => s.reset);
+  const removeAgents = useWorkspaceStore((s) => s.removeAgents);
 
   const [confirmingClose, setConfirmingClose] = useState<string | null>(null);
 
   function handleNewTask() {
-    resetWorkspace();
     newTask();
   }
 
   function handleCloseTask(e: React.MouseEvent, taskId: string) {
     e.stopPropagation();
     if (confirmingClose === taskId) {
+      // Find the task's agent IDs before removing
+      const task = archivedTasks.find((t) => t.id === taskId);
+      if (task && task.agentIds.length > 0) {
+        removeAgents(task.agentIds);
+      }
       closeTask(taskId);
       setConfirmingClose(null);
     } else {

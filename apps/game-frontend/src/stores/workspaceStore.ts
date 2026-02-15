@@ -8,7 +8,7 @@ export type WorkspacePhase = 'reception' | 'building' | 'ready';
 interface WorkspaceState {
   phase: WorkspacePhase;
   dynamicAgents: DynamicAgent[];
-  buildQueue: string[];              // agent IDs in build order
+  buildQueue: string[];              // agent IDs in build order (current batch)
   currentlyBuilding: string | null;
   builtAgentIds: Set<string>;
   taskSummary: string;
@@ -17,6 +17,7 @@ interface WorkspaceState {
   startBuild: (agents: DynamicAgent[], taskSummary: string) => void;
   markZoneBuilt: (agentId: string) => void;
   completeBuild: () => void;
+  removeAgents: (agentIds: string[]) => void;
   reset: () => void;
 }
 
@@ -29,13 +30,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   taskSummary: '',
 
   startBuild: (agents, taskSummary) => {
+    const state = get();
     const queue = agents.map((a) => a.agentId);
     set({
       phase: 'building',
-      dynamicAgents: agents,
+      // Additive: keep existing agents, append new ones
+      dynamicAgents: [...state.dynamicAgents, ...agents],
       buildQueue: queue,
       currentlyBuilding: queue[0] ?? null,
-      builtAgentIds: new Set(),
+      builtAgentIds: new Set(state.builtAgentIds),
       taskSummary,
     });
   },
@@ -60,6 +63,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       phase: 'ready',
       currentlyBuilding: null,
     });
+  },
+
+  /** Remove specific agents (e.g. when closing a task tab). */
+  removeAgents: (agentIds) => {
+    const idsToRemove = new Set(agentIds);
+    set((state) => ({
+      dynamicAgents: state.dynamicAgents.filter((a) => !idsToRemove.has(a.agentId)),
+    }));
   },
 
   reset: () =>
