@@ -28,6 +28,8 @@ interface ChatState {
   currentTaskId: string;              // ID of the live task
   currentTaskAgentIds: string[];      // dynamic agent IDs spawned by this task
   taskCounter: number;
+  /** When true, ignore the next agent:conversationHistory for receptionist */
+  ignoreNextHistory: boolean;
 
   openChat: (agentId: string) => void;
   closeChat: () => void;
@@ -42,6 +44,7 @@ interface ChatState {
   newTask: () => void;
   switchTask: (taskId: string | null) => void;
   closeTask: (taskId: string) => void;
+  closeCurrentTask: () => void;
 
   reset: () => void;
 }
@@ -58,6 +61,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   currentTaskId: 'task-1',
   currentTaskAgentIds: [],
   taskCounter: 1,
+  ignoreNextHistory: false,
 
   openChat: (agentId) => {
     set({ activeAgent: agentId, chatPanelOpen: true });
@@ -193,6 +197,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       taskCounter: newCounter,
       activeTaskId: null, // switch to the new live task
       currentTaskAgentIds: [],
+      ignoreNextHistory: true, // don't let server restore old messages
       chatMessages: {
         ...state.chatMessages,
         receptionist: [],
@@ -202,12 +207,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ...state.conversationIds,
         receptionist: generateConversationId(),
       },
-    });
-
-    // Re-trigger interact so server creates a fresh conversation
-    gameSocket.send({
-      type: 'agent:interact',
-      payload: { agentId: 'receptionist' },
     });
   },
 
@@ -222,8 +221,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
       archivedTasks: state.archivedTasks.filter((t) => t.id !== taskId),
       activeTaskId: state.activeTaskId === taskId ? null : state.activeTaskId,
     });
-    // Return agent IDs so the caller can clean them up
     return task?.agentIds ?? [];
+  },
+
+  /** Close the current live task — clears receptionist chat and agents. */
+  closeCurrentTask: () => {
+    const state = get();
+    const newCounter = state.taskCounter + 1;
+
+    set({
+      currentTaskId: `task-${newCounter}`,
+      taskCounter: newCounter,
+      currentTaskAgentIds: [],
+      activeTaskId: null,
+      ignoreNextHistory: true,
+      chatMessages: {
+        ...state.chatMessages,
+        receptionist: [],
+      },
+      streamingText: { ...state.streamingText, receptionist: '' },
+      conversationIds: {
+        ...state.conversationIds,
+        receptionist: generateConversationId(),
+      },
+    });
   },
 
   reset: () =>
@@ -238,5 +259,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       currentTaskId: 'task-1',
       currentTaskAgentIds: [],
       taskCounter: 1,
+      ignoreNextHistory: false,
     }),
 }));

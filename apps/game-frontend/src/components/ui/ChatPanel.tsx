@@ -17,8 +17,11 @@ function TaskTabs() {
   const switchTask = useChatStore((s) => s.switchTask);
   const newTask = useChatStore((s) => s.newTask);
   const closeTask = useChatStore((s) => s.closeTask);
+  const closeCurrentTask = useChatStore((s) => s.closeCurrentTask);
+  const currentTaskAgentIds = useChatStore((s) => s.currentTaskAgentIds);
   const removeAgents = useWorkspaceStore((s) => s.removeAgents);
 
+  // "current" is a special key for the live task tab
   const [confirmingClose, setConfirmingClose] = useState<string | null>(null);
 
   function handleNewTask() {
@@ -28,12 +31,20 @@ function TaskTabs() {
   function handleCloseTask(e: React.MouseEvent, taskId: string) {
     e.stopPropagation();
     if (confirmingClose === taskId) {
-      // Find the task's agent IDs before removing
-      const task = archivedTasks.find((t) => t.id === taskId);
-      if (task && task.agentIds.length > 0) {
-        removeAgents(task.agentIds);
+      if (taskId === 'current') {
+        // Close the live task
+        if (currentTaskAgentIds.length > 0) {
+          removeAgents(currentTaskAgentIds);
+        }
+        closeCurrentTask();
+      } else {
+        // Close an archived task
+        const task = archivedTasks.find((t) => t.id === taskId);
+        if (task && task.agentIds.length > 0) {
+          removeAgents(task.agentIds);
+        }
+        closeTask(taskId);
       }
-      closeTask(taskId);
       setConfirmingClose(null);
     } else {
       setConfirmingClose(taskId);
@@ -72,7 +83,7 @@ function TaskTabs() {
       {/* Current live task tab */}
       <button
         onClick={() => switchTask(null)}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs whitespace-nowrap transition-colors shrink-0
+        className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs whitespace-nowrap transition-colors shrink-0
           ${activeTaskId === null
             ? 'bg-white/15 text-white'
             : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
@@ -80,6 +91,17 @@ function TaskTabs() {
       >
         <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
         Task {taskCounter}
+        <span
+          onClick={(e) => handleCloseTask(e, 'current')}
+          className={`ml-0.5 leading-none transition-colors rounded-sm px-0.5
+            ${confirmingClose === 'current'
+              ? 'text-red-400 bg-red-400/20'
+              : 'text-white/30 hover:text-white/60 opacity-0 group-hover:opacity-100'
+            }`}
+          title={confirmingClose === 'current' ? 'Click again to delete' : 'Close task'}
+        >
+          &times;
+        </span>
       </button>
 
       {/* New task button */}
